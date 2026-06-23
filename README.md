@@ -64,7 +64,3 @@ Alle Vorlagen sind auf Deutsch. Keine technischen Skills nötig.
 ## Lizenz
 
 MIT – frei einsetzbar, auch für kommerzielle Weiternutzung.
-
----
-
-**Kontakt**: Till (tilt@fau.de) | **Live**: chatbot-wiso.de | **Maintenance**: Hermes AI autonomous
