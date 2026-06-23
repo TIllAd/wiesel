@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Project
+*.db
+*.sqlite
+*.sqlite3
+/data/
+/backend/.env
+/frontend/.env
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+/backend/venv/
+/frontend/node_modules/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Caches
+.pytest_cache/
+.coverage/
+htmlcov/
