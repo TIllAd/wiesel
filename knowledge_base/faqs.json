@@ -1,0 +1,65 @@
+[
+  {
+    "id": "a-001",
+    "kategorie": "A",
+    "frage": "Wie funktioniert die Immatrikulation?",
+    "antwort": "Die Immatrikulation findet vor dem Semesterstart statt. Du erhältst eine Benachrichtigung mit allen nötigen Unterlagen. Gehe zur Studieninfostelle der WiSo und bring Abitur/Zeugnis + Ausweis mit.",
+    "quelle": "WiSo Studienstart-Broschüre 2025",
+    "schwierigkeit": 1,
+    "tags": ["Studienstart", "Verwaltung"]
+  },
+  {
+    "id": "b-001",
+    "kategorie": "B",
+    "frage": "Was ist der Unterschied zwischen Erlösmaximierung und Gewinnmaximierung?",
+    "antwort": "Erlösmaximierung zielt auf höchsten Umsatz (P × Q). Gewinnmaximierung dagegen auf höchsten Gewinn (Erlös - Kosten). Ein Unternehmen kann Erlösmaximierung wählen, wenn Grenzkosten unter dem Preis liegen.",
+    "quelle": "BWL-Vorlesung, Kapitel 3: Unternehmenstheorie",
+    "schwierigkeit": 2,
+    "tags": ["Wirtschaft", "Betriebswirtschaft"]
+  },
+  {
+    "id": "c-001",
+    "kategorie": "C",
+    "frage": "Wo kann ich andere Erste-Semester kennenlernen?",
+    "antwort": "Die WiSo organisiert jedes Semester Erstsemester-Events. Außerdem gibt es Lerngruppen über die StudOn-Plattform. Viele Fachschaften organisieren auch Kneipenabende.",
+    "quelle": "WiSo Community",
+    "schwierigkeit": 1,
+    "tags": ["Community", "Netzwerk"]
+  },
+  {
+    "id": "d-001",
+    "kategorie": "D",
+    "frage": "Wie logge ich mich in StudOn ein?",
+    "antwort": "Nutze deine FAU-Kennung (deine Unimail ohne @fau.de). Gehe zu https://studon.uni-erlangen.de und wähle 'WiSo-Account'.",
+    "quelle": "StudOn Anleitung",
+    "schwierigkeit": 1,
+    "tags": ["StudOn", "Tools", "Digital"]
+  },
+  {
+    "id": "e-001",
+    "kategorie": "E",
+    "frage": "Welche Prüfungsformen gibt es in der WiSo?",
+    "antwort": "Klausur (60-90 Min), mündliche Prüfung, Hausarbeit, Referat oder Kombination (z.B. Klausur + Referat). Hängt vom Modul ab. Siehe Modulhandbuch.",
+    "quelle": "WiSo Modulhandbuch 2025",
+    "schwierigkeit": 1,
+    "tags": ["Prüfung", "Exam"]
+  },
+  {
+    "id": "f-001",
+    "kategorie": "F",
+    "frage": "Welche Förderungsmöglichkeiten gibt es als Student?",
+    "antwort": "BAföG (Antrag bis Semesterstichtag), Deutschlandstipendium, Landesgraduiertenförderung, und Stipendien von privaten Stiftungen. Die Studieninfostelle hat eine Übersicht.",
+    "quelle": "FAU Finanzierungsberatung",
+    "schwierigkeit": 2,
+    "tags": ["Finanzen", "BAföG", "Stipendium"]
+  },
+  {
+    "id": "g-001",
+    "kategorie": "G",
+    "frage": "Brauche ich Mathematik für WiSo?",
+    "antwort": "Ja, Mathematik ist Grundlage. Du brauchst: Funktionen, Differentialrechnung, Integralrechnung und etwas Lineare Algebra. Es gibt aber einen Mathe-Brückenkurs vor dem Semester.",
+    "quelle": "WiSo Studienberatung",
+    "schwierigkeit": 2,
+    "tags": ["Mathe", "Grundlagen"]
+  }
+]

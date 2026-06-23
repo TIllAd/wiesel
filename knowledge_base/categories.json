@@ -1,0 +1,46 @@
+{
+  "kategorien": [
+    {
+      "code": "A",
+      "name": "Allgemeines",
+      "beschreibung": "Studienstart, Immatrikulation, Unterlagen, grundlegende Infos",
+      "farbe": "#FF6B6B"
+    },
+    {
+      "code": "B",
+      "name": "Betriebswirtschaft",
+      "beschreibung": "BWL-spezifische Konzepte, Unternehmenstheorie, Management",
+      "farbe": "#4ECDC4"
+    },
+    {
+      "code": "C",
+      "name": "Community",
+      "beschreibung": "Networking, Events, Lerngruppen, Fachschaften",
+      "farbe": "#45B7D1"
+    },
+    {
+      "code": "D",
+      "name": "Digital Tools",
+      "beschreibung": "StudOn, VPN, Mail, Stundenplan, technische Fragen",
+      "farbe": "#96CEB4"
+    },
+    {
+      "code": "E",
+      "name": "Exam & Prüfung",
+      "beschreibung": "Prüfungsformen, Anmeldung, Bestehensregeln, Noten",
+      "farbe": "#FFEAA7"
+    },
+    {
+      "code": "F",
+      "name": "Finanzen",
+      "beschreibung": "BAföG, Stipendien, Kosten, Finanzierung",
+      "farbe": "#DFE6E9"
+    },
+    {
+      "code": "G",
+      "name": "Grundlagen",
+      "beschreibung": "Mathematik, VWL-Basis, Wirtschaftliche Grundkonzepte",
+      "farbe": "#A29BFE"
+    }
+  ]
+}
