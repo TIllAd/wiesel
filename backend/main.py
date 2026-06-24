@@ -22,7 +22,8 @@ from sqlalchemy.orm import sessionmaker, Session as SQLSession
 
 import anthropic
 import jwt
-from oauthlib.oauth1 import RequestValidator, Server
+import hmac as hmac_lib
+from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "sk-mock")
 JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
 DATABASE_URL = "sqlite:///./wiesel.db"
+MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
 
 # ============================================================================
 # DATABASE SETUP
@@ -78,59 +80,75 @@ class ChatMessage(Base):
 Base.metadata.create_all(bind=engine)
 
 # ============================================================================
-# LTI 1.1 VALIDATOR & SERVER
+# LTI 1.1 SIGNATURE VALIDATION
 # ============================================================================
 
 
-class WieselLTIValidator(RequestValidator):
-    """LTI 1.1 OAuth 1.0a Request Validator"""
-    
-    def validate_timestamp_and_nonce(self, client_key, timestamp, nonce, request, request_token=None, access_token=None):
-        """Validate timestamp (within 1 hour) and nonce (not reused)"""
-        try:
-            ts = int(timestamp)
-            now = int(datetime.utcnow().timestamp())
-            if abs(now - ts) > 3600:  # 1 hour
-                logger.warning(f"Timestamp out of range: {timestamp}")
-                return False
-        except:
-            return False
-        
-        # Check nonce in DB
-        db = SessionLocal()
-        try:
-            existing = db.query(SessionRecord).filter(SessionRecord.nonce == nonce).first()
-            if existing:
-                logger.warning(f"Nonce replay detected: {nonce}")
-                return False
-        finally:
-            db.close()
-        
-        return True
-    
-    def validate_client_key(self, client_key, request):
-        """Validate consumer key"""
-        is_valid = client_key == LTI_CONSUMER_KEY
-        logger.info(f"LTI Client Key validation: {client_key} -> {is_valid}")
-        return is_valid
-    
-    def get_client_secret(self, client_key, request):
-        """Return consumer secret for this key"""
-        if client_key == LTI_CONSUMER_KEY:
-            return LTI_CONSUMER_SECRET
-        return None
-    
-    def dummy_client(self):
-        return LTI_CONSUMER_KEY
-    
-    def dummy_request_token(self):
-        return "dummy_token"
-    
-    def dummy_access_token(self):
-        return "dummy_token"
+def _check_nonce(nonce: str) -> bool:
+    """Return False if nonce was already used (replay attack)."""
+    db = SessionLocal()
+    try:
+        return db.query(SessionRecord).filter(SessionRecord.nonce == nonce).first() is None
+    finally:
+        db.close()
 
 
-lti_server = Server(WieselLTIValidator())
+def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, str]:
+    """
+    Validate an LTI 1.1 OAuth 1.0a signed request.
+
+    Returns (True, "") on success or (False, reason) on failure.
+    In MOCK_LTI_MODE only the consumer key is checked – signature is skipped.
+    """
+    client_key = params.get("oauth_consumer_key", "")
+    nonce      = params.get("oauth_nonce", "")
+    timestamp  = params.get("oauth_timestamp", "0")
+
+    # --- key check (always) ---
+    if client_key != LTI_CONSUMER_KEY:
+        return False, f"Unknown consumer key: {client_key!r}"
+
+    if MOCK_LTI_MODE:
+        logger.warning("MOCK_LTI_MODE active – skipping OAuth signature check")
+        return True, ""
+
+    # --- timestamp (±1 h) ---
+    try:
+        skew = abs(int(datetime.utcnow().timestamp()) - int(timestamp))
+        if skew > 3600:
+            return False, f"Timestamp skew too large: {skew}s"
+    except ValueError:
+        return False, "Invalid oauth_timestamp"
+
+    # --- nonce replay ---
+    if nonce and not _check_nonce(nonce):
+        return False, f"Nonce already used: {nonce!r}"
+
+    # --- HMAC-SHA1 signature ---
+    collected = oauth_signature.collect_parameters(
+        body=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        exclude_oauth_signature=True,
+        with_body=True,
+    )
+    # Merge URI params from the form POST
+    collected += [(k, v) for k, v in params.items() if k != "oauth_signature"]
+
+    base_string = oauth_signature.construct_base_string(
+        "POST",
+        oauth_signature.normalize_base_string_uri(uri),
+        oauth_signature.normalize_parameters(collected),
+    )
+    expected = oauth_signature.sign_hmac_sha1(
+        base_string,
+        LTI_CONSUMER_SECRET,
+        "",          # token_secret is empty for LTI 1.1
+    )
+    received = params.get("oauth_signature", "")
+    if not hmac_lib.compare_digest(expected, received):
+        return False, "OAuth signature mismatch"
+
+    return True, ""
 
 # ============================================================================
 # PYDANTIC MODELS
@@ -288,22 +306,16 @@ async def lti_launch(request: Request):
         form_data = await request.form()
         
         logger.info(f"LTI Launch received. Keys: {list(form_data.keys())[:5]}")
-        
-        # For mock testing, skip signature validation
-        # In production, uncomment the validation below
-        """
-        valid, request_obj = lti_server.validate_request(
-            request.url,
-            "POST",
-            request.body.__str__() if hasattr(request, 'body') else "",
-            dict(form_data)
-        )
-        
+
+        # Validate OAuth 1.0a signature (skipped in MOCK_LTI_MODE)
+        params = dict(form_data)
+        body = (await request.body()).decode("utf-8")
+        uri = str(request.url)
+        valid, reason = validate_lti_request(uri, params, body)
         if not valid:
-            logger.error("LTI signature validation failed")
-            return JSONResponse({"error": "Invalid LTI signature"}, status_code=401)
-        """
-        
+            logger.error(f"LTI validation failed: {reason}")
+            return JSONResponse({"error": "LTI validation failed", "detail": reason}, status_code=401)
+
         # Extract LTI context
         user_id = form_data.get("user_id", "anonymous")
         course_id = form_data.get("course_id", "unknown")
