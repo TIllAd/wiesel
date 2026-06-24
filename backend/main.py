@@ -321,7 +321,7 @@ async def chat_page(request: Request, debug: bool = False):
                 user_role="Learner",
                 user_name="Debug Student",
                 course_name="Debug Mode – kein StudOn",
-                nonce="debug_nonce",
+                nonce=None,  # nullable – avoids UNIQUE constraint conflict on repeat visits
                 created_at=datetime.utcnow(),
             )
             db.merge(debug_session)
@@ -329,8 +329,10 @@ async def chat_page(request: Request, debug: bool = False):
             logger.info("Debug session created – bypassing LTI")
         finally:
             db.close()
+        from urllib.parse import quote
+        token_enc = quote(session_id, safe="")
         return RedirectResponse(
-            url=f"/chat?token={session_id}&session_id={session_id}",
+            url=f"/chat?token={token_enc}&session_id={token_enc}",
             status_code=302
         )
     return FileResponse(str(_static_dir / "chat.html"))
