@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 LTI_CONSUMER_KEY = os.getenv("LTI_CONSUMER_KEY", "test_consumer_key_mock")
 LTI_CONSUMER_SECRET = os.getenv("LTI_CONSUMER_SECRET", "test_consumer_secret_mock")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "sk-mock")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
 DATABASE_URL = "sqlite:///./wiesel.db"
