@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  wiesel-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LTI_CONSUMER_KEY=${LTI_CONSUMER_KEY:-test_consumer_key_mock}
+      - LTI_CONSUMER_SECRET=${LTI_CONSUMER_SECRET:-test_consumer_secret_mock}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET=${JWT_SECRET:-wiesel_jwt_secret_dev}
+      - DATABASE_URL=sqlite:///./wiesel.db
+    volumes:
+      - ./backend:/app/backend
+      - ./knowledge_base:/knowledge_base
+      - ./wiesel.db:/app/wiesel.db
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - wiesel-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  wiesel-network:
+    driver: bridge
