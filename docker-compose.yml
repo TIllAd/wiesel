@@ -7,12 +7,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8001:8001"
-    environment:
-      - LTI_CONSUMER_KEY=${LTI_CONSUMER_KEY:-test_consumer_key_mock}
-      - LTI_CONSUMER_SECRET=${LTI_CONSUMER_SECRET:-test_consumer_secret_mock}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - JWT_SECRET=${JWT_SECRET:-wiesel_jwt_secret_dev}
-      - DATABASE_URL=sqlite:////app/wiesel.db
     env_file:
       - ./backend/.env
     volumes:
