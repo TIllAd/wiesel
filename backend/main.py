@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from pydantic import BaseModel
@@ -283,6 +284,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static files
+_static_dir = Path(__file__).parent / "static"
+if _static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+
 
 # ============================================================================
 # ROUTES
@@ -293,6 +299,12 @@ app.add_middleware(
 async def root():
     """Health check"""
     return {"status": "ok", "service": "Wiesel Backend", "version": "0.1.0"}
+
+
+@app.get("/chat")
+async def chat_page():
+    """Serve the chat widget (token + session_id expected as query params)"""
+    return FileResponse(str(_static_dir / "chat.html"))
 
 
 @app.post("/lti/launch")
@@ -358,7 +370,7 @@ async def lti_launch(request: Request):
         # Redirect to frontend (will be iframe URL)
         # TODO: update to actual frontend URL
         return RedirectResponse(
-            url=f"/chat?token={token}&user={user_name}&course={course_name}",
+            url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}",
             status_code=302
         )
     
