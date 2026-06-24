@@ -185,11 +185,15 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 
 def load_knowledge_base() -> str:
-    """Load Karpathy Wiki from file"""
-    kb_path = "/knowledge_base/wissen-basis.md"
-    if os.path.exists(kb_path):
-        with open(kb_path, "r", encoding="utf-8") as f:
-            return f.read()
+    """Load Karpathy Wiki from wissen-basis.md (repo root). Falls back to Docker paths."""
+    candidates = [
+        Path(__file__).parent.parent / "knowledge_base" / "wissen-basis.md",  # local: wiesel/knowledge_base/wissen-basis.md
+        Path("/knowledge_base/wissen-basis.md"),                                # Docker volume mount
+        Path("/app/knowledge_base/wissen-basis.md"),                            # Docker /app
+    ]
+    for path in candidates:
+        if path.exists():
+            return path.read_text(encoding="utf-8")
     return "# Wissensbasis nicht gefunden"
 
 
