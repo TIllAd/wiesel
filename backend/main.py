@@ -304,14 +304,20 @@ async def lti_launch(request: Request):
     db = SessionLocal()
     
     try:
-        # Parse form data
-        form_data = await request.form()
-        
+        # Read body ONCE – request.body() and request.form() share the same
+        # stream; calling both without caching causes "Stream consumed" errors.
+        raw_body = await request.body()
+        body = raw_body.decode("utf-8")
+
+        # Parse form data from the cached body string
+        from urllib.parse import parse_qs, unquote_plus
+        parsed = parse_qs(body, keep_blank_values=True)
+        form_data = {k: v[0] for k, v in parsed.items()}
+
         logger.info(f"LTI Launch received. Keys: {list(form_data.keys())[:5]}")
 
         # Validate OAuth 1.0a signature (skipped in MOCK_LTI_MODE)
-        params = dict(form_data)
-        body = (await request.body()).decode("utf-8")
+        params = form_data
         uri = str(request.url)
         valid, reason = validate_lti_request(uri, params, body)
         if not valid:
