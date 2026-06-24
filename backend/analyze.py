@@ -22,7 +22,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).parent / '.env')
 
 # ── Config ──────────────────────────────────────────────────────────────────
 API_BASE     = os.getenv("WIESEL_API_BASE", "http://localhost:8001")
