@@ -6,6 +6,8 @@ FastAPI app with LTI launch endpoint, chat API, and SQLite session management.
 import os
 import json
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
