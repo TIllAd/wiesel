@@ -310,29 +310,32 @@ async def chat_page(request: Request, debug: bool = False):
     if debug:
         db = SessionLocal()
         try:
-            session_id = jwt.encode(
-                {"user": "debug_user", "ts": datetime.utcnow().timestamp(), "debug": True},
+            # Stable session_id – not time-dependent, so DB lookup always works
+            # and chat_messages accumulate across debug visits
+            debug_session_id = "debug_session_wiesel"
+            token = jwt.encode(
+                {"user": "debug_user", "session_id": debug_session_id, "debug": True},
                 JWT_SECRET
             )
             debug_session = SessionRecord(
-                id=session_id,
+                id=debug_session_id,
                 user_id="debug_user",
                 course_id="debug_course",
                 user_role="Learner",
                 user_name="Debug Student",
                 course_name="Debug Mode – kein StudOn",
-                nonce=None,  # nullable – avoids UNIQUE constraint conflict on repeat visits
+                nonce=None,
                 created_at=datetime.utcnow(),
             )
             db.merge(debug_session)
             db.commit()
-            logger.info("Debug session created – bypassing LTI")
+            logger.info("Debug session upserted – session_id=debug_session_wiesel, user_id=debug_user")
         finally:
             db.close()
         from urllib.parse import quote
-        token_enc = quote(session_id, safe="")
+        token_enc = quote(token, safe="")
         return RedirectResponse(
-            url=f"/chat?token={token_enc}&session_id={token_enc}",
+            url=f"/chat?token={token_enc}&session_id={debug_session_id}",
             status_code=302
         )
     return FileResponse(str(_static_dir / "chat.html"))
