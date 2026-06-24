@@ -537,6 +537,55 @@ async def health_check():
 # ============================================================================
 
 
+# ============================================================================
+# LOGS API
+# ============================================================================
+
+@app.get("/api/logs/daily")
+async def get_daily_logs(date: Optional[str] = None):
+    """Return all chat messages for a given day (default: today) as JSON."""
+    db = SessionLocal()
+    try:
+        if date:
+            try:
+                target = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format, use YYYY-MM-DD")
+        else:
+            target = datetime.utcnow().date()
+
+        day_start = datetime(target.year, target.month, target.day, 0, 0, 0)
+        day_end   = datetime(target.year, target.month, target.day, 23, 59, 59)
+
+        messages = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end)
+            .order_by(ChatMessage.created_at)
+            .all()
+        )
+
+        # Group by session
+        sessions: dict = {}
+        for m in messages:
+            if m.session_id not in sessions:
+                sessions[m.session_id] = []
+            sessions[m.session_id].append({
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat(),
+            })
+
+        return {
+            "date": target.isoformat(),
+            "total_messages": len(messages),
+            "total_sessions": len(sessions),
+            "sessions": sessions,
+        }
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Wiesel Backend starting...")
