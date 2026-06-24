@@ -302,8 +302,37 @@ async def root():
 
 
 @app.get("/chat")
-async def chat_page():
-    """Serve the chat widget (token + session_id expected as query params)"""
+async def chat_page(request: Request, debug: bool = False):
+    """Serve the chat widget.
+    ?debug=true  → creates a test session without LTI and redirects with token.
+    ?token=...   → normal flow after LTI launch or debug redirect.
+    """
+    if debug:
+        db = SessionLocal()
+        try:
+            session_id = jwt.encode(
+                {"user": "debug_user", "ts": datetime.utcnow().timestamp(), "debug": True},
+                JWT_SECRET
+            )
+            debug_session = SessionRecord(
+                id=session_id,
+                user_id="debug_user",
+                course_id="debug_course",
+                user_role="Learner",
+                user_name="Debug Student",
+                course_name="Debug Mode – kein StudOn",
+                nonce="debug_nonce",
+                created_at=datetime.utcnow(),
+            )
+            db.merge(debug_session)
+            db.commit()
+            logger.info("Debug session created – bypassing LTI")
+        finally:
+            db.close()
+        return RedirectResponse(
+            url=f"/chat?token={session_id}&session_id={session_id}",
+            status_code=302
+        )
     return FileResponse(str(_static_dir / "chat.html"))
 
 
