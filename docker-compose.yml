@@ -12,16 +12,16 @@ services:
       - LTI_CONSUMER_SECRET=${LTI_CONSUMER_SECRET:-test_consumer_secret_mock}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - JWT_SECRET=${JWT_SECRET:-wiesel_jwt_secret_dev}
-      - DATABASE_URL=sqlite:///./wiesel.db
+      - DATABASE_URL=sqlite:////app/wiesel.db
     volumes:
       - ./backend:/app/backend
       - ./knowledge_base:/knowledge_base
-      - ./wiesel.db:/app/wiesel.db
+      - wiesel-db:/app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - wiesel-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -30,3 +30,6 @@ services:
 networks:
   wiesel-network:
     driver: bridge
+
+volumes:
+  wiesel-db:
