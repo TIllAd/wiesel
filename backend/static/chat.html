@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wiesel – Dein Studienbegleiter</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -68,10 +69,20 @@
       border-radius: var(--radius);
       font-size: 14px;
       line-height: 1.6;
-      white-space: pre-wrap;
       word-break: break-word;
       animation: fadeIn .18s ease;
     }
+    /* markdown inside bot messages */
+    .msg.bot p  { margin: 0 0 .5em; }
+    .msg.bot p:last-child { margin-bottom: 0; }
+    .msg.bot ul, .msg.bot ol { padding-left: 1.4em; margin: .3em 0 .5em; }
+    .msg.bot li { margin: .15em 0; }
+    .msg.bot strong { color: #a8bcff; }
+    .msg.bot code { background: #1e2235; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    .msg.bot pre  { background: #1e2235; padding: 10px; border-radius: 8px; overflow-x: auto; margin: .4em 0; }
+    .msg.bot a    { color: var(--accent); text-underline-offset: 2px; }
+    /* user messages keep plain text style */
+    .msg.user { white-space: pre-wrap; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 
     .msg.user {
@@ -290,7 +301,11 @@
   function addMessage(role, text) {
     const el = document.createElement('div');
     el.className = 'msg ' + role;
-    el.textContent = text;
+    if (role === 'bot') {
+      el.innerHTML = marked.parse(text);
+    } else {
+      el.textContent = text;
+    }
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return el;
