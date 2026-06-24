@@ -13,6 +13,7 @@ import sys
 import json
 import smtplib
 import re
+import subprocess
 from collections import Counter
 from datetime import datetime, date
 from email.mime.text import MIMEText
@@ -32,6 +33,8 @@ SMTP_USER    = os.getenv("SMTP_USER", "")
 SMTP_PASS    = os.getenv("SMTP_PASS", "")
 REPO_ROOT    = Path(__file__).parent.parent
 REPORTS_DIR  = REPO_ROOT / "reports"
+GITHUB_REPO  = os.getenv("GITHUB_REPO", "TIllAd/wiesel")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 
 
 # ── Language detection (simple heuristic) ───────────────────────────────────
@@ -78,6 +81,31 @@ ERROR_PATTERNS = [
 
 def has_error_response(text: str) -> bool:
     return any(p.search(text) for p in ERROR_PATTERNS)
+def extract_error_snippets(bot_msgs: list, max_n: int = 3) -> list[str]:
+    """Return up to max_n short snippets from bot messages that look like errors."""
+    snippets = []
+    for m in bot_msgs:
+        if has_error_response(m["content"]):
+            snippets.append(m["content"][:150].replace("\n", " ").strip())
+        if len(snippets) >= max_n:
+            break
+    return snippets
+
+FACHINHALT_PAT = re.compile(
+    r"\bopportunit|mikroökon|makroökon|statistik|buchführ|kosten(?:rechnung)?|"
+    r"\bvwl\b|\bbwl\b|\bformeln?\b|\bderivat|\bintegral|marketing|management",
+    re.I,
+)
+
+def extract_fachinhalt_examples(user_msgs: list, max_n: int = 3) -> list[str]:
+    """Return up to max_n user messages that are clearly out-of-scope (Fachinhalt)."""
+    examples = []
+    for m in user_msgs:
+        if FACHINHALT_PAT.search(m["content"]):
+            examples.append(m["content"][:120].replace("\n", " ").strip())
+        if len(examples) >= max_n:
+            break
+    return examples
 
 
 # ── Main analysis ────────────────────────────────────────────────────────────
@@ -103,7 +131,9 @@ def analyse(target_date: str) -> dict:
 
     # Error responses (bot messages)
     error_count = sum(1 for m in bot_msgs if has_error_response(m["content"]))
-
+    error_snippets = extract_error_snippets(bot_msgs)
+    fachinhalt_examples = extract_fachinhalt_examples(user_msgs)
+    # Avg messages per session
     # Avg messages per session
     session_lengths = [len(msgs) for msgs in sessions.values()]
     avg_len = round(sum(session_lengths) / len(session_lengths), 1) if session_lengths else 0
@@ -126,6 +156,8 @@ def analyse(target_date: str) -> dict:
         "topics":            dict(topic_counter.most_common(10)),
         "error_responses":   error_count,
         "uncategorised":     uncategorised[:10],  # top 10 for report
+        "error_snippets":    error_snippets,
+        "fachinhalt_examples": fachinhalt_examples,
     }
 
 
@@ -196,13 +228,32 @@ def send_email(subject: str, body: str):
 def email_summary(r: dict) -> str:
     top3 = list(r["topics"].items())[:3]
     top3_str = ", ".join(f"{t} ({c}x)" for t, c in top3) or "–"
+    github_url = (
+        f"https://github.com/{GITHUB_REPO}/blob/{GITHUB_BRANCH}/reports/{r['date']}.md"
+    )
+
+    # Error snippets block
+    if r["error_snippets"]:
+        error_block = "\n".join(f"  · \"{s}\"" for s in r["error_snippets"])
+        error_section = f"Fehler-Antworten: {r['error_responses']}\nBeispiele:\n{error_block}\n"
+    else:
+        error_section = f"Fehler-Antworten: {r['error_responses']} (keine Snippets)\n"
+
+    # Out-of-scope block
+    if r["fachinhalt_examples"]:
+        scope_examples = "\n".join(f"  · \"{e}\"" for e in r["fachinhalt_examples"])
+        scope_section = f"Außerhalb Scope (Fachinhalt): {len(r['fachinhalt_examples'])} Anfragen\nBeispiele:\n{scope_examples}\n"
+    else:
+        scope_section = "Außerhalb Scope (Fachinhalt): keine erkannt\n"
+
     return (
         f"Wiesel Tagesbericht {r['date']}\n\n"
         f"Sessions: {r['total_sessions']}  |  Nachrichten: {r['total_messages']}\n"
-        f"Fehler-Antworten: {r['error_responses']}\n"
-        f"Top-Themen: {top3_str}\n"
-        f"Sprachen: {', '.join(f'{l.upper()}:{c}' for l, c in r['languages'].items())}\n\n"
-        f"Vollständiger Report: {REPO_ROOT}/reports/{r['date']}.md\n"
+        f"Sprachen: {', '.join(f'{l.upper()}:{c}' for l, c in r['languages'].items())}\n"
+        f"Top-Themen: {top3_str}\n\n"
+        f"{error_section}\n"
+        f"{scope_section}\n"
+        f"Vollständiger Report:\n{github_url}\n"
     )
 
 
@@ -219,6 +270,13 @@ if __name__ == "__main__":
     report_text = build_report(result)
     report_path.write_text(report_text, encoding="utf-8")
     print(f"✅ Report geschrieben: {report_path}")
+
+    # Git push via gh CLI
+    repo_root = Path(__file__).parent.parent
+    subprocess.run(["git", "add", f"reports/{target}.md"], cwd=repo_root, check=True)
+    subprocess.run(["git", "commit", "-m", f"report: {target}"], cwd=repo_root, check=True)
+    subprocess.run(["git", "push"], cwd=repo_root, check=True)
+    print(f"✅ Report gepusht: reports/{target}.md")
 
     # Print summary
     print(json.dumps(result, indent=2, ensure_ascii=False))
