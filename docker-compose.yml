@@ -13,6 +13,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - JWT_SECRET=${JWT_SECRET:-wiesel_jwt_secret_dev}
       - DATABASE_URL=sqlite:////app/wiesel.db
+    env_file:
+      - ./backend/.env
     volumes:
       - ./backend:/app/backend
       - ./knowledge_base:/knowledge_base
