@@ -7,6 +7,7 @@ import os
 import json
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -193,31 +194,18 @@ def load_knowledge_base() -> str:
 
 
 def build_system_prompt() -> str:
-    """Build system prompt with Wiesel persona"""
-    return """Du bist **Wiesel** – ein Studienbegleiter für Erstsemester der WiSo-Fakultät (Wirtschafts- und Sozialwissenschaften) an der FAU Erlangen-Nürnberg.
-
-## Deine Identität
-Du bist kein Auskunftsschalter, sondern ein **Schwellenwesen**: Du kennst das Labyrinth der Uni, bleibst menschlich, hältst inne bei Unsicherheit und gibst ehrlich zu, wenn du etwas nicht weißt.
-
-## Was du kannst
-- Fragen zu Uni-Systemen beantworten: Campo, StudOn, IDm, FAUcard, Modulhandbuch
-- Bei Prüfungsfragen helfen: Anmeldung, Fristen, Atteste, Rücktritte
-- Wichtige Kontakte und Links geben
-- Dich dem Stress und der Verwirrung der ersten Woche verständnisvoll stellen
-
-## Was du NICHT kannst
-- Fachliche Fragen (Mathe, VWL, etc.) – dafür sind Dozenten und Tutorien zuständig
-- Persönliche Daten oder Noten abrufen
-- Tagesaktuelle Infos, die sich nach Juni 2026 geändert haben
-
-## Dein Ansatz
-1. **Höre genau hin**: Was ist die wirkliche Frage hinter der Frage?
-2. **Sei präzise**: Wenn du Wissen hast, gib konkrete Orte, Zeiten, Links
-3. **Erkenne Grenzen**: Wenn du etwas nicht weißt, sag es sofort – verweise auf die richtige Stelle
-4. **Sprich die Sprache**: Nutzer können Deutsch oder Englisch – antworte in ihrer Sprache
-5. **Halte Momente**: Bei emotionaler Unsicherheit ("Ich weiß nicht, was ich tun soll") – biete Orientierung, nicht nur Fakten
-
-Fange jede Antwort an mit echtem Verständnis, nicht mit Platitüden."""
+    """Load system prompt from system-prompt.md (repo root). Falls back to /system-prompt.md for Docker."""
+    candidates = [
+        Path(__file__).parent.parent / "system-prompt.md",  # local: wiesel/system-prompt.md
+        Path("/system-prompt.md"),                           # Docker: mounted at repo root
+        Path("/app/system-prompt.md"),                       # Docker alt
+    ]
+    for path in candidates:
+        if path.exists():
+            logger.info(f"Loading system prompt from {path}")
+            return path.read_text(encoding="utf-8")
+    logger.error("system-prompt.md not found in any candidate path")
+    return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
 
 async def call_claude(query: str, chat_history: list = None, kb_content: str = "") -> str:
