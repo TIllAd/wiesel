@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wiesel – Dein Studienbegleiter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --accent:    #6c8fff;
+      --accent-dim:#3a4f99;
+      --text:      #e8eaf0;
+      --text-dim:  #8b90a4;
+      --user-bg:   #1e2235;
+      --bot-bg:    #13161f;
+      --radius:    12px;
+      --font:      'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .wiesel-avatar {
+      width: 32px; height: 32px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    header h1 { font-size: 15px; font-weight: 600; }
+    header span { font-size: 12px; color: var(--text-dim); margin-left: auto; }
+
+    /* ── Messages ── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      max-width: min(72ch, 90%);
+      padding: 12px 15px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      animation: fadeIn .18s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+
+    .msg.user {
+      background: var(--user-bg);
+      border: 1px solid var(--border);
+      align-self: flex-end;
+      color: var(--text);
+    }
+    .msg.bot {
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      color: var(--text);
+    }
+    .msg.error {
+      background: #2a1515;
+      border: 1px solid #5a2020;
+      align-self: flex-start;
+      color: #ff8080;
+    }
+
+    /* typing indicator */
+    .typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; }
+    .typing span {
+      width: 7px; height: 7px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      animation: bounce .9s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: .15s; }
+    .typing span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+    /* ── Input ── */
+    #input-area {
+      display: flex;
+      gap: 8px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    #query {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 10px 14px;
+      resize: none;
+      outline: none;
+      transition: border-color .15s;
+      max-height: 140px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    #query:focus { border-color: var(--accent); }
+    #query::placeholder { color: var(--text-dim); }
+
+    #send {
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 18px;
+      width: 42px; height: 42px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .15s, opacity .15s;
+      display: flex; align-items: center; justify-content: center;
+      align-self: flex-end;
+    }
+    #send:hover { background: #8aabff; }
+    #send:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* no-session banner */
+    #no-session {
+      display: none;
+      background: #1e1a10;
+      border: 1px solid #4a3a10;
+      border-radius: var(--radius);
+      color: #d4b060;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin: 12px 16px 0;
+      flex-shrink: 0;
+    }
+
+    /* scrollbar */
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div id="no-session">
+  ⚠️ Kein Session-Token gefunden. Du kannst trotzdem schreiben – aber dein Verlauf wird nicht gespeichert.
+</div>
+
+<header>
+  <div class="wiesel-avatar">🐾</div>
+  <h1>Wiesel</h1>
+  <span id="ctx-label"></span>
+</header>
+
+<div id="messages"></div>
+
+<div id="input-area">
+  <textarea id="query" placeholder="Wo hängst du gerade?" rows="1"></textarea>
+  <button id="send" title="Senden" disabled>↑</button>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  const params     = new URLSearchParams(location.search);
+  const token      = params.get('token');
+  const sessionId  = params.get('session_id') || null;
+
+  // For dev: allow ?mock=1 to skip token requirement
+  const mockMode   = params.get('mock') === '1';
+
+  if (!token && !mockMode) {
+    document.getElementById('no-session').style.display = 'block';
+  }
+
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+
+  const messagesEl = document.getElementById('messages');
+  const queryEl    = document.getElementById('query');
+  const sendBtn    = document.getElementById('send');
+  const ctxLabel   = document.getElementById('ctx-label');
+
+  // ── Session info (optional) ─────────────────────────────────────────────────
+
+  if (sessionId) {
+    fetch(`/api/session/${sessionId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.course_name) ctxLabel.textContent = data.course_name;
+      })
+      .catch(() => {});
+  }
+
+  // ── Greeting ────────────────────────────────────────────────────────────────
+
+  addMessage('bot',
+    'Hey – ich bin Wiesel. 👋\n' +
+    'Ich kenne das Labyrinth der WiSo-Fakultät und helfe dir, dich zu orientieren.\n\n' +
+    'Was beschäftigt dich gerade?'
+  );
+
+  // ── Input auto-resize ───────────────────────────────────────────────────────
+
+  queryEl.addEventListener('input', () => {
+    queryEl.style.height = 'auto';
+    queryEl.style.height = queryEl.scrollHeight + 'px';
+    sendBtn.disabled = queryEl.value.trim().length === 0;
+  });
+
+  queryEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  sendBtn.addEventListener('click', send);
+
+  // ── Send ────────────────────────────────────────────────────────────────────
+
+  async function send() {
+    const text = queryEl.value.trim();
+    if (!text) return;
+
+    addMessage('user', text);
+    queryEl.value = '';
+    queryEl.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    const typing = addTyping();
+
+    try {
+      const body = { query: text };
+      if (token)     body.token      = token;
+      if (sessionId) body.session_id = sessionId;
+
+      // dev fallback: if no session_id, send with a placeholder
+      if (!body.session_id) body.session_id = 'anon-' + Math.random().toString(36).slice(2);
+
+      const res = await fetch('/api/chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+
+      typing.remove();
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler'));
+        return;
+      }
+
+      const data = await res.json();
+      addMessage('bot', data.response);
+
+    } catch (err) {
+      typing.remove();
+      addMessage('error', '⚠️ Verbindung fehlgeschlagen – läuft das Backend?');
+    }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function addMessage(role, text) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + role;
+    el.textContent = text;
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return el;
+  }
+
+  function addTyping() {
+    const el = document.createElement('div');
+    el.className = 'msg bot typing';
+    el.innerHTML = '<span></span><span></span><span></span>';
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return el;
+  }
+</script>
+</body>
+</html>
