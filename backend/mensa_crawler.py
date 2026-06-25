@@ -1,102 +1,157 @@
 """
 Wiesel Mensa Crawler
-Holt die Mensa-Speisepläne für die nächsten 5 Werktage und schreibt sie
-in knowledge_base/mensa-heute.md – täglich von Hermes ausführen.
+Nutzt die inoffizielle SigFood XML-API für die FAU Südmensa.
+Täglich von Hermes ausführen – schreibt knowledge_base/mensa-heute.md
 """
-import json
+
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 
-CANTEEN_ID = 6  # Mensa Academica Erlangen
-API_BASE   = "https://api.studentenwerk-erlangen.de/openmensa/v2"
-OUTPUT     = Path(__file__).parent.parent / "knowledge_base" / "mensa-heute.md"
+SIGFOOD_API = "https://www.sigfood.de/?do=api.gettagesplan&datum={date}"
+OUTPUT = Path(__file__).parent.parent / "knowledge_base" / "mensa-heute.md"
 
 WEEKDAYS = {
     0: "Montag", 1: "Dienstag", 2: "Mittwoch",
-    3: "Donnerstag", 4: "Freitag", 5: "Samstag", 6: "Sonntag"
+    3: "Donnerstag", 4: "Freitag"
 }
 
-def fetch(url: str) -> dict | list | None:
+
+def fetch_day(date_str: str) -> str | None:
+    url = SIGFOOD_API.format(date=date_str)
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "WieselBot/1.0"})
         with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read().decode())
+            return r.read().decode("utf-8", errors="replace")
     except Exception as e:
-        print(f"  Fehler beim Abruf: {e}")
+        print(f"  Fehler {date_str}: {e}")
         return None
 
-def fetch_meals(date_str: str) -> list:
-    url = f"{API_BASE}/canteens/{CANTEEN_ID}/days/{date_str}/meals"
-    data = fetch(url)
-    return data if isinstance(data, list) else []
 
-def format_price(prices: dict) -> str:
-    p = prices.get("students") or prices.get("others")
-    if p:
-        return f"{float(p):.2f} €"
-    return ""
+def parse_day(xml_str: str) -> list[dict]:
+    """Parst SigFood XML und gibt Liste der Gerichte zurück."""
+    try:
+        root = ET.fromstring(xml_str)
+    except ET.ParseError:
+        return []
+
+    gerichte = []
+    tagesmenu = root.find("Tagesmenue")
+    if tagesmenu is None:
+        return []
+
+    for essen in tagesmenu.findall("Mensaessen"):
+        linie = essen.get("linie", "?")
+        veg = essen.get("vegetarisch", "false") == "true"
+        schwein = essen.get("moslem", "true") == "false"  # moslem=false → enthält Schwein
+
+        hg = essen.find("hauptgericht")
+        if hg is None:
+            continue
+
+        bez = hg.findtext("bezeichnung", "").strip()
+        if not bez:
+            continue
+
+        preis_stud = hg.findtext("preisstud", "")
+        preis_bed  = hg.findtext("preisbed", "")
+
+        bewertung = hg.find("bewertung")
+        schnitt = anzahl = None
+        if bewertung is not None:
+            schnitt = bewertung.get("schnitt")
+            anzahl  = bewertung.get("anzahl")
+
+        gerichte.append({
+            "linie":      linie,
+            "name":       bez,
+            "veg":        veg,
+            "schwein":    schwein,
+            "preis_stud": f"{int(preis_stud)/100:.2f} €" if preis_stud else "",
+            "preis_bed":  f"{int(preis_bed)/100:.2f} €" if preis_bed else "",
+            "schnitt":    schnitt,
+            "anzahl":     anzahl,
+        })
+
+    return gerichte
+
+
+def format_gericht(g: dict) -> str:
+    flags = []
+    if g["veg"]:
+        flags.append("🌱 vegetarisch")
+    if g["schwein"]:
+        flags.append("🐷 Schwein")
+
+    line = f"**Linie {g['linie']}:** {g['name']}"
+    if g["preis_stud"]:
+        line += f" – {g['preis_stud']} (Stud.)"
+        if g["preis_bed"]:
+            line += f" / {g['preis_bed']} (Bed.)"
+    if flags:
+        line += f" _{', '.join(flags)}_"
+    if g["schnitt"] and g["anzahl"] and int(g["anzahl"]) > 0:
+        line += f" ⭐ {g['schnitt']}/5 ({g['anzahl']} Bew.)"
+    return line
+
 
 def build_markdown() -> str:
     today = datetime.now().date()
     lines = [
-        "# Mensa Academica Erlangen – Speiseplan",
+        "# Mensa Südmensa Erlangen – Speiseplan",
         f"*Zuletzt aktualisiert: {datetime.now().strftime('%d.%m.%Y %H:%M')}*",
         "",
-        "Mensa Academica, Erwin-Rommel-Str. 60, Erlangen.",
-        "Öffnungszeiten: Mo–Fr 11:00–14:00 Uhr.",
+        "Südmensa, Erwin-Rommel-Str. 60, Erlangen. Mo–Fr 11:00–14:00 Uhr.",
+        "Quelle: sigfood.de (inoffiziell) / werkswelt.de",
         "",
     ]
+
     found_any = False
-    for i in range(7):  # nächste 7 Tage, Wochenende überspringen
+    for i in range(7):
         day = today + timedelta(days=i)
-        if day.weekday() >= 5:  # Sa/So überspringen
+        if day.weekday() > 4:
             continue
+
         date_str = day.strftime("%Y-%m-%d")
+        xml_str  = fetch_day(date_str)
+        if not xml_str:
+            continue
+
+        gerichte = parse_day(xml_str)
+        if not gerichte:
+            continue
+
+        found_any = True
         weekday  = WEEKDAYS[day.weekday()]
         display  = day.strftime("%d.%m.%Y")
-        meals = fetch_meals(date_str)
-        if not meals:
-            continue
-        found_any = True
-        label = "**Heute**" if i == 0 else ("**Morgen**" if i == 1 else f"**{weekday}**")
+        label    = "**Heute**" if i == 0 else ("**Morgen**" if i == 1 else f"**{weekday}**")
+
         lines.append(f"## {label} – {weekday}, {display}")
         lines.append("")
-        # Gruppiere nach Kategorie
-        categories: dict[str, list] = {}
-        for meal in meals:
-            cat = meal.get("category", "Sonstiges")
-            categories.setdefault(cat, []).append(meal)
-        for cat, cat_meals in categories.items():
-            lines.append(f"**{cat}**")
-            for meal in cat_meals:
-                name  = meal.get("name", "?")
-                price = format_price(meal.get("prices", {}))
-                notes = meal.get("notes", [])
-                tags  = ", ".join(notes) if notes else ""
-                line  = f"- {name}"
-                if price:
-                    line += f" – {price}"
-                if tags:
-                    line += f" _{tags}_"
-                lines.append(line)
-            lines.append("")
-    if not found_any:
-        lines.append("*Kein Speiseplan verfügbar – Mensa möglicherweise geschlossen oder Daten noch nicht eingetragen.*")
+        for g in gerichte:
+            lines.append(f"- {format_gericht(g)}")
         lines.append("")
+
+    if not found_any:
+        lines.append("*Kein Speiseplan verfügbar – Mensa möglicherweise geschlossen.*")
+        lines.append("")
+
     lines += [
         "---",
-        "*Quelle: Studentenwerk Erlangen-Nürnberg / OpenMensa API*",
+        "*Für weitere Mensen: [werkswelt.de/index.php?id=speiseplaene](https://www.werkswelt.de/index.php?id=speiseplaene)*",
     ]
     return "\n".join(lines)
+
 
 def main():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Mensa Crawler startet...")
     md = build_markdown()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(md, encoding="utf-8")
-    print(f"  → Geschrieben nach {OUTPUT}")
+    print(f"  → {OUTPUT}")
     print(f"  → {md.count(chr(10))} Zeilen")
+
 
 if __name__ == "__main__":
     main()
