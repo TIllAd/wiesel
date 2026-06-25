@@ -207,10 +207,25 @@ def load_knowledge_base() -> str:
         Path("/knowledge_base/wissen-basis.md"),
         Path("/app/knowledge_base/wissen-basis.md"),
     ]
+    base = "# Wissensbasis nicht gefunden"
     for path in candidates:
         if path.exists():
-            return path.read_text(encoding="utf-8")
-    return "# Wissensbasis nicht gefunden"
+            base = path.read_text(encoding="utf-8")
+            break
+
+    # Mensa-Daten anhängen wenn vorhanden (täglich vom Crawler aktualisiert)
+    mensa_candidates = [
+        Path(__file__).parent.parent / "knowledge_base" / "mensa-heute.md",
+        Path("/knowledge_base/mensa-heute.md"),
+        Path("/app/knowledge_base/mensa-heute.md"),
+    ]
+    for path in mensa_candidates:
+        if path.exists():
+            mensa = path.read_text(encoding="utf-8")
+            base += f"\n\n---\n\n{mensa}"
+            break
+
+    return base
 
 
 def build_system_prompt(kb_content: str = "") -> str:
