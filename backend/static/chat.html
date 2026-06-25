@@ -94,6 +94,9 @@
       width: 52px; height: 52px;
       flex-shrink: 0;
       position: relative;
+      background: #F5C4B3;
+      border-radius: 50%;
+      padding: 3px;
     }
     .msg-avatar img {
       width: 100%; height: 100%;
@@ -169,7 +172,7 @@
 
 <div class="hbar">
   <div class="hav">
-    <img src="/static/wiesel_standing.png" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel.jpg'">
+    <img src="/static/wiesel_standing.png" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">
   </div>
   <div>
     <div class="hname"><em>WiSo</em> Wiesel</div>
@@ -238,7 +241,7 @@
     } else {
       src = WIESEL_IMGS[state] || WIESEL_FALLBACK;
     }
-    wrap.innerHTML = `<img src="${src}" alt="Wiesel" onerror="this.onerror=null;this.style.display='none';this.parentElement.textContent='🦡'">`;
+    wrap.innerHTML = `<img src="${src}" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
     return wrap;
   }
 
