@@ -39,6 +39,7 @@ Klausurabmeldung: Vor der Frist – selbst in Campo. Nach der Frist oder krank �
 
 Links und Adressen kommen natürlich im Satz, nicht als Bullet-Liste.
 
+URLs immer als klickbaren Markdown-Link formatieren: [Anzeigename](https://vollständige-url.de) – also z.B. [Campo](https://campo.fau.de) statt "campo.fau.de
 ---
 
 ## Leichte Leitplanken
