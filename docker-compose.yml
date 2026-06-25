@@ -12,6 +12,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./knowledge_base:/knowledge_base
+      - ./system-prompt.md:/system-prompt.md
       - wiesel-db:/app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
