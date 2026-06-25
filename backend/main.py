@@ -134,7 +134,6 @@ def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, 
         exclude_oauth_signature=True,
         with_body=True,
     )
-    # Merge URI params from the form POST
     collected += [(k, v) for k, v in params.items() if k != "oauth_signature"]
 
     base_string = oauth_signature.construct_base_string(
@@ -145,7 +144,7 @@ def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, 
     expected = oauth_signature.sign_hmac_sha1(
         base_string,
         LTI_CONSUMER_SECRET,
-        "",          # token_secret is empty for LTI 1.1
+        "",
     )
     received = params.get("oauth_signature", "")
     if not hmac_lib.compare_digest(expected, received):
@@ -179,7 +178,6 @@ class WikiResponse(BaseModel):
 
 
 def get_db():
-    """Dependency: get DB session"""
     db = SessionLocal()
     try:
         yield db
@@ -188,7 +186,6 @@ def get_db():
 
 
 def create_jwt_token(session_id: str) -> str:
-    """Create JWT token for session"""
     payload = {
         "session_id": session_id,
         "iat": datetime.utcnow(),
@@ -198,7 +195,6 @@ def create_jwt_token(session_id: str) -> str:
 
 
 def verify_jwt_token(token: str) -> Optional[dict]:
-    """Verify JWT token"""
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except:
@@ -206,11 +202,10 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 
 def load_knowledge_base() -> str:
-    """Load Karpathy Wiki from wissen-basis.md (repo root). Falls back to Docker paths."""
     candidates = [
-        Path(__file__).parent.parent / "knowledge_base" / "wissen-basis.md",  # local: wiesel/knowledge_base/wissen-basis.md
-        Path("/knowledge_base/wissen-basis.md"),                                # Docker volume mount
-        Path("/app/knowledge_base/wissen-basis.md"),                            # Docker /app
+        Path(__file__).parent.parent / "knowledge_base" / "wissen-basis.md",
+        Path("/knowledge_base/wissen-basis.md"),
+        Path("/app/knowledge_base/wissen-basis.md"),
     ]
     for path in candidates:
         if path.exists():
@@ -219,11 +214,10 @@ def load_knowledge_base() -> str:
 
 
 def build_system_prompt() -> str:
-    """Load system prompt from system-prompt.md (repo root). Falls back to /system-prompt.md for Docker."""
     candidates = [
-        Path(__file__).parent.parent / "system-prompt.md",  # local: wiesel/system-prompt.md
-        Path("/system-prompt.md"),                           # Docker: mounted at repo root
-        Path("/app/system-prompt.md"),                       # Docker alt
+        Path(__file__).parent.parent / "system-prompt.md",
+        Path("/system-prompt.md"),
+        Path("/app/system-prompt.md"),
     ]
     for path in candidates:
         if path.exists():
@@ -237,25 +231,26 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
     """Call Claude API with knowledge base context"""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     
-    # Build message history
+    # Build message history – FIX: last 10 messages statt 4
     messages = []
     if chat_history:
-        for msg in chat_history[-4:]:  # Keep last 4 messages for context
+        for msg in chat_history[-10:]:
             messages.append({
                 "role": msg["role"],
                 "content": msg["content"]
             })
     
-    # Current query
+    # FIX: Wissensbasis in separater User-Message vor der eigentlichen Frage,
+    # nicht zusammengequetscht in dieselbe Message
     messages.append({
         "role": "user",
-        "content": f"{query}\n\n---\n**Verfügbare Wissensbasis:**\n{kb_content[:3000]}"  # Truncate KB
+        "content": f"[Wissensbasis]\n{kb_content}\n[/Wissensbasis]\n\n{query}"
     })
     
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=1024,  # FIX: war 512, Truncation-Bug
             system=build_system_prompt(),
             messages=messages
         )
@@ -275,7 +270,6 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -284,7 +278,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files
 _static_dir = Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
@@ -297,22 +290,31 @@ if _static_dir.exists():
 
 @app.get("/")
 async def root():
-    """Health check"""
     return {"status": "ok", "service": "Wiesel Backend", "version": "0.1.0"}
 
 
 @app.get("/chat")
 async def chat_page(request: Request, debug: bool = False):
     """Serve the chat widget.
-    ?debug=true  → creates a test session without LTI and redirects with token.
-    ?token=...   → normal flow after LTI launch or debug redirect.
+    ?debug=true  → löscht alte Debug-Messages, erstellt frische Session, redirect.
+    ?token=...   → normaler Flow nach LTI launch oder debug redirect.
     """
     if debug:
         db = SessionLocal()
         try:
-            # Stable session_id – not time-dependent, so DB lookup always works
-            # and chat_messages accumulate across debug visits
             debug_session_id = "debug_session_wiesel"
+
+            # FIX: alte Chat-Messages der Debug-Session löschen
+            # damit alter Kontext nicht die neue Prompt überschreibt
+            old_messages = db.query(ChatMessage).filter(
+                ChatMessage.session_id == debug_session_id
+            ).all()
+            if old_messages:
+                for msg in old_messages:
+                    db.delete(msg)
+                db.commit()
+                logger.info(f"Debug session cleared – {len(old_messages)} alte Messages gelöscht")
+
             token = jwt.encode(
                 {"user": "debug_user", "session_id": debug_session_id, "debug": True},
                 JWT_SECRET
@@ -329,7 +331,7 @@ async def chat_page(request: Request, debug: bool = False):
             )
             db.merge(debug_session)
             db.commit()
-            logger.info("Debug session upserted – session_id=debug_session_wiesel, user_id=debug_user")
+            logger.info("Debug session upserted – session_id=debug_session_wiesel")
         finally:
             db.close()
         from urllib.parse import quote
@@ -343,26 +345,19 @@ async def chat_page(request: Request, debug: bool = False):
 
 @app.post("/lti/launch")
 async def lti_launch(request: Request):
-    """
-    LTI 1.1 Launch Endpoint
-    Receives POST from StudOn, validates OAuth 1.0a signature, creates session
-    """
+    """LTI 1.1 Launch Endpoint"""
     db = SessionLocal()
     
     try:
-        # Read body ONCE – request.body() and request.form() share the same
-        # stream; calling both without caching causes "Stream consumed" errors.
         raw_body = await request.body()
         body = raw_body.decode("utf-8")
 
-        # Parse form data from the cached body string
         from urllib.parse import parse_qs, unquote_plus
         parsed = parse_qs(body, keep_blank_values=True)
         form_data = {k: v[0] for k, v in parsed.items()}
 
         logger.info(f"LTI Launch received. Keys: {list(form_data.keys())[:5]}")
 
-        # Validate OAuth 1.0a signature (skipped in MOCK_LTI_MODE)
         params = form_data
         uri = str(request.url)
         valid, reason = validate_lti_request(uri, params, body)
@@ -370,7 +365,6 @@ async def lti_launch(request: Request):
             logger.error(f"LTI validation failed: {reason}")
             return JSONResponse({"error": "LTI validation failed", "detail": reason}, status_code=401)
 
-        # Extract LTI context
         user_id = form_data.get("user_id", "anonymous")
         course_id = form_data.get("course_id", "unknown")
         roles = form_data.get("roles", "Learner")
@@ -378,7 +372,6 @@ async def lti_launch(request: Request):
         course_name = form_data.get("context_title", "Unknown Course")
         nonce = form_data.get("oauth_nonce", None)
         
-        # Create session record
         session_id = jwt.encode(
             {"user": user_id, "ts": datetime.utcnow().timestamp()},
             JWT_SECRET
@@ -398,11 +391,8 @@ async def lti_launch(request: Request):
         
         logger.info(f"LTI session created: {session_id} for user {user_id}")
         
-        # Create JWT token for frontend
         token = create_jwt_token(session_id)
         
-        # Redirect to frontend (will be iframe URL)
-        # TODO: update to actual frontend URL
         return RedirectResponse(
             url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}",
             status_code=302
@@ -418,36 +408,27 @@ async def lti_launch(request: Request):
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
-    """
-    Chat API
-    Takes query + session_id, returns Claude response
-    """
+    """Chat API"""
     db = SessionLocal()
     
     try:
-        # Validate session
         session = db.query(SessionRecord).filter(SessionRecord.id == request.session_id).first()
         if not session:
             raise HTTPException(status_code=401, detail="Invalid session")
         
-        # Update last accessed
         session.last_accessed = datetime.utcnow()
         db.commit()
         
-        # Get chat history
         history = db.query(ChatMessage).filter(
             ChatMessage.session_id == request.session_id
         ).order_by(ChatMessage.created_at).all()
         
         chat_history = [{"role": msg.role, "content": msg.content} for msg in history]
         
-        # Load knowledge base
         kb_content = load_knowledge_base()
         
-        # Call Claude
         response = await call_claude(request.query, chat_history, kb_content)
         
-        # Store messages in DB
         user_msg = ChatMessage(
             session_id=request.session_id,
             role="user",
@@ -480,10 +461,6 @@ async def chat_endpoint(request: ChatRequest):
 
 @app.get("/api/wiki")
 async def wiki_endpoint():
-    """
-    Wiki API
-    Returns Karpathy Wiki as JSON for frontend
-    """
     try:
         content = load_knowledge_base()
         return {
@@ -498,11 +475,7 @@ async def wiki_endpoint():
 
 @app.get("/api/session/{session_id}")
 async def session_endpoint(session_id: str):
-    """
-    Get session metadata
-    """
     db = SessionLocal()
-    
     try:
         session = db.query(SessionRecord).filter(SessionRecord.id == session_id).first()
         if not session:
@@ -524,17 +497,11 @@ async def session_endpoint(session_id: str):
 
 @app.get("/health")
 async def health_check():
-    """Health check for deployment"""
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "db": "connected"
     }
-
-
-# ============================================================================
-# STARTUP / SHUTDOWN
-# ============================================================================
 
 
 # ============================================================================
@@ -564,7 +531,6 @@ async def get_daily_logs(date: Optional[str] = None):
             .all()
         )
 
-        # Group by session
         sessions: dict = {}
         for m in messages:
             if m.session_id not in sessions:
@@ -606,7 +572,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,  # FIX: war 8000, überall sonst 8001
         reload=True,
         log_level="info"
     )
