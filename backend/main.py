@@ -213,7 +213,7 @@ def load_knowledge_base() -> str:
     return "# Wissensbasis nicht gefunden"
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(kb_content: str = "") -> str:
     candidates = [
         Path(__file__).parent.parent / "system-prompt.md",
         Path("/system-prompt.md"),
@@ -222,7 +222,10 @@ def build_system_prompt() -> str:
     for path in candidates:
         if path.exists():
             logger.info(f"Loading system prompt from {path}")
-            return path.read_text(encoding="utf-8")
+            base = path.read_text(encoding="utf-8")
+            if kb_content:
+                return base + f"\n\n---\n\n## Aktuelle Wissensbasis\n\n{kb_content}"
+            return base
     logger.error("system-prompt.md not found in any candidate path")
     return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
@@ -240,18 +243,17 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
                 "content": msg["content"]
             })
     
-    # FIX: Wissensbasis in separater User-Message vor der eigentlichen Frage,
-    # nicht zusammengequetscht in dieselbe Message
+    # KB ist jetzt silent im System-Prompt, nicht als User-Message sichtbar
     messages.append({
         "role": "user",
-        "content": f"[Wissensbasis]\n{kb_content}\n[/Wissensbasis]\n\n{query}"
+        "content": query
     })
     
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=1024,  # FIX: war 512, Truncation-Bug
-            system=build_system_prompt(),
+            system=build_system_prompt(kb_content),
             messages=messages
         )
         return response.content[0].text
