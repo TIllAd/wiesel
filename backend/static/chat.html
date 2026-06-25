@@ -109,16 +109,18 @@
     }
 
     /* avatar states */
-    .av-idle  { animation: avbob 3s ease-in-out infinite; }
-    .av-think { animation: avtilt 0.8s ease-in-out infinite; }
-    .av-found { animation: avcheer .6s ease-in-out 1 forwards; }
-    .av-talk  { animation: avbob 3s ease-in-out infinite; }
-    .av-dig   { animation: avdig 0.25s ease-in-out infinite; }
+    .av-idle     { animation: avbob 3s ease-in-out infinite; }
+    .av-think    { animation: avtilt 0.8s ease-in-out infinite; }
+    .av-found    { animation: avcheer .6s ease-in-out 1 forwards; }
+    .av-talk     { animation: avbob 3s ease-in-out infinite; }
+    .av-dig      { animation: avdig 0.25s ease-in-out infinite; }
+    .av-confused { animation: avconfused 1.4s ease-in-out infinite; }
 
-    @keyframes avbob   { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-5px) rotate(1deg)} }
-    @keyframes avtilt  { 0%,100%{transform:rotate(-8deg) translateY(2px)} 50%{transform:rotate(5deg) translateY(-2px)} }
-    @keyframes avcheer { 0%{transform:scale(1) translateY(0) rotate(0)} 35%{transform:scale(1.2) translateY(-10px) rotate(-5deg)} 65%{transform:scale(1.15) translateY(-8px) rotate(4deg)} 100%{transform:scale(1) translateY(0) rotate(0)} }
-    @keyframes avdig   { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(4px) rotate(4deg)} }
+    @keyframes avbob      { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-5px) rotate(1deg)} }
+    @keyframes avtilt     { 0%,100%{transform:rotate(-8deg) translateY(2px)} 50%{transform:rotate(5deg) translateY(-2px)} }
+    @keyframes avcheer    { 0%{transform:scale(1) translateY(0) rotate(0)} 35%{transform:scale(1.2) translateY(-10px) rotate(-5deg)} 65%{transform:scale(1.15) translateY(-8px) rotate(4deg)} 100%{transform:scale(1) translateY(0) rotate(0)} }
+    @keyframes avdig      { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(4px) rotate(4deg)} }
+    @keyframes avconfused { 0%,100%{transform:rotate(-6deg) translateY(0)} 25%{transform:rotate(6deg) translateY(-3px)} 50%{transform:rotate(-4deg) translateY(2px)} 75%{transform:rotate(5deg) translateY(-1px)} }
 
     .msg { max-width:min(64ch,85%); padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.65; word-break:break-word; }
 
@@ -215,32 +217,64 @@
   }
 
   // State → image mapping
-  // Swap out the files later without touching any other code
   const WIESEL_IMGS = {
-    idle:  '/static/wiesel-idle.jpg',
-    think: '/static/wiesel-think.jpg',
-    found: '/static/wiesel-found.jpg',
-    dig:   '/static/wiesel-dig.jpg',
-    talk:  '/static/wiesel-idle.jpg',  // reuse idle until pose exists
+    idle:     '/static/wiesel_standing.png',
+    think:    '/static/wiesel_thinking.png',
+    found:    '/static/wiesel_happy.png',
+    dig:      '/static/wiesel_readingMHD.png',
+    confused: '/static/wiesel_confused.png',
+    talk:     '/static/wiesel_happy.png',
   };
-  const WIESEL_FALLBACK = '/static/wiesel.jpg';
+
+  // Dig/Karten-Pose nur für den Ladezustand, nicht für normale Antworten.
+  const DIG_VARIANTS = [
+    '/static/wiesel_readingMHD.png',
+  ];
+
+  const WIESEL_FALLBACK = '/static/wiesel_standing.png';
 
   function makeWieselSVG(state) {
     const wrap = document.createElement('div');
     wrap.className = `msg-avatar av-${state}`;
-    const src = WIESEL_IMGS[state] || WIESEL_FALLBACK;
-    wrap.innerHTML = `<img 
-      src="${src}" 
-      alt="Wiesel" 
-      onerror="this.src='${WIESEL_FALLBACK}'"
-    >`;
-    if (state === 'found') {
-      setTimeout(() => { wrap.className = 'msg-avatar av-idle'; }, 700);
+    let src;
+    if (state === 'dig') {
+      src = DIG_VARIANTS[Math.floor(Math.random() * DIG_VARIANTS.length)];
+    } else {
+      src = WIESEL_IMGS[state] || WIESEL_FALLBACK;
     }
+    wrap.innerHTML = `
+      <img 
+        src="${src}" 
+        alt="Wiesel"
+        onerror="
+          this.onerror=null;
+          this.style.display='none';
+          this.parentElement.textContent='🦡';
+        "
+      >
+    `;
     return wrap;
   }
 
+  function detectAvatarState(text) {
+    const t = text.toLowerCase();
 
+    const reUncertain = /keine ahnung|was ist das|was meinst du|sag mir mehr|kann ich dir helfen|kannst du.*genauer|mehr kontext|verstehe.*nicht|nicht verstanden|ich weiß.*nicht|weiss.*nicht|weiß ich nicht|nicht sicher|bin mir.*nicht sicher|nicht gefunden|leider keine|keine information|kein hinweis|unklar|unbekannt|verirrt|vertippt/i;
+
+    const reGreeting = /hey|hallo|hi|servus|moin|gutes timing/i;
+
+    const reExplain = /das bedeutet|kurz gesagt|wichtig ist|du musst|schritt|erstens|zweitens|anmeldung|prüfung|prüfungen|frist|fristen|öffnungszeiten|adresse/i;
+
+    const rePositive = /gern|klar|passt|gefunden|genau|super|hier|klingt/i;
+
+    if (reUncertain.test(t)) return 'confused';
+    if (reGreeting.test(t)) return 'talk';
+    if (reExplain.test(t)) return 'think';
+    if (rePositive.test(t)) return 'found';
+
+    const states = ['talk', 'think', 'found'];
+    return states[Math.floor(Math.random() * states.length)];
+  }
 
   function makeUserAvatar() {
     const av = document.createElement('div');
@@ -313,7 +347,7 @@
       removeTyping();
       if (res.ok) {
         const data = await res.json();
-        addMessage('bot', data.response, 'found');
+        addMessage('bot', data.response, detectAvatarState(data.response));
       } else {
         addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found');
       }
@@ -325,7 +359,6 @@
   }
 
   loadGreeting();
-
   queryEl.addEventListener('input', () => {
     queryEl.style.height = 'auto';
     queryEl.style.height = queryEl.scrollHeight + 'px';
@@ -372,7 +405,7 @@
       }
 
       const data = await res.json();
-      addMessage('bot', data.response, 'found');
+      addMessage('bot', data.response, detectAvatarState(data.response));
 
     } catch {
       clearTimeout(readTimer);
