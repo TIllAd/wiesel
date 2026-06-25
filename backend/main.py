@@ -202,31 +202,40 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 
 def load_knowledge_base() -> str:
-    candidates = [
-        Path(__file__).parent.parent / "knowledge_base" / "wissen-basis.md",
-        Path("/knowledge_base/wissen-basis.md"),
-        Path("/app/knowledge_base/wissen-basis.md"),
+    """Lädt alle .md Dateien aus knowledge_base/ – wissen-basis.md zuerst, rest alphabetisch."""
+    kb_dirs = [
+        Path(__file__).parent.parent / "knowledge_base",
+        Path("/knowledge_base"),
+        Path("/app/knowledge_base"),
     ]
-    base = "# Wissensbasis nicht gefunden"
-    for path in candidates:
-        if path.exists():
-            base = path.read_text(encoding="utf-8")
+
+    kb_dir = None
+    for d in kb_dirs:
+        if d.exists():
+            kb_dir = d
             break
 
-    # Mensa-Daten anhängen wenn vorhanden (täglich vom Crawler aktualisiert)
-    mensa_candidates = [
-        Path(__file__).parent.parent / "knowledge_base" / "mensa-heute.md",
-        Path("/knowledge_base/mensa-heute.md"),
-        Path("/app/knowledge_base/mensa-heute.md"),
-    ]
-    for path in mensa_candidates:
-        if path.exists():
-            mensa = path.read_text(encoding="utf-8")
-            base += f"\n\n---\n\n{mensa}"
-            break
+    if not kb_dir:
+        return "# Wissensbasis nicht gefunden"
 
-    return base
+    parts = []
 
+    # wissen-basis.md immer zuerst
+    main_kb = kb_dir / "wissen-basis.md"
+    if main_kb.exists():
+        parts.append(main_kb.read_text(encoding="utf-8"))
+
+    # alle anderen .md Dateien alphabetisch
+    for md_file in sorted(kb_dir.glob("*.md")):
+        if md_file.name == "wissen-basis.md":
+            continue
+        try:
+            parts.append(md_file.read_text(encoding="utf-8"))
+            logger.info(f"KB loaded: {md_file.name}")
+        except Exception as e:
+            logger.warning(f"KB skip {md_file.name}: {e}")
+
+    return "\n\n---\n\n".join(parts) if parts else "# Wissensbasis nicht gefunden"
 
 def build_system_prompt(kb_content: str = "") -> str:
     candidates = [
@@ -235,7 +244,6 @@ def build_system_prompt(kb_content: str = "") -> str:
         Path("/app/system-prompt.md"),
     ]
     for path in candidates:
-        print(f"Checking: {path} → exists: {path.exists()}")
         if path.exists():
             logger.info(f"Loading system prompt from {path}")
             base = path.read_text(encoding="utf-8")
@@ -518,6 +526,36 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "db": "connected"
     }
+
+
+@app.post("/api/dev/session")
+async def create_dev_session(request: Request):
+    """DEV ONLY: Create or reset a session by ID. Clears chat history."""
+    body = await request.json()
+    session_id = body.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    db = SessionLocal()
+    try:
+        # Delete existing chat history for this session
+        db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
+        # Upsert session record
+        session_record = SessionRecord(
+            id=session_id,
+            user_id="eval_user",
+            course_id="eval_course",
+            user_role="Learner",
+            user_name="Eval Student",
+            course_name="Tonalitäts-Eval 2026-06-25",
+            nonce=None,
+            created_at=datetime.utcnow(),
+            last_accessed=datetime.utcnow(),
+        )
+        db.merge(session_record)
+        db.commit()
+        return {"ok": True, "session_id": session_id}
+    finally:
+        db.close()
 
 
 # ============================================================================
