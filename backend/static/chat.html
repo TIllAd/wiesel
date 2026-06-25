@@ -277,6 +277,7 @@
     bubble.className = 'msg ' + role;
     if (role === 'bot') {
       bubble.innerHTML = marked.parse(text);
+      bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
       const av = makeWieselSVG(avatarState);
       row.appendChild(av);
     } else if (role === 'user') {
