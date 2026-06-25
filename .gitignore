@@ -52,3 +52,6 @@ logs/
 .pytest_cache/
 .coverage/
 htmlcov/
+
+#tmp infos
+.knowledge_base/mensa-heute.md

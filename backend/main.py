@@ -314,7 +314,7 @@ async def root():
 @app.get("/chat")
 async def chat_page(request: Request, debug: bool = False):
     """Serve the chat widget.
-    ?debug=true  → löscht alte Debug-Messages, erstellt frische Session, redirect.
+    ?debug=true  → erstellt/aktualisiert Debug-Session und redirectet zum Chat.
     ?token=...   → normaler Flow nach LTI launch oder debug redirect.
     """
     if debug:
@@ -322,21 +322,12 @@ async def chat_page(request: Request, debug: bool = False):
         try:
             debug_session_id = "debug_session_wiesel"
 
-            # FIX: alte Chat-Messages der Debug-Session löschen
-            # damit alter Kontext nicht die neue Prompt überschreibt
-            old_messages = db.query(ChatMessage).filter(
-                ChatMessage.session_id == debug_session_id
-            ).all()
-            if old_messages:
-                for msg in old_messages:
-                    db.delete(msg)
-                db.commit()
-                logger.info(f"Debug session cleared – {len(old_messages)} alte Messages gelöscht")
-
             token = jwt.encode(
                 {"user": "debug_user", "session_id": debug_session_id, "debug": True},
-                JWT_SECRET
+                JWT_SECRET,
+                algorithm=JWT_ALGORITHM
             )
+
             debug_session = SessionRecord(
                 id=debug_session_id,
                 user_id="debug_user",
@@ -347,17 +338,22 @@ async def chat_page(request: Request, debug: bool = False):
                 nonce=None,
                 created_at=datetime.utcnow(),
             )
+
             db.merge(debug_session)
             db.commit()
             logger.info("Debug session upserted – session_id=debug_session_wiesel")
+
+            from urllib.parse import quote
+            token_enc = quote(token, safe="")
+
+            return RedirectResponse(
+                url=f"/chat?token={token_enc}&session_id={debug_session_id}",
+                status_code=302
+            )
+
         finally:
             db.close()
-        from urllib.parse import quote
-        token_enc = quote(token, safe="")
-        return RedirectResponse(
-            url=f"/chat?token={token_enc}&session_id={debug_session_id}",
-            status_code=302
-        )
+
     return FileResponse(str(_static_dir / "chat.html"))
 
 
