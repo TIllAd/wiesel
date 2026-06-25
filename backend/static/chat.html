@@ -124,6 +124,11 @@
     @keyframes avtilt     { 0%,100%{transform:rotate(-8deg) translateY(2px)} 50%{transform:rotate(5deg) translateY(-2px)} }
     @keyframes avcheer    { 0%{transform:scale(1) translateY(0) rotate(0)} 35%{transform:scale(1.2) translateY(-10px) rotate(-5deg)} 65%{transform:scale(1.15) translateY(-8px) rotate(4deg)} 100%{transform:scale(1) translateY(0) rotate(0)} }
     @keyframes avdig      { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(4px) rotate(4deg)} }
+    .msg-avatar.frozen {
+      animation: none !important;
+      transform: none !important;
+    }
+
     @keyframes avconfused { 0%,100%{transform:rotate(-6deg) translateY(0)} 25%{transform:rotate(6deg) translateY(-3px)} 50%{transform:rotate(-4deg) translateY(2px)} 75%{transform:rotate(5deg) translateY(-1px)} }
 
     .msg { max-width:min(64ch,85%); padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.65; word-break:break-word; }
@@ -281,6 +286,9 @@
     if (role === 'bot') {
       bubble.innerHTML = marked.parse(text);
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+      document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => {
+        av.className = 'msg-avatar frozen';
+      });
       const av = makeWieselSVG(avatarState);
       row.appendChild(av);
     } else if (role === 'user') {
