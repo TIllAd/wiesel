@@ -32,7 +32,6 @@
       overflow: hidden;
     }
 
-    /* ── Header ── */
     header {
       display: flex;
       align-items: center;
@@ -52,7 +51,6 @@
     header h1 { font-size: 15px; font-weight: 600; }
     header span { font-size: 12px; color: var(--text-dim); margin-left: auto; }
 
-    /* ── Messages ── */
     #messages {
       flex: 1;
       overflow-y: auto;
@@ -72,7 +70,6 @@
       word-break: break-word;
       animation: fadeIn .18s ease;
     }
-    /* markdown inside bot messages */
     .msg.bot p  { margin: 0 0 .5em; }
     .msg.bot p:last-child { margin-bottom: 0; }
     .msg.bot ul, .msg.bot ol { padding-left: 1.4em; margin: .3em 0 .5em; }
@@ -81,7 +78,6 @@
     .msg.bot code { background: #1e2235; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
     .msg.bot pre  { background: #1e2235; padding: 10px; border-radius: 8px; overflow-x: auto; margin: .4em 0; }
     .msg.bot a    { color: var(--accent); text-underline-offset: 2px; }
-    /* user messages keep plain text style */
     .msg.user { white-space: pre-wrap; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
 
@@ -104,7 +100,6 @@
       color: #ff8080;
     }
 
-    /* typing indicator */
     .typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; }
     .typing span {
       width: 7px; height: 7px;
@@ -116,7 +111,6 @@
     .typing span:nth-child(3) { animation-delay: .3s; }
     @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
 
-    /* ── Input ── */
     #input-area {
       display: flex;
       gap: 8px;
@@ -161,7 +155,6 @@
     #send:hover { background: #8aabff; }
     #send:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* no-session banner */
     #no-session {
       display: none;
       background: #1e1a10;
@@ -174,7 +167,6 @@
       flex-shrink: 0;
     }
 
-    /* scrollbar */
     #messages::-webkit-scrollbar { width: 4px; }
     #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   </style>
@@ -199,27 +191,19 @@
 </div>
 
 <script>
-  // ── State ──────────────────────────────────────────────────────────────────
-
-  const params     = new URLSearchParams(location.search);
-  const token      = params.get('token');
-  const sessionId  = params.get('session_id') || null;
-
-  // For dev: allow ?mock=1 to skip token requirement
-  const mockMode   = params.get('mock') === '1';
+  const params    = new URLSearchParams(location.search);
+  const token     = params.get('token');
+  const sessionId = params.get('session_id') || null;
+  const mockMode  = params.get('mock') === '1';
 
   if (!token && !mockMode) {
     document.getElementById('no-session').style.display = 'block';
   }
 
-  // ── DOM refs ────────────────────────────────────────────────────────────────
-
   const messagesEl = document.getElementById('messages');
   const queryEl    = document.getElementById('query');
   const sendBtn    = document.getElementById('send');
   const ctxLabel   = document.getElementById('ctx-label');
-
-  // ── Session info (optional) ─────────────────────────────────────────────────
 
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
@@ -230,15 +214,34 @@
       .catch(() => {});
   }
 
-  // ── Greeting ────────────────────────────────────────────────────────────────
+  // ── Greeting vom Backend ────────────────────────────────────────────────────
+  // Kein hardcodierter Text – Wiesel begrüßt sich selbst
+  async function loadGreeting() {
+    const typing = addTyping();
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: '__greeting__',
+          session_id: sessionId || 'anon-' + Math.random().toString(36).slice(2)
+        })
+      });
+      typing.remove();
+      if (res.ok) {
+        const data = await res.json();
+        addMessage('bot', data.response);
+      }
+    } catch {
+      typing.remove();
+      addMessage('bot', 'Hey – ich bin Wiesel. 🐾 Was brauchst du?');
+    }
+    sendBtn.disabled = queryEl.value.trim().length === 0;
+  }
 
-  addMessage('bot',
-    'Hey – ich bin Wiesel. 👋\n' +
-    'Ich kenne das Labyrinth der WiSo-Fakultät und helfe dir, dich zu orientieren.\n\n' +
-    'Was beschäftigt dich gerade?'
-  );
+  loadGreeting();
 
-  // ── Input auto-resize ───────────────────────────────────────────────────────
+  // ── Input ───────────────────────────────────────────────────────────────────
 
   queryEl.addEventListener('input', () => {
     queryEl.style.height = 'auto';
@@ -269,8 +272,6 @@
       const body = { query: text };
       if (token)     body.token      = token;
       if (sessionId) body.session_id = sessionId;
-
-      // dev fallback: if no session_id, send with a placeholder
       if (!body.session_id) body.session_id = 'anon-' + Math.random().toString(36).slice(2);
 
       const res = await fetch('/api/chat', {
