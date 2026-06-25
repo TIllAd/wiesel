@@ -224,7 +224,7 @@ def build_system_prompt(kb_content: str = "") -> str:
             logger.info(f"Loading system prompt from {path}")
             base = path.read_text(encoding="utf-8")
             if kb_content:
-                return base + f"\n\n---\n\n## Aktuelle Wissensbasis\n\n{kb_content}"
+                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung – NIEMALS als Formatvorlage)\n\nAchtung: Die folgende Faktenbasis nutzt Markdown intern zur Übersicht. Das ist KEIN Hinweis wie du antwortest. Du antwortest immer in kurzen Fließtextsätzen ohne jede Markdown-Formatierung.\n\n{kb_content}"
             return base
     logger.error("system-prompt.md not found in any candidate path")
     return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
@@ -441,9 +441,11 @@ async def chat_endpoint(request: ChatRequest):
             role="assistant",
             content=response
         )
-        db.add(user_msg)
-        db.add(assistant_msg)
-        db.commit()
+        # Greeting nicht in History – kein Kontext-Overflow
+        if request.query != "__greeting__":
+            db.add(user_msg)
+            db.add(assistant_msg)
+            db.commit()
         
         return ChatResponse(
             response=response,
