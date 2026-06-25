@@ -53,5 +53,8 @@ logs/
 .coverage/
 htmlcov/
 
-#tmp infos
-.knowledge_base/mensa-plan.md
+# Crawler outputs (täglich generiert, nicht tracken)
+knowledge_base/mensa-plan.md
+knowledge_base/wetter-heute.md
+knowledge_base/oepnv-heute.md
+knowledge_base/fau-aktuell.md
