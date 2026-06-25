@@ -220,6 +220,7 @@ def build_system_prompt(kb_content: str = "") -> str:
         Path("/app/system-prompt.md"),
     ]
     for path in candidates:
+        print(f"Checking: {path} → exists: {path.exists()}")
         if path.exists():
             logger.info(f"Loading system prompt from {path}")
             base = path.read_text(encoding="utf-8")
