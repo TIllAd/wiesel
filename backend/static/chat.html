@@ -10,24 +10,22 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy:   #1B2A4A;
-      --navy2:  #22336B;
-      --red:    #E8302A;
-      --red2:   #FF4B44;
-      --brown:  #8B5E3C;
-      --cream:  #F5EDD8;
-      --e1:     #1a0e05;
-      --e2:     #2e1a0a;
-      --e3:     #4a2e14;
-      --e4:     #6b4423;
-      --border: #2e3a52;
-      --text:   #e8eaf0;
-      --tdim:   #8b96b0;
-      --font:   'Nunito', 'Inter', system-ui, sans-serif;
+      --bg:      #141822;
+      --bg2:     #1e2433;
+      --bg3:     #252d3e;
+      --border:  #2e3445;
+      --orange:  #D85A30;
+      --orange2: #F0997B;
+      --orange3: #F5C4B3;
+      --cream:   #FAECE7;
+      --navy2:   #252d3e;
+      --text:    #e8eaf0;
+      --tdim:    #8b96b0;
+      --font:    'Nunito', 'Inter', system-ui, sans-serif;
     }
 
     body {
-      background: var(--navy);
+      background: var(--bg);
       color: var(--text);
       font-family: var(--font);
       height: 100dvh;
@@ -38,9 +36,9 @@
 
     #no-session {
       display: none;
-      background: #1e1a10;
-      border-bottom: 1px solid #4a3a10;
-      color: #d4b060;
+      background: #1e1610;
+      border-bottom: 1px solid #4a3020;
+      color: #d4a060;
       font-size: 12px;
       padding: 8px 16px;
       flex-shrink: 0;
@@ -48,46 +46,50 @@
 
     /* HEADER */
     .hbar {
-      background: linear-gradient(180deg, var(--e2) 0%, var(--navy) 100%);
+      background: var(--bg2);
       padding: 10px 14px 9px 20px;
       display: flex; align-items: center; gap: 10px;
-      border-bottom: 1.5px solid rgba(139,94,60,.18);
+      border-bottom: 1.5px solid rgba(216,90,48,.2);
       flex-shrink: 0; position: relative;
     }
-    .hbar::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:repeating-linear-gradient(180deg,var(--e4) 0,var(--e3) 5px,var(--e2) 10px,var(--e4) 15px); opacity:.5; }
-    .hav { width:32px; height:32px; border-radius:50%; overflow:hidden; background:var(--navy2); flex-shrink:0; }
+    .hbar::before {
+      content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+      background: var(--orange);
+      border-radius: 0 2px 2px 0;
+    }
+    .hav { width:36px; height:36px; border-radius:50%; overflow:hidden; background:#F5C4B3; flex-shrink:0; border: 2px solid var(--orange); box-shadow: 0 0 0 1px rgba(216,90,48,.3); }
     .hav img { width:100%; height:100%; object-fit:cover; object-position:center top; }
     .hname { font-size:.9rem; font-weight:900; color:var(--cream); }
-    .hname em { font-style:normal; color:var(--red2); }
-    .hsub { font-size:.65rem; color:rgba(245,237,216,.35); }
-    .hbadge { margin-left:auto; background:rgba(232,48,42,.15); border:1px solid rgba(232,48,42,.28); color:var(--red2); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
+    .hname em { font-style:normal; color:var(--orange2); }
+    .hsub { font-size:.65rem; color:rgba(245,196,179,.35); }
+    .hbadge { margin-left:auto; background:rgba(216,90,48,.15); border:1px solid rgba(216,90,48,.28); color:var(--orange2); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
     #ctx-label { font-size:11px; color:var(--tdim); margin-left:6px; }
 
     /* QUICK CHIPS */
-    .kbar { background:var(--e2); padding:8px 13px; border-bottom:1px solid rgba(139,94,60,.18); flex-shrink:0; }
-    .klabel { font-size:.57rem; color:rgba(245,237,216,.25); font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+    .kbar { background:var(--bg); padding:8px 13px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .klabel { font-size:.57rem; color:rgba(245,196,179,.25); font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
     .kchips { display:flex; gap:6px; flex-wrap:wrap; }
-    .kchip { background:rgba(245,237,216,.05); border:1px solid rgba(245,237,216,.1); color:rgba(245,237,216,.48); font-size:.67rem; font-weight:700; padding:4px 10px; border-radius:9px; cursor:pointer; transition:all .15s; font-family:var(--font); }
-    .kchip:hover { background:rgba(232,48,42,.12); border-color:rgba(232,48,42,.35); color:var(--red2); transform:translateY(-1px); }
+    .kchip { background:rgba(216,90,48,.07); border:1px solid rgba(216,90,48,.18); color:var(--orange3); font-size:.67rem; font-weight:700; padding:4px 10px; border-radius:9px; cursor:pointer; transition:all .15s; font-family:var(--font); }
+    .kchip:hover { background:rgba(216,90,48,.2); border-color:rgba(216,90,48,.45); color:var(--orange2); transform:translateY(-1px); }
 
     /* MESSAGES */
     #messages {
       flex:1; overflow-y:auto; padding:14px;
       display:flex; flex-direction:column; gap:10px;
       scroll-behavior:smooth;
-      background:var(--e1);
+      background:var(--bg);
       background-image:
-        radial-gradient(circle at 12% 25%,rgba(139,94,60,.04) 0%,transparent 50%),
-        radial-gradient(circle at 88% 75%,rgba(27,42,74,.05) 0%,transparent 50%);
+        radial-gradient(circle at 12% 25%,rgba(216,90,48,.03) 0%,transparent 50%),
+        radial-gradient(circle at 88% 75%,rgba(30,36,51,.06) 0%,transparent 50%);
     }
     #messages::-webkit-scrollbar { width:4px; }
-    #messages::-webkit-scrollbar-thumb { background:var(--e3); border-radius:4px; }
+    #messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 
     .msg-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
     .msg-row.user { flex-direction:row-reverse; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1} }
 
-    /* WIESEL AVATAR – bigger, animated */
+    /* WIESEL AVATAR */
     .msg-avatar {
       width: 52px; height: 52px;
       flex-shrink: 0;
@@ -102,13 +104,12 @@
     .msg-avatar.user-av {
       width: 32px; height: 32px;
       border-radius: 50%;
-      background: var(--navy2);
+      background: var(--bg3);
       border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
       font-size: 14px;
     }
 
-    /* avatar states */
     .av-idle     { animation: avbob 3s ease-in-out infinite; }
     .av-think    { animation: avtilt 0.8s ease-in-out infinite; }
     .av-found    { animation: avcheer .6s ease-in-out 1 forwards; }
@@ -125,41 +126,41 @@
     .msg { max-width:min(64ch,85%); padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.65; word-break:break-word; }
 
     .msg.bot {
-      background:var(--navy); border:1px solid var(--border);
+      background:var(--bg2); border:1px solid var(--border);
       color:var(--text); border-bottom-left-radius:4px;
-      border-left:3px solid var(--red);
+      border-left:3px solid var(--orange);
     }
     .msg.bot p { margin:0 0 .5em; }
     .msg.bot p:last-child { margin-bottom:0; }
     .msg.bot ul,.msg.bot ol { padding-left:1.3em; margin:.3em 0 .5em; }
     .msg.bot li { margin:.2em 0; }
-    .msg.bot strong { color:#c8d8ff; font-weight:700; }
-    .msg.bot a { color:#7aacff; text-underline-offset:2px; }
-    .msg.bot code { background:var(--e2); padding:1px 5px; border-radius:4px; font-size:13px; }
+    .msg.bot strong { color:var(--orange3); font-weight:700; }
+    .msg.bot a { color:var(--orange2); text-underline-offset:2px; }
+    .msg.bot code { background:var(--bg); padding:1px 5px; border-radius:4px; font-size:13px; }
 
-    .msg.user { background:linear-gradient(135deg,var(--red),#b01c18); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 3px 12px rgba(232,48,42,.25); }
+    .msg.user { background:var(--orange); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 3px 12px rgba(216,90,48,.3); }
     .msg.error { background:#2a1315; border:1px solid #5a2020; color:#ff8080; }
 
-    /* typing */
+    /* TYPING */
     .typing-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
-    .typing-bub { background:var(--navy); border:1px solid var(--border); border-left:3px solid var(--red); border-radius:16px; border-bottom-left-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:8px; font-size:.72rem; color:rgba(245,237,216,.35); font-weight:700; font-style:italic; }
+    .typing-bub { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--orange); border-radius:16px; border-bottom-left-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:8px; font-size:.72rem; color:rgba(245,196,179,.35); font-weight:700; font-style:italic; }
     .tdots { display:flex; gap:4px; }
-    .tdots span { width:6px; height:6px; background:var(--red2); border-radius:50%; animation:dbounce 1s infinite; opacity:.45; }
+    .tdots span { width:6px; height:6px; background:var(--orange2); border-radius:50%; animation:dbounce 1s infinite; opacity:.45; }
     .tdots span:nth-child(2){animation-delay:.15s}
     .tdots span:nth-child(3){animation-delay:.3s}
     @keyframes dbounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-4px);opacity:1} }
 
     /* INPUT */
-    #input-area { display:flex; gap:8px; padding:11px 14px; border-top:1.5px solid rgba(139,94,60,.14); background:var(--navy); flex-shrink:0; }
-    #query { flex:1; background:rgba(245,237,216,.06); border:1.5px solid rgba(245,237,216,.1); border-radius:13px; color:var(--text); font-family:var(--font); font-size:14px; font-weight:600; padding:10px 14px; resize:none; outline:none; transition:border-color .15s; max-height:120px; overflow-y:auto; line-height:1.5; }
-    #query:focus { border-color:var(--red); }
-    #query::placeholder { color:rgba(245,237,216,.22); }
-    #send { background:linear-gradient(135deg,var(--red),#b01c18); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 3px 12px rgba(232,48,42,.35); }
-    #send:hover { transform:scale(1.07); box-shadow:0 5px 18px rgba(232,48,42,.5); }
+    #input-area { display:flex; gap:8px; padding:11px 14px; border-top:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
+    #query { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:13px; color:var(--text); font-family:var(--font); font-size:14px; font-weight:600; padding:10px 14px; resize:none; outline:none; transition:border-color .15s; max-height:120px; overflow-y:auto; line-height:1.5; }
+    #query:focus { border-color:var(--orange); }
+    #query::placeholder { color:rgba(245,196,179,.22); }
+    #send { background:var(--orange); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 3px 12px rgba(216,90,48,.35); }
+    #send:hover { transform:scale(1.07); box-shadow:0 5px 18px rgba(216,90,48,.5); }
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    .fnote { text-align:center; font-size:.58rem; color:rgba(245,237,216,.15); padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--navy); flex-shrink:0; }
-    .soilseam { height:6px; background:repeating-linear-gradient(90deg,var(--e1) 0,var(--e2) 10px,var(--e3) 20px,var(--e1) 30px); flex-shrink:0; }
+    .fnote { text-align:center; font-size:.58rem; color:rgba(245,196,179,.15); padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
+    .soilseam { height:6px; background:repeating-linear-gradient(90deg,var(--bg) 0,var(--bg3) 10px,var(--border) 20px,var(--bg) 30px); flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -168,7 +169,7 @@
 
 <div class="hbar">
   <div class="hav">
-    <img src="/static/wiesel.jpg" alt="Wiesel" onerror="this.style.display='none';this.parentElement.textContent='🦡'">
+    <img src="/static/wiesel_standing.png" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel.jpg'">
   </div>
   <div>
     <div class="hname"><em>WiSo</em> Wiesel</div>
@@ -216,7 +217,6 @@
       .catch(() => {});
   }
 
-  // State → image mapping
   const WIESEL_IMGS = {
     idle:     '/static/wiesel_standing.png',
     think:    '/static/wiesel_thinking.png',
@@ -226,11 +226,7 @@
     talk:     '/static/wiesel_happy.png',
   };
 
-  // Dig/Karten-Pose nur für den Ladezustand, nicht für normale Antworten.
-  const DIG_VARIANTS = [
-    '/static/wiesel_readingMHD.png',
-  ];
-
+  const DIG_VARIANTS = ['/static/wiesel_readingMHD.png'];
   const WIESEL_FALLBACK = '/static/wiesel_standing.png';
 
   function makeWieselSVG(state) {
@@ -242,36 +238,20 @@
     } else {
       src = WIESEL_IMGS[state] || WIESEL_FALLBACK;
     }
-    wrap.innerHTML = `
-      <img 
-        src="${src}" 
-        alt="Wiesel"
-        onerror="
-          this.onerror=null;
-          this.style.display='none';
-          this.parentElement.textContent='🦡';
-        "
-      >
-    `;
+    wrap.innerHTML = `<img src="${src}" alt="Wiesel" onerror="this.onerror=null;this.style.display='none';this.parentElement.textContent='🦡'">`;
     return wrap;
   }
 
   function detectAvatarState(text) {
     const t = text.toLowerCase();
-
     const reUncertain = /keine ahnung|was ist das|was meinst du|sag mir mehr|kann ich dir helfen|kannst du.*genauer|mehr kontext|verstehe.*nicht|nicht verstanden|ich weiß.*nicht|weiss.*nicht|weiß ich nicht|nicht sicher|bin mir.*nicht sicher|nicht gefunden|leider keine|keine information|kein hinweis|unklar|unbekannt|verirrt|vertippt/i;
-
     const reGreeting = /hey|hallo|hi|servus|moin|gutes timing/i;
-
     const reExplain = /das bedeutet|kurz gesagt|wichtig ist|du musst|schritt|erstens|zweitens|anmeldung|prüfung|prüfungen|frist|fristen|öffnungszeiten|adresse/i;
-
     const rePositive = /gern|klar|passt|gefunden|genau|super|hier|klingt/i;
-
     if (reUncertain.test(t)) return 'confused';
     if (reGreeting.test(t)) return 'talk';
     if (reExplain.test(t)) return 'think';
     if (rePositive.test(t)) return 'found';
-
     const states = ['talk', 'think', 'found'];
     return states[Math.floor(Math.random() * states.length)];
   }
@@ -293,10 +273,8 @@
   function addMessage(role, text, avatarState = 'talk') {
     const row = document.createElement('div');
     row.className = 'msg-row ' + (role === 'user' ? 'user' : role === 'bot' ? 'bot' : 'error');
-
     const bubble = document.createElement('div');
     bubble.className = 'msg ' + role;
-
     if (role === 'bot') {
       bubble.innerHTML = marked.parse(text);
       const av = makeWieselSVG(avatarState);
@@ -307,7 +285,6 @@
     } else {
       bubble.textContent = text;
     }
-
     row.appendChild(bubble);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -372,47 +349,38 @@
   async function send() {
     const text = queryEl.value.trim();
     if (!text) return;
-
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
     addMessage('user', text);
     queryEl.value = '';
     queryEl.style.height = 'auto';
     sendBtn.disabled = true;
-
     addTyping();
     const readTimer = setTimeout(() => {
       const txt = document.getElementById('typing-txt');
       if (txt) txt.textContent = 'Moment, ich les das kurz durch…';
     }, 1400);
-
     try {
       const body = {query: text, session_id: sid};
       if (token) body.token = token;
-
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body),
       });
-
       clearTimeout(readTimer);
       removeTyping();
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({detail: res.statusText}));
         addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler'));
         return;
       }
-
       const data = await res.json();
       addMessage('bot', data.response, detectAvatarState(data.response));
-
     } catch {
       clearTimeout(readTimer);
       removeTyping();
       addMessage('error', '⚠️ Verbindung fehlgeschlagen.');
     }
-
     sendBtn.disabled = false;
   }
 
