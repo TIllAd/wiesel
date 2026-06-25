@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 SIGFOOD_API = "https://www.sigfood.de/?do=api.gettagesplan&datum={date}"
-OUTPUT = Path(__file__).parent.parent / "knowledge_base" / "mensa-heute.md"
+OUTPUT = Path(__file__).parent.parent / "knowledge_base" / "mensa-plan.md"
 
 WEEKDAYS = {
     0: "Montag", 1: "Dienstag", 2: "Mittwoch",
