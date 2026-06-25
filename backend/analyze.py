@@ -225,36 +225,86 @@ def send_email(subject: str, body: str):
     print(f"✉ Report gesendet an {REPORT_EMAIL}")
 
 
+def ampel(r: dict) -> tuple[str, str]:
+    """Gibt (emoji, text) zurück basierend auf Tagesqualität."""
+    errors = r["error_responses"]
+    scope  = len(r["fachinhalt_examples"])
+    
+    if errors == 0 and scope == 0:
+        return "🟢", "GUTER TAG — Wiesel hat funktioniert"
+    elif errors <= 2 and scope <= 1:
+        return "🟡", "OKAY — Ein paar Ausreißer, nichts Kritisches"
+    else:
+        return "🔴", "SCHAUEN — Wiesel braucht Aufmerksamkeit"
+ 
+ 
+def bar(count: int, max_count: int, width: int = 10) -> str:
+    filled = round((count / max_count) * width) if max_count > 0 else 0
+    return "█" * filled + "░" * (width - filled)
+ 
+ 
 def email_summary(r: dict) -> str:
-    top3 = list(r["topics"].items())[:3]
-    top3_str = ", ".join(f"{t} ({c}x)" for t, c in top3) or "–"
-    github_url = (
-        f"https://github.com/{GITHUB_REPO}/blob/{GITHUB_BRANCH}/reports/{r['date']}.md"
+    amp_emoji, amp_text = ampel(r)
+    
+    # Sprachen
+    lang_total = sum(r["languages"].values()) or 1
+    lang_lines = "\n".join(
+        f"  {lang.upper():<6} {bar(cnt, lang_total)}  {round(cnt/lang_total*100)}%"
+        for lang, cnt in r["languages"].items()
     )
-
-    # Error snippets block
-    if r["error_snippets"]:
-        error_block = "\n".join(f"  · \"{s}\"" for s in r["error_snippets"])
-        error_section = f"Fehler-Antworten: {r['error_responses']}\nBeispiele:\n{error_block}\n"
+ 
+    # Themen
+    topic_max = max(r["topics"].values()) if r["topics"] else 1
+    topic_lines = "\n".join(
+        f"  {name:<16} {bar(cnt, topic_max)}  {cnt}x"
+        for name, cnt in list(r["topics"].items())[:5]
+    ) or "  (keine)"
+ 
+    # Fehler-Block
+    if r["error_responses"] > 0 and r["error_snippets"]:
+        fehler_block = f"⚠️  {r['error_responses']} FEHLER-ANTWORT(EN)\n"
+        for s in r["error_snippets"]:
+            fehler_block += f'  » "{s[:80]}..."\n'
+    elif r["error_responses"] > 0:
+        fehler_block = f"⚠️  {r['error_responses']} Fehler-Antwort(en) — keine Snippets\n"
     else:
-        error_section = f"Fehler-Antworten: {r['error_responses']} (keine Snippets)\n"
-
-    # Out-of-scope block
+        fehler_block = "✅  Keine Fehler-Antworten\n"
+ 
+    # Scope-Block
     if r["fachinhalt_examples"]:
-        scope_examples = "\n".join(f"  · \"{e}\"" for e in r["fachinhalt_examples"])
-        scope_section = f"Außerhalb Scope (Fachinhalt): {len(r['fachinhalt_examples'])} Anfragen\nBeispiele:\n{scope_examples}\n"
+        scope_block = f"🚨  {len(r['fachinhalt_examples'])} SCOPE-BRUCH (Fachinhalt)\n"
+        for e in r["fachinhalt_examples"]:
+            scope_block += f'  » "{e[:80]}"\n'
     else:
-        scope_section = "Außerhalb Scope (Fachinhalt): keine erkannt\n"
-
-    return (
-        f"Wiesel Tagesbericht {r['date']}\n\n"
-        f"Sessions: {r['total_sessions']}  |  Nachrichten: {r['total_messages']}\n"
-        f"Sprachen: {', '.join(f'{l.upper()}:{c}' for l, c in r['languages'].items())}\n"
-        f"Top-Themen: {top3_str}\n\n"
-        f"{error_section}\n"
-        f"{scope_section}\n"
-        f"Vollständiger Report:\n{github_url}\n"
-    )
+        scope_block = "✅  Keine Scope-Brüche\n"
+ 
+    github_url = f"https://github.com/TIllAd/wiesel/blob/main/reports/{r['date']}.md"
+ 
+    return f"""╔══════════════════════════════════════════╗
+║  🐾 WIESEL TAGESBERICHT  {r['date']}  ║
+╚══════════════════════════════════════════╝
+ 
+{amp_emoji} {amp_text}
+ 
+┌──────────────────────────────────────────┐
+│  Sessions      {r['total_sessions']:<6}                    │
+│  Nachrichten   {r['total_messages']:<6}  (Ø {r['avg_session_len']}/Session)     │
+│  Fehler        {r['error_responses']:<6}                    │
+│  Scope-Brüche  {len(r['fachinhalt_examples']):<6}                    │
+└──────────────────────────────────────────┘
+ 
+SPRACHEN
+{lang_lines}
+ 
+THEMEN
+{topic_lines}
+ 
+──────────────────────────────────────────
+{fehler_block}
+{scope_block}
+══════════════════════════════════════════
+🔗 {github_url}
+"""
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
