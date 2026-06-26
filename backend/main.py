@@ -328,7 +328,7 @@ if _static_dir.exists():
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "Wiesel Backend", "version": "0.1.0"}
+    return RedirectResponse(url="/chat?debug=true")
 
 
 @app.get("/chat")
