@@ -66,6 +66,6 @@ Habt ihr Ideen, was wiesel besser machen könnte?
 
 ---
 
-**Fragen?** Schreib an Till (tilt@fau.de) oder erstelle einfach ein Issue.
+**Fragen?** Schreib an Till (til.adelmann@fau.de) oder erstelle einfach ein Issue.
 
 Danke für eure Mitarbeit! 🙌
