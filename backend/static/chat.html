@@ -206,6 +206,23 @@
       border: 1px solid var(--border); display: block;
     }
 
+    /* VOICE INPUT */
+    #mic-btn {
+      background: none; border: none; cursor: pointer;
+      color: rgba(245,196,179,.35); font-size: 20px;
+      padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
+      transition: all .15s; flex-shrink: 0;
+    }
+    #mic-btn:hover { color: var(--orange2); }
+    #mic-btn.recording {
+      color: var(--orange);
+      animation: micpulse 1s ease-in-out infinite;
+    }
+    @keyframes micpulse {
+      0%,100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+
     .soilseam { height:6px; background:repeating-linear-gradient(90deg,var(--bg) 0,var(--bg3) 10px,var(--border) 20px,var(--bg) 30px); flex-shrink:0; }
   </style>
 </head>
@@ -246,6 +263,7 @@
 <div id="input-area">
   <textarea id="query" placeholder="Stell deine Frage…" rows="1"></textarea>
   <button id="attach-btn" title="Bild anhängen" onclick="document.getElementById('file-input').click()">📎</button>
+  <button id="mic-btn" title="Spracheingabe">🎤</button>
   <button id="send" title="Senden" disabled>↑</button>
 </div>
 <div class="fnote">🔒 anonym · FAU WiSo</div>
@@ -489,6 +507,63 @@
     document.getElementById('img-preview').style.display = 'none';
     document.getElementById('img-thumb').src = '';
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+  }
+
+  // VOICE INPUT
+  let recognition = null;
+  let isRecording = false;
+  const micBtn = document.getElementById('mic-btn');
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'de-DE';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      micBtn.classList.add('recording');
+      micBtn.title = 'Aufnahme läuft… (klick zum Stoppen)';
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .map(r => r[0].transcript)
+        .join('');
+      queryEl.value = transcript;
+      queryEl.dispatchEvent(new Event('input'));
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.title = 'Spracheingabe';
+    };
+
+    recognition.onerror = (e) => {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      console.warn('Speech recognition error:', e.error);
+    };
+
+    micBtn.addEventListener('click', () => {
+      if (isRecording) {
+        recognition.stop();
+        // Nach kurzem Delay senden damit onresult fertig ist
+        setTimeout(() => {
+          if (queryEl.value.trim()) send();
+        }, 200);
+      } else {
+        const lang = document.documentElement.lang || 'de';
+        recognition.lang = lang === 'en' ? 'en-US' : 'de-DE';
+        recognition.continuous = true;
+        recognition.start();
+      }
+    });
+  } else {
+    // Browser unterstützt keine Spracheingabe
+    micBtn.style.display = 'none';
   }
 
   function quickSend(text) {
