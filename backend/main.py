@@ -218,7 +218,7 @@ def load_knowledge_base() -> str:
     if main_kb.exists():
         parts.append(main_kb.read_text(encoding="utf-8"))
 
-    for md_file in sorted(kb_dir.glob("*.md")):
+    for md_file in sorted(kb_dir.glob("**/*.md"), key=lambda p: str(p)):
         if md_file.name == "wissen-basis.md":
             continue
         try:
