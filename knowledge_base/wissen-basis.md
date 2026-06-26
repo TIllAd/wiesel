@@ -43,10 +43,9 @@ Dieses Dokument ist die Wissensquelle für Wiesel. Alle Informationen sind verif
 ## Finanzierung
 
 ### BAföG-Amt
-- **Standort:** Insel Schütt (gleiches Gebäude wie Mensa)
+- **Adresse & Navigation:** → orte_navigation.md
 - **Funktionen:** BAföG-Anträge, Bescheide, Beratung
-- **Öffnungszeiten:** Siehe BAföG-Website
-- **Tipp:** Vor Semesterbeginn kontaktieren
+- **Online:** werkswelt.de/bafoeg
 
 ## Ausweis & Services
 

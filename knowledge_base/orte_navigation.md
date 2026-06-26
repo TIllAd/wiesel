@@ -46,7 +46,7 @@ Mo–Fr 8:00–24:00, Sa–So 10:00–24:00
 Navigation: https://maps.google.com/?cid=521878590923046432
 
 **Bibliothek WSZB** (WiSo-nah)
-Langer Weg 18, 91054 Erlangen
+Lange Gasse 20, Ebene 3, 90403 Nürnberg
 → ub.fau.de/ub/standorte/wszb
 
 ---
