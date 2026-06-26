@@ -54,7 +54,7 @@ logs/
 htmlcov/
 
 # Crawler outputs (täglich generiert, nicht tracken)
-knowledge_base/mensa-plan.md
+knowledge_base/mensa-woche.md
 knowledge_base/wetter-heute.md
 knowledge_base/oepnv-heute.md
 knowledge_base/fau-aktuell.md
