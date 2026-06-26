@@ -71,7 +71,7 @@
 
 ## BAföG-Amt Erlangen (für FAU WiSo)
 - **Zuständig:** Amt für Ausbildungsförderung beim Studierendenwerk Erlangen-Nürnberg
-- **Adresse:** Langemarckplatz 4, 91054 Erlangen
+- **Adresse & Navigation:** → siehe orte_navigation.md
 - **Telefon:** 09131 / 8002-0
 - **Online:** [werkswelt.de/bafoeg](https://www.werkswelt.de/index.php?id=bafoeg)
 - **Sprechzeiten:** Aktuelle Zeiten auf werkswelt.de prüfen (können variieren)
