@@ -168,6 +168,44 @@
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
     .fnote { text-align:center; font-size:.58rem; color:rgba(245,196,179,.15); padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
+    /* IMAGE UPLOAD */
+    #attach-btn {
+      background: none; border: none; cursor: pointer;
+      color: rgba(245,196,179,.35); font-size: 20px;
+      padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
+      transition: color .15s;
+      flex-shrink: 0;
+    }
+    #attach-btn:hover { color: var(--orange2); }
+
+    #file-input { display: none; }
+
+    .img-preview-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .img-preview-wrap img {
+      height: 48px; width: 48px;
+      object-fit: cover; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .img-preview-label {
+      font-size: .7rem; color: var(--tdim); flex: 1;
+    }
+    .img-remove-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--tdim); font-size: 16px; padding: 0 4px;
+    }
+    .img-remove-btn:hover { color: var(--orange2); }
+
+    .msg-img {
+      max-width: 220px; border-radius: 10px; margin-bottom: 6px;
+      border: 1px solid var(--border); display: block;
+    }
+
     .soilseam { height:6px; background:repeating-linear-gradient(90deg,var(--bg) 0,var(--bg3) 10px,var(--border) 20px,var(--bg) 30px); flex-shrink:0; }
   </style>
 </head>
@@ -199,8 +237,15 @@
 
 <div id="messages"></div>
 
+<input type="file" id="file-input" accept="image/*">
+<div id="img-preview" style="display:none" class="img-preview-wrap">
+  <img id="img-thumb" src="" alt="preview">
+  <span class="img-preview-label" id="img-name"></span>
+  <button class="img-remove-btn" onclick="removeImage()" title="Entfernen">✕</button>
+</div>
 <div id="input-area">
   <textarea id="query" placeholder="Stell deine Frage…" rows="1"></textarea>
+  <button id="attach-btn" title="Bild anhängen" onclick="document.getElementById('file-input').click()">📎</button>
   <button id="send" title="Senden" disabled>↑</button>
 </div>
 <div class="fnote">🔒 anonym · FAU WiSo</div>
@@ -283,6 +328,13 @@
     row.className = 'msg-row ' + (role === 'user' ? 'user' : role === 'bot' ? 'bot' : 'error');
     const bubble = document.createElement('div');
     bubble.className = 'msg ' + role;
+    if (role === 'user' && window._pendingImgSrc) {
+      const img = document.createElement('img');
+      img.src = window._pendingImgSrc;
+      img.className = 'msg-img';
+      bubble.appendChild(img);
+      window._pendingImgSrc = null;
+    }
     if (role === 'bot') {
       bubble.innerHTML = marked.parse(text);
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
@@ -292,7 +344,11 @@
       const av = makeWieselSVG(avatarState);
       row.appendChild(av);
     } else if (role === 'user') {
-      bubble.textContent = text;
+      if (text) {
+        const span = document.createElement('span');
+        span.textContent = text;
+        bubble.appendChild(span);
+      }
       row.appendChild(makeUserAvatar());
     } else {
       bubble.textContent = text;
@@ -344,14 +400,14 @@
       removeTyping();
       addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle');
     }
-    sendBtn.disabled = queryEl.value.trim().length === 0;
+    sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
   loadGreeting();
   queryEl.addEventListener('input', () => {
     queryEl.style.height = 'auto';
     queryEl.style.height = queryEl.scrollHeight + 'px';
-    sendBtn.disabled = queryEl.value.trim().length === 0;
+    sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   });
   queryEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -360,8 +416,11 @@
 
   async function send() {
     const text = queryEl.value.trim();
-    if (!text) return;
+    if (!text && !pendingImageBase64) return;
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
+    if (pendingImageBase64) {
+      window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
+    }
     addMessage('user', text);
     queryEl.value = '';
     queryEl.style.height = 'auto';
@@ -372,7 +431,11 @@
       if (txt) txt.textContent = 'Moment, ich les das kurz durch…';
     }, 1400);
     try {
-      const body = {query: text, session_id: sid};
+      const body = {query: text || 'Was siehst du auf diesem Bild?', session_id: sid};
+      if (pendingImageBase64) {
+        body.image_base64 = pendingImageBase64;
+        body.image_type = pendingImageType;
+      }
       if (token) body.token = token;
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -381,6 +444,7 @@
       });
       clearTimeout(readTimer);
       removeTyping();
+      removeImage();
       if (!res.ok) {
         const err = await res.json().catch(() => ({detail: res.statusText}));
         addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler'));
@@ -394,6 +458,37 @@
       addMessage('error', '⚠️ Verbindung fehlgeschlagen.');
     }
     sendBtn.disabled = false;
+  }
+
+  // IMAGE HANDLING
+  let pendingImageBase64 = null;
+  let pendingImageType = null;
+
+  document.getElementById('file-input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const dataUrl = e.target.result;
+      pendingImageBase64 = dataUrl.split(',')[1];
+      // Echter MIME-Type aus dem Data-URL, nicht file.type (kann falsch sein)
+      const mimeMatch = dataUrl.match(/^data:([^;]+);/);
+      pendingImageType = mimeMatch ? mimeMatch[1] : (file.type || 'image/jpeg');
+      document.getElementById('img-thumb').src = e.target.result;
+      document.getElementById('img-name').textContent = file.name;
+      document.getElementById('img-preview').style.display = 'flex';
+      sendBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+  });
+
+  function removeImage() {
+    pendingImageBase64 = null;
+    pendingImageType = null;
+    document.getElementById('img-preview').style.display = 'none';
+    document.getElementById('img-thumb').src = '';
+    sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
   function quickSend(text) {
