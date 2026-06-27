@@ -288,7 +288,7 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
 
     try:
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-4-5",
             max_tokens=1024,
             system=build_system_prompt(kb_content),
             messages=messages
