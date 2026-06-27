@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   wiesel-backend:
+    container_name: wiesel-backend
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,7 +14,7 @@ services:
       - ./backend:/app/backend
       - ./knowledge_base:/knowledge_base
       - ./system-prompt.md:/system-prompt.md
-      - wiesel-db:/app
+      - ./backend/wiesel.db:/app/wiesel.db
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - wiesel-network
@@ -27,7 +28,3 @@ services:
 networks:
   wiesel-network:
     driver: bridge
-
-volumes:
-  wiesel-db:
-  
