@@ -10,17 +10,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #141822;
-      --bg2:     #1e2433;
-      --bg3:     #252d3e;
-      --border:  #2e3445;
+      --bg:      #ffffff;
+      --bg2:     #f5f7fa;
+      --bg3:     #eef0f5;
+      --border:  #dde1ea;
       --orange:  #D85A30;
-      --orange2: #F0997B;
-      --orange3: #F5C4B3;
-      --cream:   #FAECE7;
-      --navy2:   #252d3e;
-      --text:    #e8eaf0;
-      --tdim:    #8b96b0;
+      --orange2: #c04e28;
+      --orange3: #8b3a1a;
+      --navy:    #1a2856;
+      --navy2:   #253570;
+      --text:    #1a1f2e;
+      --tdim:    #6b7280;
       --font:    'Nunito', 'Inter', system-ui, sans-serif;
     }
 
@@ -36,9 +36,9 @@
 
     #no-session {
       display: none;
-      background: #1e1610;
-      border-bottom: 1px solid #4a3020;
-      color: #d4a060;
+      background: #fff8f0;
+      border-bottom: 1px solid #fcd9b0;
+      color: #92400e;
       font-size: 12px;
       padding: 8px 16px;
       flex-shrink: 0;
@@ -46,31 +46,26 @@
 
     /* HEADER */
     .hbar {
-      background: var(--bg2);
+      background: var(--navy);
       padding: 10px 14px 9px 20px;
       display: flex; align-items: center; gap: 10px;
-      border-bottom: 1.5px solid rgba(216,90,48,.2);
+      border-bottom: 2px solid var(--orange);
       flex-shrink: 0; position: relative;
     }
-    .hbar::before {
-      content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
-      background: var(--orange);
-      border-radius: 0 2px 2px 0;
-    }
-    .hav { width:36px; height:36px; border-radius:50%; overflow:hidden; background:#F5C4B3; flex-shrink:0; border: 2px solid var(--orange); box-shadow: 0 0 0 1px rgba(216,90,48,.3); }
+    .hav { width:36px; height:36px; flex-shrink:0; background:transparent; border:none; }
     .hav img { width:100%; height:100%; object-fit:cover; object-position:center top; }
-    .hname { font-size:.9rem; font-weight:900; color:var(--cream); }
-    .hname em { font-style:normal; color:var(--orange2); }
-    .hsub { font-size:.65rem; color:rgba(245,196,179,.35); }
-    .hbadge { margin-left:auto; background:rgba(216,90,48,.15); border:1px solid rgba(216,90,48,.28); color:var(--orange2); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
-    #ctx-label { font-size:11px; color:var(--tdim); margin-left:6px; }
+    .hname { font-size:.9rem; font-weight:900; color:#ffffff; }
+    .hname em { font-style:normal; color:#f5c4b3; }
+    .hsub { font-size:.65rem; color:rgba(255,255,255,.5); }
+    .hbadge { margin-left:auto; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
+    #ctx-label { font-size:11px; color:rgba(255,255,255,.4); margin-left:6px; }
 
     /* QUICK CHIPS */
-    .kbar { background:var(--bg); padding:8px 13px; border-bottom:1px solid var(--border); flex-shrink:0; }
-    .klabel { font-size:.57rem; color:rgba(245,196,179,.25); font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+    .kbar { background:var(--bg2); padding:8px 13px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .klabel { font-size:.57rem; color:var(--tdim); font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
     .kchips { display:flex; gap:6px; flex-wrap:wrap; }
-    .kchip { background:rgba(216,90,48,.07); border:1px solid rgba(216,90,48,.18); color:var(--orange3); font-size:.67rem; font-weight:700; padding:4px 10px; border-radius:9px; cursor:pointer; transition:all .15s; font-family:var(--font); }
-    .kchip:hover { background:rgba(216,90,48,.2); border-color:rgba(216,90,48,.45); color:var(--orange2); transform:translateY(-1px); }
+    .kchip { background:#fff; border:1px solid var(--border); color:var(--navy); font-size:.67rem; font-weight:700; padding:4px 10px; border-radius:9px; cursor:pointer; transition:all .15s; font-family:var(--font); }
+    .kchip:hover { background:var(--navy); color:#fff; border-color:var(--navy); transform:translateY(-1px); }
 
     /* MESSAGES */
     #messages {
@@ -78,9 +73,6 @@
       display:flex; flex-direction:column; gap:10px;
       scroll-behavior:smooth;
       background:var(--bg);
-      background-image:
-        radial-gradient(circle at 12% 25%,rgba(216,90,48,.03) 0%,transparent 50%),
-        radial-gradient(circle at 88% 75%,rgba(30,36,51,.06) 0%,transparent 50%);
     }
     #messages::-webkit-scrollbar { width:4px; }
     #messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
@@ -89,29 +81,22 @@
     .msg-row.user { flex-direction:row-reverse; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1} }
 
-    /* WIESEL AVATAR */
     .msg-avatar {
       width: 52px; height: 52px;
       flex-shrink: 0;
       position: relative;
-      background: #F5C4B3;
-      border-radius: 50%;
-      padding: 3px;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      border: none;
     }
     .msg-avatar img {
       width: 100%; height: 100%;
       object-fit: contain;
       object-position: center bottom;
-      filter: drop-shadow(0 4px 8px rgba(0,0,0,.4));
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.12));
     }
-    .msg-avatar.user-av {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-    }
+
 
     .av-idle     { animation: avbob 3s ease-in-out infinite; }
     .av-think    { animation: avtilt 0.8s ease-in-out infinite; }
@@ -124,60 +109,56 @@
     @keyframes avtilt     { 0%,100%{transform:rotate(-8deg) translateY(2px)} 50%{transform:rotate(5deg) translateY(-2px)} }
     @keyframes avcheer    { 0%{transform:scale(1) translateY(0) rotate(0)} 35%{transform:scale(1.2) translateY(-10px) rotate(-5deg)} 65%{transform:scale(1.15) translateY(-8px) rotate(4deg)} 100%{transform:scale(1) translateY(0) rotate(0)} }
     @keyframes avdig      { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(4px) rotate(4deg)} }
-    .msg-avatar.frozen {
-      animation: none !important;
-      transform: none !important;
-    }
-
     @keyframes avconfused { 0%,100%{transform:rotate(-6deg) translateY(0)} 25%{transform:rotate(6deg) translateY(-3px)} 50%{transform:rotate(-4deg) translateY(2px)} 75%{transform:rotate(5deg) translateY(-1px)} }
+
+    .msg-avatar.frozen { animation: none !important; transform: none !important; }
 
     .msg { max-width:min(64ch,85%); padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.65; word-break:break-word; }
 
     .msg.bot {
-      background:var(--bg2); border:1px solid var(--border);
+      background:#fff; border:1px solid var(--border);
       color:var(--text); border-bottom-left-radius:4px;
       border-left:3px solid var(--orange);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
     .msg.bot p { margin:0 0 .5em; }
     .msg.bot p:last-child { margin-bottom:0; }
     .msg.bot ul,.msg.bot ol { padding-left:1.3em; margin:.3em 0 .5em; }
     .msg.bot li { margin:.2em 0; }
-    .msg.bot strong { color:var(--orange3); font-weight:700; }
-    .msg.bot a { color:var(--orange2); text-underline-offset:2px; }
-    .msg.bot code { background:var(--bg); padding:1px 5px; border-radius:4px; font-size:13px; }
+    .msg.bot strong { color:var(--orange2); font-weight:700; }
+    .msg.bot a { color:var(--navy2); text-underline-offset:2px; }
+    .msg.bot code { background:var(--bg3); padding:1px 5px; border-radius:4px; font-size:13px; }
 
-    .msg.user { background:var(--orange); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 3px 12px rgba(216,90,48,.3); }
-    .msg.error { background:#2a1315; border:1px solid #5a2020; color:#ff8080; }
+    .msg.user { background:var(--orange); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 2px 8px rgba(216,90,48,.25); }
+    .msg.error { background:#fff0f0; border:1px solid #fecaca; color:#b91c1c; }
 
     /* TYPING */
     .typing-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
-    .typing-bub { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--orange); border-radius:16px; border-bottom-left-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:8px; font-size:.72rem; color:rgba(245,196,179,.35); font-weight:700; font-style:italic; }
+    .typing-bub { background:#fff; border:1px solid var(--border); border-left:3px solid var(--orange); border-radius:16px; border-bottom-left-radius:4px; padding:12px 14px; display:flex; align-items:center; gap:8px; font-size:.72rem; color:var(--tdim); font-weight:700; font-style:italic; box-shadow:0 1px 3px rgba(0,0,0,.06); }
     .tdots { display:flex; gap:4px; }
-    .tdots span { width:6px; height:6px; background:var(--orange2); border-radius:50%; animation:dbounce 1s infinite; opacity:.45; }
+    .tdots span { width:6px; height:6px; background:var(--orange); border-radius:50%; animation:dbounce 1s infinite; opacity:.4; }
     .tdots span:nth-child(2){animation-delay:.15s}
     .tdots span:nth-child(3){animation-delay:.3s}
     @keyframes dbounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-4px);opacity:1} }
 
     /* INPUT */
     #input-area { display:flex; gap:8px; padding:11px 14px; border-top:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
-    #query { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:13px; color:var(--text); font-family:var(--font); font-size:14px; font-weight:600; padding:10px 14px; resize:none; outline:none; transition:border-color .15s; max-height:120px; overflow-y:auto; line-height:1.5; }
-    #query:focus { border-color:var(--orange); }
-    #query::placeholder { color:rgba(245,196,179,.22); }
-    #send { background:var(--orange); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 3px 12px rgba(216,90,48,.35); }
-    #send:hover { transform:scale(1.07); box-shadow:0 5px 18px rgba(216,90,48,.5); }
+    #query { flex:1; background:#fff; border:1px solid var(--border); border-radius:13px; color:var(--text); font-family:var(--font); font-size:14px; font-weight:600; padding:10px 14px; resize:none; outline:none; transition:border-color .15s; max-height:120px; overflow-y:auto; line-height:1.5; }
+    #query:focus { border-color:var(--navy); }
+    #query::placeholder { color:var(--tdim); opacity:.5; }
+    #send { background:var(--orange); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 2px 8px rgba(216,90,48,.3); }
+    #send:hover { transform:scale(1.07); box-shadow:0 4px 14px rgba(216,90,48,.45); }
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    .fnote { text-align:center; font-size:.58rem; color:rgba(245,196,179,.15); padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
-    /* IMAGE UPLOAD */
+    .fnote { text-align:center; font-size:.58rem; color:var(--tdim); opacity:.5; padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
+
     #attach-btn {
       background: none; border: none; cursor: pointer;
-      color: rgba(245,196,179,.35); font-size: 20px;
+      color: var(--tdim); font-size: 20px;
       padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
-      transition: color .15s;
-      flex-shrink: 0;
+      transition: color .15s; flex-shrink: 0;
     }
-    #attach-btn:hover { color: var(--orange2); }
-
+    #attach-btn:hover { color: var(--navy); }
     #file-input { display: none; }
 
     .img-preview-wrap {
@@ -187,43 +168,21 @@
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
-    .img-preview-wrap img {
-      height: 48px; width: 48px;
-      object-fit: cover; border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    .img-preview-label {
-      font-size: .7rem; color: var(--tdim); flex: 1;
-    }
-    .img-remove-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--tdim); font-size: 16px; padding: 0 4px;
-    }
-    .img-remove-btn:hover { color: var(--orange2); }
+    .img-preview-wrap img { height: 48px; width: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    .img-preview-label { font-size: .7rem; color: var(--tdim); flex: 1; }
+    .img-remove-btn { background: none; border: none; cursor: pointer; color: var(--tdim); font-size: 16px; padding: 0 4px; }
+    .img-remove-btn:hover { color: var(--orange); }
+    .msg-img { max-width: 220px; border-radius: 10px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
 
-    .msg-img {
-      max-width: 220px; border-radius: 10px; margin-bottom: 6px;
-      border: 1px solid var(--border); display: block;
-    }
-
-    /* VOICE INPUT */
     #mic-btn {
       background: none; border: none; cursor: pointer;
-      color: rgba(245,196,179,.35); font-size: 20px;
+      color: var(--tdim); font-size: 20px;
       padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
       transition: all .15s; flex-shrink: 0;
     }
-    #mic-btn:hover { color: var(--orange2); }
-    #mic-btn.recording {
-      color: var(--orange);
-      animation: micpulse 1s ease-in-out infinite;
-    }
-    @keyframes micpulse {
-      0%,100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.2); opacity: 0.7; }
-    }
-
-    .soilseam { height:6px; background:repeating-linear-gradient(90deg,var(--bg) 0,var(--bg3) 10px,var(--border) 20px,var(--bg) 30px); flex-shrink:0; }
+    #mic-btn:hover { color: var(--navy); }
+    #mic-btn.recording { color: var(--orange); animation: micpulse 1s ease-in-out infinite; }
+    @keyframes micpulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.2);opacity:.7} }
   </style>
 </head>
 <body>
@@ -267,12 +226,13 @@
   <button id="send" title="Senden" disabled>↑</button>
 </div>
 <div class="fnote">🔒 anonym · FAU WiSo</div>
-<div class="soilseam"></div>
 
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
   const sessionId = params.get('session_id') || null;
+  // Name aus URL-Param (LTI setzt ?user=...) oder Fallback
+  window._userName = decodeURIComponent(params.get('user') || '');
   if (!token && params.get('mock') !== '1') {
     document.getElementById('no-session').style.display = 'block';
   }
@@ -284,7 +244,12 @@
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.course_name) document.getElementById('ctx-label').textContent = data.course_name; })
+      .then(data => { 
+        if (data?.course_name) document.getElementById('ctx-label').textContent = data.course_name;
+        if (data?.user_name && data.user_name !== 'Debug Student' && data.user_name !== 'Eval Student') {
+          window._userName = data.user_name;
+        }
+      })
       .catch(() => {});
   }
 
@@ -296,19 +261,13 @@
     confused: '/static/wiesel_confused.png',
     talk:     '/static/wiesel_happy.png',
   };
-
   const DIG_VARIANTS = ['/static/wiesel_readingMHD.png'];
   const WIESEL_FALLBACK = '/static/wiesel_standing.png';
 
   function makeWieselSVG(state) {
     const wrap = document.createElement('div');
     wrap.className = `msg-avatar av-${state}`;
-    let src;
-    if (state === 'dig') {
-      src = DIG_VARIANTS[Math.floor(Math.random() * DIG_VARIANTS.length)];
-    } else {
-      src = WIESEL_IMGS[state] || WIESEL_FALLBACK;
-    }
+    let src = state === 'dig' ? DIG_VARIANTS[0] : (WIESEL_IMGS[state] || WIESEL_FALLBACK);
     wrap.innerHTML = `<img src="${src}" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
     return wrap;
   }
@@ -323,16 +282,10 @@
     if (reGreeting.test(t)) return 'talk';
     if (reExplain.test(t)) return 'think';
     if (rePositive.test(t)) return 'found';
-    const states = ['talk', 'think', 'found'];
-    return states[Math.floor(Math.random() * states.length)];
+    return ['talk','think','found'][Math.floor(Math.random()*3)];
   }
 
-  function makeUserAvatar() {
-    const av = document.createElement('div');
-    av.className = 'msg-avatar user-av';
-    av.textContent = '👤';
-    return av;
-  }
+
 
   const typingPhrases = [
     'Wo hab ich das nochmal hingelegt…',
@@ -356,18 +309,11 @@
     if (role === 'bot') {
       bubble.innerHTML = marked.parse(text);
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
-      document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => {
-        av.className = 'msg-avatar frozen';
-      });
-      const av = makeWieselSVG(avatarState);
-      row.appendChild(av);
+      document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => { av.className = 'msg-avatar frozen'; });
+      row.appendChild(makeWieselSVG(avatarState));
     } else if (role === 'user') {
-      if (text) {
-        const span = document.createElement('span');
-        span.textContent = text;
-        bubble.appendChild(span);
-      }
-      row.appendChild(makeUserAvatar());
+      if (text) { const span = document.createElement('span'); span.textContent = text; bubble.appendChild(span); }
+
     } else {
       bubble.textContent = text;
     }
@@ -382,8 +328,7 @@
     row.className = 'typing-row';
     row.id = 'typing-row';
     const phrase = typingPhrases[Math.floor(Math.random() * typingPhrases.length)];
-    const av = makeWieselSVG('dig');
-    row.appendChild(av);
+    row.appendChild(makeWieselSVG('dig'));
     const bub = document.createElement('div');
     bub.className = 'typing-bub';
     bub.innerHTML = '<div class="tdots"><span></span><span></span><span></span></div><span id="typing-txt">' + phrase + '</span>';
@@ -393,31 +338,20 @@
     return row;
   }
 
-  function removeTyping() {
-    const t = document.getElementById('typing-row');
-    if (t) t.remove();
-  }
+  function removeTyping() { const t = document.getElementById('typing-row'); if (t) t.remove(); }
 
   async function loadGreeting() {
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
     addTyping();
     try {
       const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({query: '__greeting__', session_id: sid})
       });
       removeTyping();
-      if (res.ok) {
-        const data = await res.json();
-        addMessage('bot', data.response, detectAvatarState(data.response));
-      } else {
-        addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found');
-      }
-    } catch {
-      removeTyping();
-      addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle');
-    }
+      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response)); }
+      else { addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found'); }
+    } catch { removeTyping(); addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle'); }
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
@@ -427,69 +361,40 @@
     queryEl.style.height = queryEl.scrollHeight + 'px';
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   });
-  queryEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-  });
+  queryEl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   sendBtn.addEventListener('click', send);
 
   async function send() {
     const text = queryEl.value.trim();
     if (!text && !pendingImageBase64) return;
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
-    if (pendingImageBase64) {
-      window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
-    }
+    if (pendingImageBase64) window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
     addMessage('user', text);
-    queryEl.value = '';
-    queryEl.style.height = 'auto';
-    sendBtn.disabled = true;
+    queryEl.value = ''; queryEl.style.height = 'auto'; sendBtn.disabled = true;
     addTyping();
-    const readTimer = setTimeout(() => {
-      const txt = document.getElementById('typing-txt');
-      if (txt) txt.textContent = 'Moment, ich les das kurz durch…';
-    }, 1400);
+    const readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = 'Moment, ich les das kurz durch…'; }, 1400);
     try {
       const body = {query: text || 'Was siehst du auf diesem Bild?', session_id: sid};
-      if (pendingImageBase64) {
-        body.image_base64 = pendingImageBase64;
-        body.image_type = pendingImageType;
-      }
+      if (pendingImageBase64) { body.image_base64 = pendingImageBase64; body.image_type = pendingImageType; }
       if (token) body.token = token;
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(body),
-      });
-      clearTimeout(readTimer);
-      removeTyping();
-      removeImage();
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({detail: res.statusText}));
-        addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler'));
-        return;
-      }
+      const res = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+      clearTimeout(readTimer); removeTyping(); removeImage();
+      if (!res.ok) { const err = await res.json().catch(() => ({detail: res.statusText})); addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler')); return; }
       const data = await res.json();
       addMessage('bot', data.response, detectAvatarState(data.response));
-    } catch {
-      clearTimeout(readTimer);
-      removeTyping();
-      addMessage('error', '⚠️ Verbindung fehlgeschlagen.');
-    }
+    } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ Verbindung fehlgeschlagen.'); }
     sendBtn.disabled = false;
   }
 
-  // IMAGE HANDLING
   let pendingImageBase64 = null;
   let pendingImageType = null;
 
   document.getElementById('file-input').addEventListener('change', function() {
-    const file = this.files[0];
-    if (!file) return;
+    const file = this.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
       const dataUrl = e.target.result;
       pendingImageBase64 = dataUrl.split(',')[1];
-      // Echter MIME-Type aus dem Data-URL, nicht file.type (kann falsch sein)
       const mimeMatch = dataUrl.match(/^data:([^;]+);/);
       pendingImageType = mimeMatch ? mimeMatch[1] : (file.type || 'image/jpeg');
       document.getElementById('img-thumb').src = e.target.result;
@@ -497,80 +402,33 @@
       document.getElementById('img-preview').style.display = 'flex';
       sendBtn.disabled = false;
     };
-    reader.readAsDataURL(file);
-    this.value = '';
+    reader.readAsDataURL(file); this.value = '';
   });
 
   function removeImage() {
-    pendingImageBase64 = null;
-    pendingImageType = null;
+    pendingImageBase64 = null; pendingImageType = null;
     document.getElementById('img-preview').style.display = 'none';
     document.getElementById('img-thumb').src = '';
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
-  // VOICE INPUT
-  let recognition = null;
-  let isRecording = false;
+  let recognition = null, isRecording = false;
   const micBtn = document.getElementById('mic-btn');
-
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
-    recognition.lang = 'de-DE';
-    recognition.interimResults = true;
-    recognition.continuous = false;
-
-    recognition.onstart = () => {
-      isRecording = true;
-      micBtn.classList.add('recording');
-      micBtn.title = 'Aufnahme läuft… (klick zum Stoppen)';
-    };
-
-    recognition.onresult = (e) => {
-      const transcript = Array.from(e.results)
-        .map(r => r[0].transcript)
-        .join('');
-      queryEl.value = transcript;
-      queryEl.dispatchEvent(new Event('input'));
-    };
-
-    recognition.onend = () => {
-      isRecording = false;
-      micBtn.classList.remove('recording');
-      micBtn.title = 'Spracheingabe';
-    };
-
-    recognition.onerror = (e) => {
-      isRecording = false;
-      micBtn.classList.remove('recording');
-      console.warn('Speech recognition error:', e.error);
-    };
-
+    recognition.lang = 'de-DE'; recognition.interimResults = true; recognition.continuous = false;
+    recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); };
+    recognition.onresult = (e) => { const t = Array.from(e.results).map(r => r[0].transcript).join(''); queryEl.value = t; queryEl.dispatchEvent(new Event('input')); };
+    recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); };
+    recognition.onerror = () => { isRecording = false; micBtn.classList.remove('recording'); };
     micBtn.addEventListener('click', () => {
-      if (isRecording) {
-        recognition.stop();
-        // Nach kurzem Delay senden damit onresult fertig ist
-        setTimeout(() => {
-          if (queryEl.value.trim()) send();
-        }, 200);
-      } else {
-        const lang = document.documentElement.lang || 'de';
-        recognition.lang = lang === 'en' ? 'en-US' : 'de-DE';
-        recognition.continuous = true;
-        recognition.start();
-      }
+      if (isRecording) { recognition.stop(); setTimeout(() => { if (queryEl.value.trim()) send(); }, 200); }
+      else { recognition.lang = document.documentElement.lang === 'en' ? 'en-US' : 'de-DE'; recognition.continuous = true; recognition.start(); }
     });
-  } else {
-    // Browser unterstützt keine Spracheingabe
-    micBtn.style.display = 'none';
-  }
+  } else { micBtn.style.display = 'none'; }
 
-  function quickSend(text) {
-    queryEl.value = text;
-    queryEl.dispatchEvent(new Event('input'));
-    send();
-  }
+  function quickSend(text) { queryEl.value = text; queryEl.dispatchEvent(new Event('input')); send(); }
 </script>
 </body>
 </html>
