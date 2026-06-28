@@ -420,18 +420,14 @@
 
   function removeTyping() { const t = document.getElementById('typing-row'); if (t) t.remove(); }
 
-  async function loadGreeting() {
-    const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
-    addTyping();
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({query: '__greeting__', session_id: sid})
-      });
-      removeTyping();
-      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response)); }
-      else { addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found'); }
-    } catch { removeTyping(); addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle'); }
+  let pendingImageBase64 = null;
+  let pendingImageType = null;
+
+  function loadGreeting() {
+    // Begrüßung ist UI-Text, kein Chat. Nicht ans LLM schicken.
+    // Sonst wird aus einem internen Startsignal wieder Prompt-Orakeltheater.
+    const greeting = 'Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?';
+    addMessage('bot', greeting, detectAvatarState(greeting));
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
@@ -465,9 +461,6 @@
     } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ Verbindung fehlgeschlagen.'); }
     sendBtn.disabled = false;
   }
-
-  let pendingImageBase64 = null;
-  let pendingImageType = null;
 
   document.getElementById('file-input').addEventListener('change', function() {
     const file = this.files[0]; if (!file) return;

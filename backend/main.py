@@ -46,6 +46,7 @@ DATABASE_URL = "sqlite:///./wiesel.db"
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
 DEFAULT_GREETING = "Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?"
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
+AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
 
 # ============================================================================
 # DATABASE SETUP
@@ -272,6 +273,22 @@ def looks_like_system_prompt_leak(text: str) -> bool:
     return any(marker in text for marker in markers)
 
 
+def is_ambiguous_first_message(query: str, chat_history: list) -> bool:
+    """Catch context-free first inputs like '2' before wasting an API call."""
+    text = (query or "").strip()
+    if chat_history or not text:
+        return False
+
+    # A bare number/punctuation after the UI-only greeting is not meaningful to
+    # Claude, because the greeting is not part of persisted/API history.
+    if text.isdigit():
+        return True
+    if len(text) <= 2 and not any(ch.isalpha() for ch in text):
+        return True
+
+    return False
+
+
 async def call_claude(query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -433,6 +450,15 @@ async def chat_endpoint(request: ChatRequest):
 
         history = db.query(ChatMessage).filter(ChatMessage.session_id == request.session_id).order_by(ChatMessage.created_at).all()
         chat_history = [{"role": msg.role, "content": msg.content} for msg in history if msg.content and msg.content.strip()]
+
+        if not request.image_base64 and is_ambiguous_first_message(request.query, chat_history):
+            cleaned_query = (request.query or "").strip()
+            response = AMBIGUOUS_FIRST_MESSAGE_FALLBACK.format(message=cleaned_query)
+            db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query))
+            db.add(ChatMessage(session_id=request.session_id, role="assistant", content=response))
+            db.commit()
+            return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
+
         kb_content = load_knowledge_base()
 
         response = await call_claude(request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
