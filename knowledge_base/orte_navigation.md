@@ -9,12 +9,12 @@ Wenn jemand fragt wo etwas ist oder wie er hinkommt, gib den Google Maps Link di
 **Südmensa** (nächste Mensa zum WiSo-Campus Erlangen)
 Erwin-Rommel-Str. 60, 91058 Erlangen
 Mo–Do 11:00–14:15, Fr 11:00–14:00
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJ_VojVzX5oUcRQdvg7yMI1AM)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Südmensa+Erwin-Rommel-Straße+60+Erlangen)
 
 **Mensa Langemarckplatz** (Innenstadt Erlangen, frisch gekocht)
 Langemarckpl. 4, 91054 Erlangen
 Mo–Fr 11:00–14:00
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJRb0WnSD5oUcRAC753vIE9V4)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Mensa+Langemarckplatz+Erlangen)
 
 ---
 
@@ -24,7 +24,7 @@ Mo–Fr 11:00–14:00
 Lange Gasse 20, 90403 Nürnberg
 Mo–Do 9:00–11:00, Di zusätzlich 13:00–16:00, Fr geschlossen
 Kontakt: pruefungsamt@wiso.fau.de · [wiso.fau.de/pruefungsamt](https://www.wiso.rw.fau.de/pruefungsamt)
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJib3qhrtXn0cR4QkT6RReNbA)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Prüfungsamt+WiSo+FAU+Lange+Gasse+20+Nürnberg)
 
 **Studienbüro WiSo**
 studienbuero@wiso.fau.de
@@ -36,7 +36,7 @@ studienbuero@wiso.fau.de
 **Amt für Ausbildungsförderung (BAföG) — Geschäftsstelle Nürnberg**
 Andreij-Sacharow-Platz 1, 90403 Nürnberg (Mensakomplex Insel Schütt)
 Sprechzeiten: aktuelle Zeiten auf [werkswelt.de](https://www.werkswelt.de/index.php?id=bafoeg) prüfen
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJxX9IZ6NXn0cRYWh3mdlfZt0)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Amt+für+Ausbildungsförderung+Andreij-Sacharow-Platz+1+Nürnberg)
 
 ---
 
@@ -45,13 +45,13 @@ Sprechzeiten: aktuelle Zeiten auf [werkswelt.de](https://www.werkswelt.de/index.
 **Universitätsbibliothek Erlangen (Hauptbibliothek)**
 Schuhstraße 1a, 91052 Erlangen
 Mo–Fr 8:00–24:00, Sa–So 10:00–24:00
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJ4dSRJN74oUcRIH7ZO9AVPgc)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Universitätsbibliothek+Erlangen+Schuhstraße+1a)
 
 **Wirtschafts- und Sozialwissenschaftliche Zweigbibliothek (WSZB)**
 Lange Gasse 20, 90403 Nürnberg (Ebene 3)
 Mo–Sa 8:00–24:00, So 10:00–24:00
 [ub.fau.de/ub/standorte/wszb](https://www.ub.fau.de/ub/standorte/wszb)
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJGxAPqLtXn0cR_Q6cCf1d9zw)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Wirtschafts+Sozialwissenschaftliche+Zweigbibliothek+Lange+Gasse+20+Nürnberg)
 
 ---
 
@@ -60,7 +60,7 @@ Mo–Sa 8:00–24:00, So 10:00–24:00
 **RRZE Rechenzentrum** (für IDm-Aktivierung vor Ort)
 Martensstraße 1, 91058 Erlangen
 Mo–Do 9:00–16:00, Fr 9:00–14:00
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJU-tQxsr-oUcRvRA-r5nXFzU)
+[Navigation](https://www.google.com/maps/search/?api=1&query=RRZE+Rechenzentrum+FAU+Martensstraße+1+Erlangen)
 
 > Besser: IDm online aktivieren unter [idm.fau.de](https://www.idm.fau.de) — kein Gang nötig.
 
@@ -70,8 +70,8 @@ Mo–Do 9:00–16:00, Fr 9:00–14:00
 
 Zentrale Universitätsverwaltung, Halbmondstraße 6–8, 91054 Erlangen (Raum 1.056)
 Muss einmal pro Semester validiert werden — Automat vor Ort.
-[Navigation](https://www.google.com/maps/place/?q=place_id:ChIJObMI_934oUcRyjJFn_yYAHg)
+[Navigation](https://www.google.com/maps/search/?api=1&query=Halbmondstraße+6+Erlangen+FAU)
 
 ---
 
-*Alle Links via Google Places API verifiziert · Bei Änderungen bitte place_id aktualisieren*
+*Navigation via Google Maps Query-Links — Name+Adresse im Query verhindert Verwechslungen bei Gebäuden mit mehreren POIs*
