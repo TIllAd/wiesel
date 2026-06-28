@@ -67,3 +67,11 @@ knowledge_base/plattformen/
 knowledge_base/anlaufstellen/
 knowledge_base/uni-leben/
 knowledge_base/planspiel/
+
+
+# Generated reports / local analytics
+reports/
+backend/reports/
+*.db
+*.db-shm
+*.db-wal
