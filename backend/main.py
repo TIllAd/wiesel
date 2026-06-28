@@ -46,7 +46,9 @@ DATABASE_URL = "sqlite:///./wiesel.db"
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
 DEFAULT_GREETING = "Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?"
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
+TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
+LLM_HEALTH = {"ok": bool(ANTHROPIC_API_KEY), "last_success": None, "last_error": None}
 
 # ============================================================================
 # DATABASE SETUP
@@ -340,10 +342,12 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
             return SYSTEM_PROMPT_LEAK_FALLBACK
+        LLM_HEALTH.update({"ok": True, "last_success": datetime.utcnow().isoformat(), "last_error": None})
         return text
     except Exception as e:
-        logger.error(f"Claude API error: {e}")
-        return f"Entschuldigung, ich hatte einen technischen Fehler: {str(e)}"
+        logger.error("Claude API error", exc_info=True)
+        LLM_HEALTH.update({"ok": False, "last_error": datetime.utcnow().isoformat()})
+        return TECHNICAL_ERROR_FALLBACK
 
 
 # ============================================================================
@@ -531,7 +535,15 @@ async def session_endpoint(session_id: str):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "db": "connected"}
+    llm_ok = bool(LLM_HEALTH["ok"])
+    return {
+        "status": "healthy" if llm_ok else "unhealthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "db": "connected",
+        "llm": "connected" if llm_ok else "error",
+        "last_llm_success": LLM_HEALTH["last_success"],
+        "last_llm_error": LLM_HEALTH["last_error"],
+    }
 
 
 @app.post("/api/dev/session")
