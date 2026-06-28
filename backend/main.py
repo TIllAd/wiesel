@@ -6,6 +6,7 @@ FastAPI app with LTI launch endpoint, chat API, and SQLite session management.
 import os
 import json
 import logging
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
 from datetime import datetime, timedelta
@@ -79,8 +80,8 @@ class ChatFlag(Base):
     __tablename__ = "chat_flags"
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String, index=True)
-    # Chat-level flag. Kept nullable for compatibility with databases that already
-    # have the old per-message column, but new flags deliberately leave it NULL.
+    # Chat-level flag. Existing SQLite DBs may still contain the old nullable
+    # message_id column; new code ignores it and always stores NULL.
     message_id = Column(Integer, nullable=True, index=True)
     tag = Column(String, default="auffaelligkeit", index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -157,7 +158,6 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
     timestamp: str
-    message_id: Optional[int] = None
 
 
 class ChatFlagRequest(BaseModel):
@@ -330,17 +330,32 @@ async def root():
 
 
 @app.get("/chat")
-async def chat_page(request: Request, debug: bool = False):
-    if debug:
+async def chat_page(request: Request, debug: str | None = None):
+    # Only the explicit entry URL /chat?debug=true should mint a fresh debug
+    # session. The rendered chat page uses debug=1 only as a frontend marker;
+    # treating every truthy debug value as a launch request causes an infinite
+    # redirect loop: debug=true -> debug=1 -> new token -> debug=1 -> ...
+    if debug == "true":
         db = SessionLocal()
         try:
-            debug_session_id = "debug_session_wiesel"
+            debug_session_id = f"debug_session_wiesel_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
             token = jwt.encode({"user": "debug_user", "session_id": debug_session_id, "debug": True}, JWT_SECRET, algorithm=JWT_ALGORITHM)
-            debug_session = SessionRecord(id=debug_session_id, user_id="debug_user", course_id="debug_course", user_role="Learner", user_name="Debug Student", course_name="Debug Mode – kein StudOn", nonce=None, created_at=datetime.utcnow())
-            db.merge(debug_session)
+            now = datetime.utcnow()
+            debug_session = SessionRecord(
+                id=debug_session_id,
+                user_id="debug_user",
+                course_id="debug_course",
+                user_role="Learner",
+                user_name="Debug Student",
+                course_name="Debug Mode – kein StudOn",
+                nonce=f"debug_{uuid.uuid4().hex}",
+                created_at=now,
+                last_accessed=now,
+            )
+            db.add(debug_session)
             db.commit()
             from urllib.parse import quote
-            return RedirectResponse(url=f"/chat?token={quote(token, safe='')}&session_id={debug_session_id}", status_code=302)
+            return RedirectResponse(url=f"/chat?token={quote(token, safe='')}&session_id={debug_session_id}&debug=1", status_code=302)
         finally:
             db.close()
     return FileResponse(str(_static_dir / "chat.html"))
@@ -398,16 +413,13 @@ async def chat_endpoint(request: ChatRequest):
 
         response = await call_claude(request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
 
-        message_id = None
         if request.query != "__greeting__":
             db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query or "[Bild gesendet]"))
             assistant_message = ChatMessage(session_id=request.session_id, role="assistant", content=response)
             db.add(assistant_message)
             db.commit()
-            db.refresh(assistant_message)
-            message_id = assistant_message.id
 
-        return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat(), message_id=message_id)
+        return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
     except HTTPException:
         raise
     except Exception as e:
@@ -497,20 +509,20 @@ async def get_daily_logs(date: Optional[str] = None):
         day_start = datetime(target.year, target.month, target.day, 0, 0, 0)
         day_end   = datetime(target.year, target.month, target.day, 23, 59, 59)
         messages = db.query(ChatMessage).filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end).order_by(ChatMessage.created_at).all()
-        flags = db.query(ChatFlag).filter(ChatFlag.created_at >= day_start, ChatFlag.created_at <= day_end).order_by(ChatFlag.created_at).all()
-        flags_by_message: dict[int, list[dict]] = {}
+        flags = db.query(ChatFlag).filter(
+            ChatFlag.created_at >= day_start,
+            ChatFlag.created_at <= day_end,
+            ChatFlag.message_id.is_(None),
+        ).order_by(ChatFlag.created_at).all()
         flags_by_session: dict[str, list[dict]] = {}
         for f in flags:
             payload = {"id": f.id, "tag": f.tag, "created_at": f.created_at.isoformat()}
-            if f.message_id is None:
-                flags_by_session.setdefault(f.session_id, []).append(payload)
-            else:
-                flags_by_message.setdefault(f.message_id, []).append(payload)
+            flags_by_session.setdefault(f.session_id, []).append(payload)
         sessions: dict = {}
         for m in messages:
             if m.session_id not in sessions:
                 sessions[m.session_id] = {"flags": flags_by_session.get(m.session_id, []), "messages": []}
-            sessions[m.session_id]["messages"].append({"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at.isoformat(), "flags": flags_by_message.get(m.id, [])})
+            sessions[m.session_id]["messages"].append({"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at.isoformat()})
         for session_id, session_flags in flags_by_session.items():
             sessions.setdefault(session_id, {"flags": session_flags, "messages": []})
         return {"date": target.isoformat(), "total_messages": len(messages), "total_flags": len(flags), "total_sessions": len(sessions), "sessions": sessions}
