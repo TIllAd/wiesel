@@ -4,6 +4,13 @@ Wenn jemand fragt wo etwas ist oder wie er hinkommt, gib den Google Maps Link di
 
 ---
 
+## Raumsuche
+Raumnummern findest du über:
+- [FAU Karte](https://karte.fau.de/) – Gebäude und Räume auf dem Campus
+- [Campo Raumsuche](https://www.campo.fau.eu/qisserver/pages/cm/exa/searchRoomDetail.xhtml)
+
+
+
 ## Mensen
 
 **Südmensa** (nächste Mensa zum WiSo-Campus Erlangen)
