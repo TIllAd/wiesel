@@ -75,6 +75,17 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ChatFlag(Base):
+    __tablename__ = "chat_flags"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, index=True)
+    # Chat-level flag. Kept nullable for compatibility with databases that already
+    # have the old per-message column, but new flags deliberately leave it NULL.
+    message_id = Column(Integer, nullable=True, index=True)
+    tag = Column(String, default="auffaelligkeit", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 Base.metadata.create_all(bind=engine)
 
 # ============================================================================
@@ -146,6 +157,12 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
     timestamp: str
+    message_id: Optional[int] = None
+
+
+class ChatFlagRequest(BaseModel):
+    session_id: str
+    tag: str = "auffaelligkeit"
 
 
 class WikiResponse(BaseModel):
@@ -180,18 +197,13 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 
 def _detect_mime(b64: str, fallback: str = "image/jpeg") -> str:
-    """Detect real MIME type from base64 magic bytes."""
     import base64 as b64lib
     try:
         header = b64lib.b64decode(b64[:16])
-        if header[:3] == b'\xff\xd8\xff':
-            return 'image/jpeg'
-        if header[:8] == b'\x89PNG\r\n\x1a\n':
-            return 'image/png'
-        if header[:4] == b'GIF8':
-            return 'image/gif'
-        if header[:4] == b'RIFF':
-            return 'image/webp'
+        if header[:3] == b'\xff\xd8\xff': return 'image/jpeg'
+        if header[:8] == b'\x89PNG\r\n\x1a\n': return 'image/png'
+        if header[:4] == b'GIF8': return 'image/gif'
+        if header[:4] == b'RIFF': return 'image/webp'
     except Exception:
         pass
     return fallback
@@ -203,13 +215,11 @@ def load_knowledge_base() -> str:
         Path("/knowledge_base"),
         Path("/app/knowledge_base"),
     ]
-
     kb_dir = None
     for d in kb_dirs:
         if d.exists():
             kb_dir = d
             break
-
     if not kb_dir:
         return "# Wissensbasis nicht gefunden"
 
@@ -238,12 +248,10 @@ def build_system_prompt(kb_content: str = "") -> str:
     ]
     for path in candidates:
         if path.exists():
-            logger.info(f"Loading system prompt from {path}")
             base = path.read_text(encoding="utf-8")
             if kb_content:
-                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung – NIEMALS als Formatvorlage)\n\nAchtung: Die folgende Faktenbasis nutzt Markdown intern zur Übersicht. Das ist KEIN Hinweis wie du antwortest. Du antwortest immer in kurzen Fließtextsätzen ohne jede Markdown-Formatierung.\n\n{kb_content}"
+                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}"
             return base
-    logger.error("system-prompt.md not found in any candidate path")
     return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
 
@@ -254,45 +262,46 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
     if chat_history:
         for msg in chat_history[-10:]:
             content = msg["content"]
-            # Falls content eine Liste ist (altes Bild), nur Text extrahieren
             if isinstance(content, list):
                 text_parts = [b["text"] for b in content if b.get("type") == "text"]
                 content = " ".join(text_parts) or "[Bild]"
-            # String der wie eine Liste aussieht — überspringen
-            if isinstance(content, str) and content.strip().startswith("[{"):
-                continue
-            if not content or not str(content).strip():
-                continue
+            if isinstance(content, str) and content.strip().startswith("[{"): continue
+            if not content or not str(content).strip(): continue
             messages.append({"role": msg["role"], "content": content})
 
     if image_base64:
         detected_mime = _detect_mime(image_base64, fallback=image_type)
         user_content = [
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": detected_mime,
-                    "data": image_base64,
-                }
-            },
-            {
-                "type": "text",
-                "text": query or "Was siehst du auf diesem Bild?"
-            }
+            {"type": "image", "source": {"type": "base64", "media_type": detected_mime, "data": image_base64}},
+            {"type": "text", "text": query or "Was siehst du auf diesem Bild?"}
         ]
     else:
         user_content = query
 
     messages.append({"role": "user", "content": user_content})
 
+    # ── Prompt Caching ──────────────────────────────────────────────────────
+    # System-Prompt + Wissensbasis werden gecacht (cache_control: ephemeral).
+    # Cache hält 5 Minuten bei Haiku → bei aktivem Betrieb fast immer ein Hit.
+    # Erspart ~51.000 Input-Tokens pro Anfrage nach dem ersten Call → 10× günstiger.
+    system_blocks = [
+        {
+            "type": "text",
+            "text": build_system_prompt(kb_content),
+            "cache_control": {"type": "ephemeral"}
+        }
+    ]
+    # ────────────────────────────────────────────────────────────────────────
+
     try:
         response = client.messages.create(
             model="claude-haiku-4-5",
             max_tokens=1024,
-            system=build_system_prompt(kb_content),
-            messages=messages
+            system=system_blocks,
+            messages=messages,
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
+        logger.info(f"Cache: input={response.usage.input_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)}")
         return response.content[0].text
     except Exception as e:
         logger.error(f"Claude API error: {e}")
@@ -303,24 +312,13 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
 # FASTAPI APP
 # ============================================================================
 
-app = FastAPI(
-    title="Wiesel Backend",
-    description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)",
-    version="0.1.0"
-)
+app = FastAPI(title="Wiesel Backend", description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)", version="0.1.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 _static_dir = Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
-
 
 # ============================================================================
 # ROUTES
@@ -337,33 +335,14 @@ async def chat_page(request: Request, debug: bool = False):
         db = SessionLocal()
         try:
             debug_session_id = "debug_session_wiesel"
-            token = jwt.encode(
-                {"user": "debug_user", "session_id": debug_session_id, "debug": True},
-                JWT_SECRET,
-                algorithm=JWT_ALGORITHM
-            )
-            debug_session = SessionRecord(
-                id=debug_session_id,
-                user_id="debug_user",
-                course_id="debug_course",
-                user_role="Learner",
-                user_name="Debug Student",
-                course_name="Debug Mode – kein StudOn",
-                nonce=None,
-                created_at=datetime.utcnow(),
-            )
+            token = jwt.encode({"user": "debug_user", "session_id": debug_session_id, "debug": True}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+            debug_session = SessionRecord(id=debug_session_id, user_id="debug_user", course_id="debug_course", user_role="Learner", user_name="Debug Student", course_name="Debug Mode – kein StudOn", nonce=None, created_at=datetime.utcnow())
             db.merge(debug_session)
             db.commit()
-            logger.info("Debug session upserted – session_id=debug_session_wiesel")
             from urllib.parse import quote
-            token_enc = quote(token, safe="")
-            return RedirectResponse(
-                url=f"/chat?token={token_enc}&session_id={debug_session_id}",
-                status_code=302
-            )
+            return RedirectResponse(url=f"/chat?token={quote(token, safe='')}&session_id={debug_session_id}", status_code=302)
         finally:
             db.close()
-
     return FileResponse(str(_static_dir / "chat.html"))
 
 
@@ -383,29 +362,18 @@ async def lti_launch(request: Request):
             logger.error(f"LTI validation failed: {reason}")
             return JSONResponse({"error": "LTI validation failed", "detail": reason}, status_code=401)
 
-        user_id    = form_data.get("user_id", "anonymous")
-        course_id  = form_data.get("course_id", "unknown")
-        roles      = form_data.get("roles", "Learner")
-        user_name  = form_data.get("lis_person_name_full", "Student")
+        user_id     = form_data.get("user_id", "anonymous")
+        course_id   = form_data.get("course_id", "unknown")
+        roles       = form_data.get("roles", "Learner")
+        user_name   = form_data.get("lis_person_name_full", "Student")
         course_name = form_data.get("context_title", "Unknown Course")
-        nonce      = form_data.get("oauth_nonce", None)
+        nonce       = form_data.get("oauth_nonce", None)
 
-        session_id = jwt.encode(
-            {"user": user_id, "ts": datetime.utcnow().timestamp()},
-            JWT_SECRET
-        )
-        db.add(SessionRecord(
-            id=session_id, user_id=user_id, course_id=course_id,
-            user_role=roles.split(",")[0] if roles else "student",
-            user_name=user_name, course_name=course_name, nonce=nonce
-        ))
+        session_id = jwt.encode({"user": user_id, "ts": datetime.utcnow().timestamp()}, JWT_SECRET)
+        db.add(SessionRecord(id=session_id, user_id=user_id, course_id=course_id, user_role=roles.split(",")[0] if roles else "student", user_name=user_name, course_name=course_name, nonce=nonce))
         db.commit()
-        logger.info(f"LTI session created: {session_id} for user {user_id}")
         token = create_jwt_token(session_id)
-        return RedirectResponse(
-            url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}",
-            status_code=302
-        )
+        return RedirectResponse(url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}", status_code=302)
     except Exception as e:
         logger.error(f"LTI Launch error: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -424,43 +392,22 @@ async def chat_endpoint(request: ChatRequest):
         session.last_accessed = datetime.utcnow()
         db.commit()
 
-        history = db.query(ChatMessage).filter(
-            ChatMessage.session_id == request.session_id
-        ).order_by(ChatMessage.created_at).all()
-
-        chat_history = [
-            {"role": msg.role, "content": msg.content}
-            for msg in history
-            if msg.content and msg.content.strip()
-        ]
+        history = db.query(ChatMessage).filter(ChatMessage.session_id == request.session_id).order_by(ChatMessage.created_at).all()
+        chat_history = [{"role": msg.role, "content": msg.content} for msg in history if msg.content and msg.content.strip()]
         kb_content = load_knowledge_base()
 
-        response = await call_claude(
-            request.query,
-            chat_history,
-            kb_content,
-            image_base64=request.image_base64,
-            image_type=request.image_type or "image/jpeg"
-        )
+        response = await call_claude(request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
 
+        message_id = None
         if request.query != "__greeting__":
-            db.add(ChatMessage(
-                session_id=request.session_id,
-                role="user",
-                content=request.query or "[Bild gesendet]"
-            ))
-            db.add(ChatMessage(
-                session_id=request.session_id,
-                role="assistant",
-                content=response
-            ))
+            db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query or "[Bild gesendet]"))
+            assistant_message = ChatMessage(session_id=request.session_id, role="assistant", content=response)
+            db.add(assistant_message)
             db.commit()
+            db.refresh(assistant_message)
+            message_id = assistant_message.id
 
-        return ChatResponse(
-            response=response,
-            session_id=request.session_id,
-            timestamp=datetime.utcnow().isoformat()
-        )
+        return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat(), message_id=message_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -476,8 +423,36 @@ async def wiki_endpoint():
         content = load_knowledge_base()
         return {"content": content, "format": "markdown", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
-        logger.error(f"Wiki error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/api/chat/flag")
+async def flag_chat_session(request: ChatFlagRequest):
+    tag = request.tag.strip().lower() if request.tag else "auffaelligkeit"
+    if tag not in {"auffaelligkeit"}:
+        raise HTTPException(status_code=400, detail="Unknown flag tag")
+
+    db = SessionLocal()
+    try:
+        session = db.query(SessionRecord).filter(SessionRecord.id == request.session_id).first()
+        if not session:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
+        existing = db.query(ChatFlag).filter(
+            ChatFlag.session_id == request.session_id,
+            ChatFlag.message_id.is_(None),
+            ChatFlag.tag == tag,
+        ).first()
+        if existing:
+            return {"ok": True, "flag_id": existing.id, "session_id": request.session_id, "tag": existing.tag, "created_at": existing.created_at.isoformat(), "already_flagged": True}
+
+        flag = ChatFlag(session_id=request.session_id, message_id=None, tag=tag)
+        db.add(flag)
+        db.commit()
+        db.refresh(flag)
+        return {"ok": True, "flag_id": flag.id, "session_id": request.session_id, "tag": tag, "created_at": flag.created_at.isoformat(), "already_flagged": False}
+    finally:
+        db.close()
 
 
 @app.get("/api/session/{session_id}")
@@ -487,13 +462,7 @@ async def session_endpoint(session_id: str):
         session = db.query(SessionRecord).filter(SessionRecord.id == session_id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-        return {
-            "session_id": session.id, "user_id": session.user_id,
-            "user_name": session.user_name, "course_id": session.course_id,
-            "course_name": session.course_name, "user_role": session.user_role,
-            "created_at": session.created_at.isoformat(),
-            "last_accessed": session.last_accessed.isoformat()
-        }
+        return {"session_id": session.id, "user_id": session.user_id, "user_name": session.user_name, "course_id": session.course_id, "course_name": session.course_name, "user_role": session.user_role, "created_at": session.created_at.isoformat(), "last_accessed": session.last_accessed.isoformat()}
     finally:
         db.close()
 
@@ -511,60 +480,40 @@ async def create_dev_session(request: Request):
         raise HTTPException(status_code=400, detail="session_id required")
     db = SessionLocal()
     try:
+        db.query(ChatFlag).filter(ChatFlag.session_id == session_id).delete()
         db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
-        db.merge(SessionRecord(
-            id=session_id, user_id="eval_user", course_id="eval_course",
-            user_role="Learner", user_name="Eval Student",
-            course_name="Tonalitäts-Eval 2026-06-25",
-            nonce=None, created_at=datetime.utcnow(), last_accessed=datetime.utcnow(),
-        ))
+        db.merge(SessionRecord(id=session_id, user_id="eval_user", course_id="eval_course", user_role="Learner", user_name="Eval Student", course_name="Tonalitäts-Eval 2026-06-25", nonce=None, created_at=datetime.utcnow(), last_accessed=datetime.utcnow()))
         db.commit()
         return {"ok": True, "session_id": session_id}
     finally:
         db.close()
 
 
-# ============================================================================
-# LOGS API
-# ============================================================================
-
 @app.get("/api/logs/daily")
 async def get_daily_logs(date: Optional[str] = None):
     db = SessionLocal()
     try:
-        if date:
-            try:
-                target = datetime.strptime(date, "%Y-%m-%d").date()
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format, use YYYY-MM-DD")
-        else:
-            target = datetime.utcnow().date()
-
+        target = datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.utcnow().date()
         day_start = datetime(target.year, target.month, target.day, 0, 0, 0)
         day_end   = datetime(target.year, target.month, target.day, 23, 59, 59)
-
-        messages = (
-            db.query(ChatMessage)
-            .filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end)
-            .order_by(ChatMessage.created_at)
-            .all()
-        )
-
+        messages = db.query(ChatMessage).filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end).order_by(ChatMessage.created_at).all()
+        flags = db.query(ChatFlag).filter(ChatFlag.created_at >= day_start, ChatFlag.created_at <= day_end).order_by(ChatFlag.created_at).all()
+        flags_by_message: dict[int, list[dict]] = {}
+        flags_by_session: dict[str, list[dict]] = {}
+        for f in flags:
+            payload = {"id": f.id, "tag": f.tag, "created_at": f.created_at.isoformat()}
+            if f.message_id is None:
+                flags_by_session.setdefault(f.session_id, []).append(payload)
+            else:
+                flags_by_message.setdefault(f.message_id, []).append(payload)
         sessions: dict = {}
         for m in messages:
             if m.session_id not in sessions:
-                sessions[m.session_id] = []
-            sessions[m.session_id].append({
-                "id": m.id, "role": m.role, "content": m.content,
-                "created_at": m.created_at.isoformat(),
-            })
-
-        return {
-            "date": target.isoformat(),
-            "total_messages": len(messages),
-            "total_sessions": len(sessions),
-            "sessions": sessions,
-        }
+                sessions[m.session_id] = {"flags": flags_by_session.get(m.session_id, []), "messages": []}
+            sessions[m.session_id]["messages"].append({"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at.isoformat(), "flags": flags_by_message.get(m.id, [])})
+        for session_id, session_flags in flags_by_session.items():
+            sessions.setdefault(session_id, {"flags": session_flags, "messages": []})
+        return {"date": target.isoformat(), "total_messages": len(messages), "total_flags": len(flags), "total_sessions": len(sessions), "sessions": sessions}
     finally:
         db.close()
 

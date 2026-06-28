@@ -58,6 +58,11 @@
     .hname em { font-style:normal; color:#f5c4b3; }
     .hsub { font-size:.65rem; color:rgba(255,255,255,.5); }
     .hbadge { margin-left:auto; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
+    .chat-flag-wrap { position:relative; flex-shrink:0; }
+    .chat-flag-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.26); color:#fecaca; border-radius:9px; width:30px; height:30px; cursor:pointer; font-size:15px; }
+    .chat-flag-btn:hover, .chat-flag-btn.flagged { background:#fee2e2; border-color:#fecaca; color:#dc2626; }
+    .chat-flag-menu { display:none; position:absolute; right:0; top:36px; z-index:30; background:#fff; border:1px solid var(--border); border-radius:10px; min-width:150px; padding:4px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
+    .chat-flag-wrap.open .chat-flag-menu { display:block; }
     #ctx-label { font-size:11px; color:rgba(255,255,255,.4); margin-left:6px; }
 
     /* QUICK CHIPS */
@@ -131,6 +136,8 @@
 
     .msg.user { background:var(--orange); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 2px 8px rgba(216,90,48,.25); }
     .msg.error { background:#fff0f0; border:1px solid #fecaca; color:#b91c1c; }
+    .flag-option { display:block; width:100%; border:0; background:#fff; color:#991b1b; text-align:left; font-family:var(--font); font-weight:800; font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer; }
+    .flag-option:hover { background:#fee2e2; }
 
     /* TYPING */
     .typing-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
@@ -198,6 +205,12 @@
     <div class="hsub">Wissenssammler · <span style="color:#4CD964;font-weight:800">● Online</span></div>
   </div>
   <div class="hbadge">FAU Erlangen</div>
+  <div id="chat-flag" class="chat-flag-wrap" style="display:none">
+    <button id="chat-flag-btn" class="chat-flag-btn" type="button" title="Diesen Chat markieren">🚩</button>
+    <div class="chat-flag-menu">
+      <button id="chat-flag-option" class="flag-option" type="button">Auffälligkeit</button>
+    </div>
+  </div>
   <span id="ctx-label"></span>
 </div>
 
@@ -294,7 +307,36 @@
     'Warte, ich kenn das Ding doch…',
   ];
 
-  function addMessage(role, text, avatarState = 'talk') {
+  function setupChatFlagControl() {
+    if (!sessionId) return;
+    const wrap = document.getElementById('chat-flag');
+    const btn = document.getElementById('chat-flag-btn');
+    const opt = document.getElementById('chat-flag-option');
+    wrap.style.display = 'block';
+    btn.addEventListener('click', (e) => { e.stopPropagation(); wrap.classList.toggle('open'); });
+    opt.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      wrap.classList.remove('open');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/chat/flag', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({session_id: sessionId, tag: 'auffaelligkeit'})
+        });
+        if (!res.ok) throw new Error('flag failed');
+        btn.classList.add('flagged');
+        btn.title = 'Chat als Auffälligkeit markiert';
+      } catch {
+        btn.disabled = false;
+        btn.title = 'Markierung fehlgeschlagen';
+      }
+    });
+  }
+
+  setupChatFlagControl();
+  document.addEventListener('click', () => document.querySelectorAll('.chat-flag-wrap.open').forEach(w => w.classList.remove('open')));
+
+  function addMessage(role, text, avatarState = 'talk', messageId = null) {
     const row = document.createElement('div');
     row.className = 'msg-row ' + (role === 'user' ? 'user' : role === 'bot' ? 'bot' : 'error');
     const bubble = document.createElement('div');
@@ -349,7 +391,7 @@
         body: JSON.stringify({query: '__greeting__', session_id: sid})
       });
       removeTyping();
-      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response)); }
+      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response), data.message_id); }
       else { addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found'); }
     } catch { removeTyping(); addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle'); }
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
@@ -381,7 +423,7 @@
       clearTimeout(readTimer); removeTyping(); removeImage();
       if (!res.ok) { const err = await res.json().catch(() => ({detail: res.statusText})); addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler')); return; }
       const data = await res.json();
-      addMessage('bot', data.response, detectAvatarState(data.response));
+      addMessage('bot', data.response, detectAvatarState(data.response), data.message_id);
     } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ Verbindung fehlgeschlagen.'); }
     sendBtn.disabled = false;
   }
