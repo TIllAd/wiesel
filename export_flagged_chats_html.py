@@ -9,7 +9,16 @@ Usage:
   cd C:/Users/tillt/wiesel
   python export_flagged_chats_html.py --open
   python export_flagged_chats_html.py --days 30 --open
+  python export_flagged_chats_html.py --archive --open
   python export_flagged_chats_html.py --json C:/Users/tillt/hermes/analytics/analytics_2026-06-28.json --open
+
+Default output überschreibt immer:
+  reports/flagged-chats-latest.html
+  reports/flagged-chats-latest.md
+
+Mit --archive werden zusätzlich timestamped Kopien erzeugt:
+  reports/flagged-chats-YYYYMMDD_HHMMSS.html
+  reports/flagged-chats-YYYYMMDD_HHMMSS.md
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ import argparse
 import html
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -37,6 +47,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--days", type=int, default=30, help="Nur Sessions seit N Tagen aus DB, Default: 30")
     parser.add_argument("--include-unflagged", action="store_true", help="Auch ungeflaggte Sessions aufnehmen. Normalerweise Unsinn, aber bitte.")
     parser.add_argument("--open", action="store_true", help="HTML nach Export öffnen")
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="Zusätzlich timestamped Archivkopien schreiben. Standard überschreibt nur flagged-chats-latest.*",
+    )
     parser.add_argument(
         "--split-gaps-minutes",
         type=int,
@@ -211,6 +226,129 @@ def short(text: str, n: int = 180) -> str:
     return cleaned if len(cleaned) <= n else cleaned[: n - 1] + "…"
 
 
+def render_inline_markdown(text: str) -> str:
+    """Sehr kleiner Markdown-Inline-Renderer für Chat-Reports.
+
+    Kein komplettes Markdown-Paket, weil dieser Export portabel bleiben soll.
+    Reicht für Wiesel-Antworten: Links, **fett**, *kursiv*, `code`.
+    """
+    escaped = html.escape(text)
+
+    def link_repl(match: re.Match[str]) -> str:
+        label = match.group(1)
+        url = match.group(2)
+        return f"<a href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>{label}</a>"
+
+    escaped = re.sub(r"\[([^\]]+)\]\((https?://[^\s)]+)\)", link_repl, escaped)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", escaped)
+    return escaped
+
+
+def render_message_markdown(content: Any) -> str:
+    """Rendert Markdown-ish Chattext als HTML.
+
+    Unterstützt absichtlich nur die Formen, die in Wiesel-Antworten wirklich vorkommen:
+    Überschriften, Listen, Blockquotes, Fenced Code, Links, Bold/Italic/Inline-Code.
+    Mehr wäre wieder so ein Framework-Altar für drei Sternchen. Nein.
+    """
+    lines = qmark(content).splitlines()
+    out: list[str] = []
+    paragraph: list[str] = []
+    in_ul = False
+    in_ol = False
+    in_code = False
+    code_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        nonlocal paragraph
+        if paragraph:
+            out.append(f"<p>{'<br>'.join(render_inline_markdown(line) for line in paragraph)}</p>")
+            paragraph = []
+
+    def close_lists() -> None:
+        nonlocal in_ul, in_ol
+        if in_ul:
+            out.append("</ul>")
+            in_ul = False
+        if in_ol:
+            out.append("</ol>")
+            in_ol = False
+
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        stripped = line.strip()
+
+        if stripped.startswith("```"):
+            flush_paragraph()
+            close_lists()
+            if in_code:
+                out.append(f"<pre class='code-block'><code>{html.escape(chr(10).join(code_lines))}</code></pre>")
+                code_lines = []
+                in_code = False
+            else:
+                in_code = True
+            continue
+
+        if in_code:
+            code_lines.append(line)
+            continue
+
+        if not stripped:
+            flush_paragraph()
+            close_lists()
+            continue
+
+        heading = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if heading:
+            flush_paragraph()
+            close_lists()
+            level = min(len(heading.group(1)) + 2, 6)
+            out.append(f"<h{level}>{render_inline_markdown(heading.group(2))}</h{level}>")
+            continue
+
+        bullet = re.match(r"^[-*]\s+(.+)$", stripped)
+        if bullet:
+            flush_paragraph()
+            if in_ol:
+                out.append("</ol>")
+                in_ol = False
+            if not in_ul:
+                out.append("<ul>")
+                in_ul = True
+            out.append(f"<li>{render_inline_markdown(bullet.group(1))}</li>")
+            continue
+
+        numbered = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if numbered:
+            flush_paragraph()
+            if in_ul:
+                out.append("</ul>")
+                in_ul = False
+            if not in_ol:
+                out.append("<ol>")
+                in_ol = True
+            out.append(f"<li>{render_inline_markdown(numbered.group(1))}</li>")
+            continue
+
+        quote = re.match(r"^>\s?(.+)$", stripped)
+        if quote:
+            flush_paragraph()
+            close_lists()
+            out.append(f"<blockquote>{render_inline_markdown(quote.group(1))}</blockquote>")
+            continue
+
+        close_lists()
+        paragraph.append(line)
+
+    flush_paragraph()
+    close_lists()
+    if in_code:
+        out.append(f"<pre class='code-block'><code>{html.escape(chr(10).join(code_lines))}</code></pre>")
+    return "".join(out) or "<p>–</p>"
+
+
 def parse_dt(value: Any) -> datetime | None:
     if not value:
         return None
@@ -293,7 +431,7 @@ def render_html(report: dict[str, Any], split_gaps_minutes: int = 20) -> str:
                 message_html.append(
                     f"<div class='message {role_class}'>"
                     f"<div class='message-meta'>{html.escape(role)} · ID {html.escape(qmark(m.get('id')))} · {html.escape(qmark(m.get('created_at')))}</div>"
-                    f"<pre>{html.escape(qmark(m.get('content')))}</pre>"
+                    f"<div class='message-content'>{render_message_markdown(m.get('content'))}</div>"
                     "</div>"
                 )
             open_attr = " open" if block_idx == len(blocks) else ""
@@ -354,7 +492,21 @@ summary {{ cursor:pointer; color:var(--muted); margin-bottom:12px; }}
 .message.user {{ background:var(--user); }}
 .message.assistant {{ background:var(--assistant); }}
 .message-meta {{ padding:8px 12px; border-bottom:1px solid var(--line); font-size:12px; }}
-pre {{ margin:0; padding:12px; white-space:pre-wrap; word-wrap:break-word; font:14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }}
+.message-content {{ padding:14px 16px; }}
+.message-content :first-child {{ margin-top:0; }}
+.message-content :last-child {{ margin-bottom:0; }}
+.message-content p {{ margin:0 0 12px; }}
+.message-content h3, .message-content h4, .message-content h5, .message-content h6 {{ margin:16px 0 8px; color:#f0f6fc; line-height:1.25; }}
+.message-content h3 {{ font-size:18px; }}
+.message-content h4 {{ font-size:16px; }}
+.message-content h5, .message-content h6 {{ font-size:15px; }}
+.message-content ul, .message-content ol {{ margin:8px 0 14px 22px; padding:0; }}
+.message-content li {{ margin:4px 0; }}
+.message-content strong {{ color:#fff; font-weight:700; }}
+.message-content code {{ padding:2px 5px; border-radius:5px; background:rgba(110,118,129,.28); font:13px ui-monospace, SFMono-Regular, Consolas, monospace; }}
+.message-content blockquote {{ margin:10px 0; padding:8px 12px; border-left:3px solid var(--yellow); background:rgba(210,153,34,.08); color:#ffdf8a; }}
+pre.code-block {{ margin:10px 0; padding:12px; overflow:auto; white-space:pre-wrap; word-wrap:break-word; border:1px solid var(--line); border-radius:10px; background:#0d1117; font:14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }}
+pre.code-block code {{ padding:0; background:transparent; }}
 .empty {{ padding:24px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); }}
 </style>
 </head>
@@ -411,16 +563,31 @@ def main() -> int:
     else:
         report = load_from_db(Path(args.db), args.days, args.include_unflagged)
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    html_path = out_dir / f"flagged-chats-{ts}.html"
-    md_path = out_dir / f"flagged-chats-{ts}.md"
-    html_path.write_text(render_html(report, args.split_gaps_minutes), encoding="utf-8")
-    md_path.write_text(render_markdown(report, args.split_gaps_minutes), encoding="utf-8")
+    html_content = render_html(report, args.split_gaps_minutes)
+    md_content = render_markdown(report, args.split_gaps_minutes)
+
+    html_path = out_dir / "flagged-chats-latest.html"
+    md_path = out_dir / "flagged-chats-latest.md"
+    html_path.write_text(html_content, encoding="utf-8")
+    md_path.write_text(md_content, encoding="utf-8")
+
+    archived_paths: list[Path] = []
+    if args.archive:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        archive_html_path = out_dir / f"flagged-chats-{ts}.html"
+        archive_md_path = out_dir / f"flagged-chats-{ts}.md"
+        archive_html_path.write_text(html_content, encoding="utf-8")
+        archive_md_path.write_text(md_content, encoding="utf-8")
+        archived_paths = [archive_html_path, archive_md_path]
 
     print("Geflaggte Chats exportiert:")
     print(f"  Sessions: {len(report.get('sessions', []))}")
     print(f"  HTML: {html_path}")
     print(f"  Markdown: {md_path}")
+    if archived_paths:
+        print("  Archiv:")
+        for path in archived_paths:
+            print(f"    {path}")
 
     if args.open:
         open_file(html_path)
