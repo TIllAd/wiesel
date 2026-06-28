@@ -44,6 +44,8 @@ JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
 DATABASE_URL = "sqlite:///./wiesel.db"
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
+DEFAULT_GREETING = "Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?"
+SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
 
 # ============================================================================
 # DATABASE SETUP
@@ -255,6 +257,21 @@ def build_system_prompt(kb_content: str = "") -> str:
     return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
 
+def looks_like_system_prompt_leak(text: str) -> bool:
+    """Detect accidental raw prompt disclosure before it reaches the frontend."""
+    if not text:
+        return False
+    markers = [
+        "Wiesel – System-Prompt",
+        "Wiesel - System-Prompt",
+        "Offen · Charakter-First",
+        "## Wie ich bin",
+        "## Was ich weiß",
+        "## Faktenbasis",
+    ]
+    return any(marker in text for marker in markers)
+
+
 async def call_claude(query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -302,7 +319,11 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
             extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
         logger.info(f"Cache: input={response.usage.input_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)}")
-        return response.content[0].text
+        text = response.content[0].text
+        if looks_like_system_prompt_leak(text):
+            logger.error("Blocked likely system-prompt leak in Claude response")
+            return SYSTEM_PROMPT_LEAK_FALLBACK
+        return text
     except Exception as e:
         logger.error(f"Claude API error: {e}")
         return f"Entschuldigung, ich hatte einen technischen Fehler: {str(e)}"
@@ -406,6 +427,9 @@ async def chat_endpoint(request: ChatRequest):
 
         session.last_accessed = datetime.utcnow()
         db.commit()
+
+        if request.query == "__greeting__" and not request.image_base64:
+            return ChatResponse(response=DEFAULT_GREETING, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
 
         history = db.query(ChatMessage).filter(ChatMessage.session_id == request.session_id).order_by(ChatMessage.created_at).all()
         chat_history = [{"role": msg.role, "content": msg.content} for msg in history if msg.content and msg.content.strip()]
