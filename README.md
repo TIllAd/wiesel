@@ -1,66 +1,120 @@
-# wiesel – Studienbegleiter für WiSo FAU
+# Wiesel – Studienbegleiter für FAU WiSo
 
-Dein KI-Begleiter durchs Studium an der Friedrich-Alexander-Universität Erlangen-Nürnberg (Wirtschaftswissenschaften). **Keine generischen Antworten. Prüfungsrelevant. Ankerung in echtem Wissen — Karpathy Wiki für KI-Grundlagen, RAG mit lokaler Datenbank.**
+Wiesel ist ein KI-gestützter Studienstart-Begleiter für Studierende der FAU WiSo. Der Bot hilft bei Orientierung, Portalen, Fristen, Anlaufstellen und typischen Erstsemester-Fragen — nicht als generischer FAQ-Automat, sondern als klarer, kurzer und charaktervoller Wegweiser durchs Uni-Labyrinth.
 
-## Features
+Wichtig: Wiesel ersetzt keine offiziellen Stellen. Bei Prüfungen, Fristen, BAföG, Krankheit, Rücktritt, Rechtsfragen oder unklarer Faktenlage verweist Wiesel auf die passende offizielle Quelle.
 
-- **Wissen, nicht Chat**: Basiert auf Karpathy-Wiki + strukturierte FAQs für WiSo-Inhalte
-- **Lokal & sicher**: Alle Daten bleiben auf RRZE-Systemen, keine externen APIs nötig
-- **Für Erstsemester gemacht**: Prüfungsfokussiert, keine Marketing-Sprache
-- **Pflege für Nicht-Techniker**: FAQ-Updates auch ohne GitHub-Kenntnisse möglich
-- **Skalierbar**: 500+ concurrent users bei Semesterstart vorbereitet
+## Produktprinzipien
 
-## Quickstart
+- **Korrektheit vor Charakter**: Wiesel darf flink und leicht frech klingen. Bei relevanten Fakten gewinnt Präzision.
+- **Kürze vor Vollständigkeitsdrang**: Erst Orientierung, dann bei Bedarf Details. Keine FAQ-Wand für einfache Fragen.
+- **Datenschutz vor Neugier**: Analytics dienen der Qualitätssicherung. Rohchats sind kein Spielzeug.
+- **Keine Infrastruktur-Leaks**: API-, Provider-, Credit- oder Stack-Fehler gehen ins Log, nicht an Studierende.
+- **Pflege durch das Team**: Inhalte liegen als Markdown in `knowledge_base/` und können ohne Frontend-Umbau gepflegt werden.
+
+## Aktueller Tech Stack
+
+- **Backend**: FastAPI, Python 3.11, Uvicorn
+- **LLM**: Anthropic Claude Haiku 4.5 via `anthropic` SDK
+- **Prompting**: `system-prompt.md` plus Markdown-Wissensbasis aus `knowledge_base/`
+- **Kosten/Performance**: Anthropic Prompt Caching für System-Prompt und Wissensbasis
+- **Sessions/Logs**: SQLite über SQLAlchemy
+- **Integration**: LTI 1.1 Launch für StudOn, lokal zusätzlich Debug-Chat
+- **UI**: statisches HTML/CSS/JS unter `backend/static/chat.html`, vom FastAPI-Backend ausgeliefert
+- **Deployment**: Docker / Docker Compose, Standard-Port `8001`
+
+Nicht mehr aktuell: separates React-Frontend, OpenAI/GPT-4o-mini, TF-IDF-RAG als primärer Antwortpfad. Falls du diese Begriffe noch in alten Notizen findest: archäologischer Staub. Nicht anfassen, außer zum Löschen.
+
+## Quickstart lokal
 
 ```bash
-# Klone das Repo
 git clone https://github.com/TIllAd/wiesel.git
 cd wiesel
 
-# Lokale Entwicklung
-docker-compose up -d
+# .env anlegen, siehe unten
+cp backend/.env.example backend/.env 2>/dev/null || true
 
-# Backend
-cd backend && pip install -r requirements.txt && python main.py
-
-# Frontend (separate Terminal)
-cd frontend && npm install && npm start
+# Docker starten
+docker compose up --build
 ```
 
-Nach dem Start: http://localhost:3000
+Dann öffnen:
 
-## Struktur
-
+```text
+http://localhost:8001/chat?debug=true
 ```
+
+Alternative ohne Docker:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+Lokaler Backend-Port ist standardmäßig `8001`.
+
+## Minimale Konfiguration
+
+In `backend/.env`:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+JWT_SECRET=change-me
+MOCK_LTI_MODE=true
+LTI_CONSUMER_KEY=test_consumer_key_mock
+LTI_CONSUMER_SECRET=test_consumer_secret_mock
+```
+
+Für Produktion muss `MOCK_LTI_MODE=false` gesetzt und der echte StudOn/LTI Consumer Key samt Secret hinterlegt werden.
+
+## Repository-Struktur
+
+```text
 wiesel/
-├── backend/            # FastAPI + TF-IDF RAG + SQLite
-│   ├── main.py
-│   ├── rag_engine.py   # Vektoren + Karpathy Wiki
-│   ├── config.py
-│   └── tests/
-├── frontend/           # React Widget (für StudOn LTI 1.1)
-│   └── src/
-├── knowledge_base/     # FAQs + Karpathy Wiki
-│   ├── karpathy_wiki.md
-│   └── faqs.json
-├── docs/               # Deployment, Architektur (alles Deutsch)
-└── docker-compose.yml  # RRZE-ready
+├── backend/
+│   ├── main.py                 # FastAPI, LTI, Chat API, SQLite, Healthcheck
+│   ├── static/chat.html         # Chat-UI, Bild-/Sprachinput, Flagging
+│   ├── requirements.txt
+│   └── scraper/                 # Hilfsskripte für Wissensquellen
+├── knowledge_base/              # Markdown-Faktenbasis für Wiesel
+├── docs/
+│   ├── ARCHITECTURE.de.md
+│   └── DEPLOYMENT.de.md
+├── system-prompt.md             # Wiesel-Identität, Ton, Sicherheitsregeln
+├── Dockerfile
+└── docker-compose.yml
 ```
 
-## Für Mitarbeitende
+## Wichtige Endpunkte
 
-**FAQ aktualisieren?** → Siehe [BEITRÄGE.md](BEITRÄGE.md)
-**Bug melden?** → [GitHub Issues](https://github.com/TIllAd/wiesel/issues/new?template=bug_report.md)
-**Neue Feature-Idee?** → [Feature-Request](https://github.com/TIllAd/wiesel/issues/new?template=feature_request.md)
+- `GET /chat?debug=true` – lokaler Testchat ohne StudOn
+- `POST /lti/launch` – LTI-1.1-Launch aus StudOn
+- `POST /api/chat` – Chat API
+- `POST /api/chat/flag` – komplette Session als auffällig markieren
+- `GET /api/session/{session_id}` – Session-Kontext für UI
+- `GET /api/wiki` – geladene Wissensbasis anzeigen
+- `GET /health` – technischer Healthcheck für Backend/LLM
 
-Alle Vorlagen sind auf Deutsch. Keine technischen Skills nötig.
+## Arbeitskultur
 
-## Deployment
+Wiesel ist kein Marketingbot und kein „nettes KI-Spielzeug“. Er soll Studierenden schnell helfen, ohne falsche Sicherheit zu verkaufen. Das Team pflegt Fakten vorsichtig, markiert Unsicherheit sichtbar und entscheidet lieber gegen eine schlaue Antwort als für eine erfundene.
 
-- **Lokal**: `docker-compose up`
-- **RRZE VM**: Siehe [docs/DEPLOYMENT.de.md](docs/DEPLOYMENT.de.md)
-- **LTI 1.1 (StudOn)**: Phase 2, geplant nach MVP
+Ton ist wichtig, aber nicht heilig. Wenn Charakter und Verlässlichkeit kollidieren, wird der Charakter gekürzt. Niedlich darf Wiesel sein; fahrlässig nicht.
+
+## Betrieb und Qualitätssicherung
+
+- Fehler werden intern geloggt und nach außen neutral formuliert.
+- Der UI-Status zeigt kein Online/Offline-Gedöns. Wenn etwas klemmt, antwortet der Bot sauber oder der Request scheitert technisch.
+- Auffällige Chats können in der UI markiert werden.
+- Auswertungen sollen auf strukturierten Analytics-Exports beruhen, nicht auf neugierigem DB-Stöbern.
+- Sensible Inhalte gehören nicht in Berichte und werden nicht zitiert.
+
+## Dokumentation
+
+- Architektur: `docs/ARCHITECTURE.de.md`
+- Deployment: `docs/DEPLOYMENT.de.md`
 
 ## Lizenz
 
-MIT – frei einsetzbar, auch für kommerzielle Weiternutzung.
+MIT.
