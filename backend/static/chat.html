@@ -61,7 +61,7 @@
     .chat-flag-wrap { position:relative; flex-shrink:0; }
     .chat-flag-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.26); color:#fecaca; border-radius:9px; width:30px; height:30px; cursor:pointer; font-size:15px; }
     .chat-flag-btn:hover, .chat-flag-btn.flagged { background:#fee2e2; border-color:#fecaca; color:#dc2626; }
-    .chat-flag-menu { display:none; position:absolute; right:0; top:36px; z-index:30; background:#fff; border:1px solid var(--border); border-radius:10px; min-width:150px; padding:4px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
+    .chat-flag-menu { display:none; position:absolute; right:0; top:36px; z-index:30; background:#fff; border:1px solid var(--border); border-radius:12px; width:260px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
     .chat-flag-wrap.open .chat-flag-menu { display:block; }
     #ctx-label { font-size:11px; color:rgba(255,255,255,.4); margin-left:6px; }
 
@@ -136,8 +136,18 @@
 
     .msg.user { background:var(--orange); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-bottom-right-radius:4px; box-shadow:0 2px 8px rgba(216,90,48,.25); }
     .msg.error { background:#fff0f0; border:1px solid #fecaca; color:#b91c1c; }
+    .flag-help-title { color:#991b1b; font-size:12px; font-weight:900; margin:2px 4px 4px; }
+    .flag-help-text { color:#6b7280; font-size:11px; line-height:1.35; margin:0 4px 8px; }
     .flag-option { display:block; width:100%; border:0; background:#fff; color:#991b1b; text-align:left; font-family:var(--font); font-weight:800; font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer; }
     .flag-option:hover { background:#fee2e2; }
+    .flag-toast { position:fixed; right:16px; top:70px; z-index:60; width:min(360px, calc(100vw - 32px)); background:#fff7ed; border:1px solid #fdba74; border-left:5px solid var(--orange); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.18); padding:12px 14px; color:#7c2d12; display:none; }
+    .flag-toast.show { display:block; animation:fadeIn .18s ease; }
+    .flag-toast-title { font-weight:900; font-size:14px; margin-bottom:4px; }
+    .flag-toast-text { font-size:12px; line-height:1.45; margin-bottom:10px; }
+    .flag-toast-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .flag-toast-btn { border:0; border-radius:9px; padding:7px 10px; font-family:var(--font); font-size:12px; font-weight:900; cursor:pointer; }
+    .flag-toast-btn.secondary { background:#ffedd5; color:#9a3412; }
+    .flag-toast-btn.primary { background:var(--orange); color:#fff; }
 
     /* TYPING */
     .typing-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
@@ -208,6 +218,8 @@
   <div id="chat-flag" class="chat-flag-wrap" style="display:none">
     <button id="chat-flag-btn" class="chat-flag-btn" type="button" title="Diesen Chat markieren">🚩</button>
     <div class="chat-flag-menu">
+      <div class="flag-help-title">Chat als auffällig markieren</div>
+      <div class="flag-help-text">Markiert diesen kompletten Chat für die spätere Auswertung. Für den nächsten Test bitte danach einen frischen Chat öffnen.</div>
       <button id="chat-flag-option" class="flag-option" type="button">Auffälligkeit</button>
     </div>
   </div>
@@ -225,6 +237,15 @@
 </div>
 
 <div id="messages"></div>
+
+<div id="flag-toast" class="flag-toast" role="status" aria-live="polite">
+  <div class="flag-toast-title">🚩 Chat markiert</div>
+  <div class="flag-toast-text">Diese Unterhaltung ist jetzt als Auffälligkeit gespeichert. Wenn du einen weiteren Fall testen willst, öffne bitte einen frischen Chat, sonst landet alles wieder in derselben Session.</div>
+  <div class="flag-toast-actions">
+    <button id="flag-toast-close" class="flag-toast-btn secondary" type="button">Hier bleiben</button>
+    <button id="flag-toast-new" class="flag-toast-btn primary" type="button">Frischen Chat öffnen</button>
+  </div>
+</div>
 
 <input type="file" id="file-input" accept="image/*">
 <div id="img-preview" style="display:none" class="img-preview-wrap">
@@ -244,6 +265,7 @@
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
   const sessionId = params.get('session_id') || null;
+  const isDebugSession = params.get('debug') === '1' || (sessionId || '').startsWith('debug_session_wiesel_');
   // Name aus URL-Param (LTI setzt ?user=...) oder Fallback
   window._userName = decodeURIComponent(params.get('user') || '');
   if (!token && params.get('mock') !== '1') {
@@ -326,6 +348,7 @@
         if (!res.ok) throw new Error('flag failed');
         btn.classList.add('flagged');
         btn.title = 'Chat als Auffälligkeit markiert';
+        showFlagToast();
       } catch {
         btn.disabled = false;
         btn.title = 'Markierung fehlgeschlagen';
@@ -334,9 +357,24 @@
   }
 
   setupChatFlagControl();
+  setupFlagToast();
   document.addEventListener('click', () => document.querySelectorAll('.chat-flag-wrap.open').forEach(w => w.classList.remove('open')));
 
-  function addMessage(role, text, avatarState = 'talk', messageId = null) {
+  function setupFlagToast() {
+    const toast = document.getElementById('flag-toast');
+    const closeBtn = document.getElementById('flag-toast-close');
+    const newBtn = document.getElementById('flag-toast-new');
+    if (!toast || !closeBtn || !newBtn) return;
+    closeBtn.addEventListener('click', () => toast.classList.remove('show'));
+    newBtn.addEventListener('click', () => { window.location.href = '/'; });
+  }
+
+  function showFlagToast() {
+    const toast = document.getElementById('flag-toast');
+    if (toast) toast.classList.add('show');
+  }
+
+  function addMessage(role, text, avatarState = 'talk') {
     const row = document.createElement('div');
     row.className = 'msg-row ' + (role === 'user' ? 'user' : role === 'bot' ? 'bot' : 'error');
     const bubble = document.createElement('div');
@@ -391,7 +429,7 @@
         body: JSON.stringify({query: '__greeting__', session_id: sid})
       });
       removeTyping();
-      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response), data.message_id); }
+      if (res.ok) { const data = await res.json(); addMessage('bot', data.response, detectAvatarState(data.response)); }
       else { addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'found'); }
     } catch { removeTyping(); addMessage('bot', 'Hey – ich bin Wiesel. Was brauchst du?', 'idle'); }
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
@@ -423,7 +461,7 @@
       clearTimeout(readTimer); removeTyping(); removeImage();
       if (!res.ok) { const err = await res.json().catch(() => ({detail: res.statusText})); addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler')); return; }
       const data = await res.json();
-      addMessage('bot', data.response, detectAvatarState(data.response), data.message_id);
+      addMessage('bot', data.response, detectAvatarState(data.response));
     } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ Verbindung fehlgeschlagen.'); }
     sendBtn.disabled = false;
   }
