@@ -1,193 +1,102 @@
 # Projektstruktur & Architektur
 
-Für Entwickler und neugierige Erstis.
+Kurzfassung: Wiesel ist aktuell ein FastAPI-basierter Studienstart-Begleiter mit statischer Chat-UI, SQLite, Markdown-Wissensbasis und Anthropic Claude Haiku 4.5. Alte Begriffe wie React-Frontend, TF-IDF-RAG oder OpenAI beschreiben nicht mehr den Produktivstand.
 
-## Überblick
+## Stack
 
-wiesel ist ein **RAG-System** (Retrieval Augmented Generation), das bedeutet:
-
-1. **Retrieval**: Dein Input → suche ähnliche FAQs/Karpathy-Inhalte in der Datenbank
-2. **Augmentation**: Kombiniere diese mit dem Kontext
-3. **Generation**: Antworte präzise und quellenbasiert
-
-**Stack:**
-- Backend: Python FastAPI (async)
-- Frontend: React (Widget für StudOn)
-- RAG: TF-IDF Vektoren + Cosine Similarity
-- Speicher: SQLite (lokal, keine externen APIs)
-- Host: RRZE VM (chatbot-wiso.de)
+- Backend: Python 3.11, FastAPI, Uvicorn
+- UI: `backend/static/chat.html`, statisch vom Backend ausgeliefert
+- LLM: Anthropic Claude Haiku 4.5
+- Prompting: `system-prompt.md` + `knowledge_base/**/*.md`
+- Performance: Anthropic Prompt Caching für System-Prompt und Wissensbasis
+- Speicher: SQLite über SQLAlchemy
+- Integration: LTI 1.1 für StudOn, Debug-Chat für lokale Tests
+- Deployment: Docker Compose, Port `8001`
 
 ## Verzeichnisse
 
-```
+```text
 backend/
-  main.py              # FastAPI app, routes
-  rag_engine.py        # TF-IDF vectorizer, search, retrieval
-  config.py            # Umgebungsvariablen, Konstanten
-  db/
-    wiesel.db          # SQLite mit User-Feedback & History
-  tests/
-    test_rag_engine.py # Unit-Tests für RAG
-
-frontend/
-  public/              # Static HTML
-  src/
-    App.jsx            # React root
-    ChatWidget.jsx     # Das Chat-Fenster
-    styles.css
-    index.html
+  main.py                  # FastAPI, LTI, Chat API, SQLite, Healthcheck
+  requirements.txt         # Python Dependencies
+  static/chat.html         # Chat-UI
+  scraper/                 # Hilfsskripte für Wissensquellen
 
 knowledge_base/
-  karpathy_wiki.md     # Auszug aus https://github.com/karpathy/llm.c
-  faqs.json            # WiSo-spezifische FAQs (Categories A-G)
-  categories.json      # Metadaten für Kategorien
+  *.md                     # Faktenbasis für Studienstart, Portale, Orte, BAföG usw.
 
 docs/
-  DEPLOYMENT.de.md     # Schritt-für-Schritt RRZE-Deployment
-  ARCHITECTURE.de.md   # Diese Datei (technische Details)
-  API.de.md            # REST-Endpoints (für Frontend-Dev)
-  KARPATHY_WIKI.md     # Wie die Wiki eingebunden ist
+  ARCHITECTURE.de.md       # technische Architektur
+  DEPLOYMENT.de.md         # Deployment und Betrieb
 
-docker-compose.yml     # Local dev & RRZE
-Dockerfile             # Multi-stage build
-.github/
-  ISSUE_TEMPLATE/
-    bug_report.md      # Bug-Report Template
-    feature_request.md # Feature-Request Template
-    faq_update.md      # FAQ-Update Template (für Nicht-Techniker)
+system-prompt.md           # Wiesel-Identität, Ton, Grenzen, Sicherheitsregeln
+Dockerfile
+docker-compose.yml
 ```
 
 ## Datenfluss
 
-```
-User gibt Frage ein (Frontend)
+```text
+User schreibt im Chat
   ↓
-POST /api/chat (FastAPI)
+POST /api/chat
   ↓
-rag_engine.search(query)
-  - Vektorisiere Query mit TF-IDF
-  - Finde ähnlichste FAQs (cosine similarity > 0.5)
-  - Finde passende Karpathy Wiki-Passagen
+FastAPI lädt Session + Chatverlauf aus SQLite
   ↓
-Kombiniere Top 3-5 Results
+FastAPI lädt Markdown-Wissensbasis
   ↓
-(Optional: Rufe OpenAI GPT-4o-mini auf für Final Answer)
+system-prompt.md + Wissensbasis werden als gecachter Systemkontext an Claude geschickt
   ↓
-Antworte mit Quellen
+Claude Haiku 4.5 erzeugt Antwort
   ↓
-Speichere Feedback in SQLite (anonymisiert, kein User tracking)
-```
-
-## Kategorien (Knowledge Base)
-
-FAQs sind nach **7 Kategorien** strukturiert:
-
-- **A**: Allgemeines (Studienstart, Unterlagen)
-- **B**: BWL-spezifisch
-- **C**: Community & Networking
-- **D**: Digital Tools (StudOn, Stundenplan)
-- **E**: Examen & Prüfung
-- **F**: Finanzen (BAföG, Stipendien)
-- **G**: Grundlagen (Mathe, VWL)
-
-Jede FAQ gehört zu genau einer Kategorie.
-
-## RAG-Engine Details
-
-```python
-class RAGEngine:
-  vectorizer = TfidfVectorizer(
-    max_features=5000,
-    stop_words='german',
-    lowercase=True
-  )
-  
-  def search(query: str, top_k: int = 5):
-    # 1. Vektorisiere alle FAQs + Query
-    query_vector = vectorizer.transform([query])
-    
-    # 2. Cosine Similarity gegen alle FAQs
-    similarities = cosine_similarity(query_vector, faq_vectors)
-    
-    # 3. Filter top_k
-    top_indices = argsort(similarities)[-top_k:]
-    
-    # 4. Gib FAQs + Confidence-Scores zurück
-    return [
-      {"faq_id": id, "score": score, "answer": text}
-      for id, score, text in top_results
-    ]
+Backend prüft auf Prompt-Leakage und technische Fehler
+  ↓
+Antwort + Usernachricht werden in SQLite gespeichert
+  ↓
+UI zeigt Antwort
 ```
 
-Keine Embedding-Modelle nötig, keine externe API — rein lokal, schnell.
+## Wichtige Dateien
 
-## SQLite Schema
+- `backend/main.py`: zentrale Anwendung. Keine verstreute Service-Magie.
+- `backend/static/chat.html`: UI inklusive Schnellfragen, Bildinput, Spracheingabe, Flagging.
+- `system-prompt.md`: Produktidentität und Sicherheitsregeln.
+- `knowledge_base/`: fachliche Fakten. Hier wird Wissen gepflegt, nicht im Code.
+- `docs/`: Betrieb und Architektur.
 
-```sql
--- Feedback-Logging
-CREATE TABLE interactions (
-  id INTEGER PRIMARY KEY,
-  timestamp DATETIME,
-  query TEXT,
-  faq_id TEXT,
-  user_feedback INT (-1, 0, 1),  -- Daumen hoch/runter
-  session_id TEXT                -- Anonymisiert
-);
+## Datenbank
 
--- FAQs (cached aus faqs.json)
-CREATE TABLE faqs (
-  id TEXT PRIMARY KEY,
-  kategorie TEXT,
-  frage TEXT,
-  antwort TEXT,
-  quelle TEXT,
-  tags TEXT,  -- JSON array
-  updated_at DATETIME
-);
-```
+SQLite-Tabellen:
 
-## Deployment-Umgebungen
+- `sessions`: Session-ID, LTI-Kontext, Rolle, Kurs, Nonce, Zeitstempel
+- `chat_messages`: Rollenbasierte Nachrichten pro Session
+- `chat_flags`: Session-weite Markierungen für Auffälligkeiten
 
-### Lokal (Docker Compose)
+## Lokale Entwicklung
 
 ```bash
-docker-compose up -d
-# Backend: http://localhost:8000
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:8000/docs
+docker compose up --build
 ```
 
-### RRZE VM
+Dann:
 
-```bash
-# SSH auf chatbot-wiso.de
-ssh admin@chatbot-wiso.de
-cd /opt/wiesel
-docker-compose up -d --scale backend=3
-# Load Balancer: http://chatbot-wiso.de
+```text
+http://localhost:8001/chat?debug=true
 ```
 
-Siehe [docs/DEPLOYMENT.de.md](DEPLOYMENT.de.md) für vollständige Anleitung.
-
-## Testing
+Ohne Docker:
 
 ```bash
 cd backend
-pytest tests/ -v
-
-# Abdeckung
-pytest --cov=. tests/
+pip install -r requirements.txt
+python main.py
 ```
 
-## Limits & Skalierung
+## Prinzipien
 
-Aktuell ausgelegt für:
-- **500 concurrent users** (3 Backend-Instanzen)
-- **10,000 FAQs** (TF-IDF efficient bis 50k)
-- **Query-Zeit: <500ms** (P95)
-
-Bei Bedarf: mehr Backend-Replicas oder zu echtem Embedding-Modell upgraden (z.B. Sentence Transformers).
-
----
-
-Fragen? Eröffne ein Issue oder schreib an Till.
+- Fakten in `knowledge_base/` pflegen.
+- Ton und Grenzen in `system-prompt.md` pflegen.
+- Keine Providerdetails an Studierende ausgeben.
+- Keine Online/Offline-Ampel im UI.
+- Analytics nur strukturiert und datenschutzbewusst auswerten.
+- Erst messen, dann Architektur vergrößern. Alles andere ist Beschäftigungstherapie mit YAML.

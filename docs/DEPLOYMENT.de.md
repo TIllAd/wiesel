@@ -1,281 +1,300 @@
-# Deployment – RRZE VM chatbot-wiso.de
+# Deployment – Wiesel
 
-Schritt-für-Schritt Anleitung zum Deployment auf der RRZE-VM.
+Diese Anleitung beschreibt den aktuellen Wiesel-Stack: FastAPI, statische Chat-UI, SQLite, Anthropic Claude Haiku 4.5, Docker Compose, Port `8001`. Kein separates React-Frontend. Kein OpenAI-Setup. Kein altes Architektur-Fossil mit Port 3000.
 
 ## Voraussetzungen
 
-- SSH-Zugang zu chatbot-wiso.de (RRZE VM)
-- Docker & Docker Compose installiert
-- Git installiert
-- GitHub Token im .env oder gh auth konfiguriert
+Auf der Zielmaschine:
 
-## Schritt 1: VM vorbereiten
+- Git
+- Docker mit Compose Plugin (`docker compose`)
+- Zugriff auf das Repository
+- Domain/Reverse Proxy, falls öffentlich betrieben
+- Anthropic API-Key
+- Für StudOn-Produktion: LTI Consumer Key und Secret
 
-```bash
-# SSH auf die VM
-ssh admin@chatbot-wiso.de
-
-# System updaten
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git docker.io docker-compose
-
-# Benutzer zur docker Gruppe hinzufügen
-sudo usermod -aG docker admin
-newgrp docker
-
-# Verify
-docker --version
-docker-compose --version
-```
-
-## Schritt 2: Repository klonen
+## Repository holen
 
 ```bash
 cd /opt
-sudo mkdir -p wiesel
-sudo chown admin:admin wiesel
-
 git clone https://github.com/TIllAd/wiesel.git
 cd wiesel
 ```
 
-## Schritt 3: Umgebungsvariablen
-
-Erstelle `.env` für Production:
+Falls das Repo schon existiert:
 
 ```bash
-cat > .env << 'EOF'
-# FastAPI
-ENVIRONMENT=production
-DEBUG=false
-BACKEND_PORT=8000
-BACKEND_WORKERS=4
-
-# SQLite
-DATABASE_PATH=/data/wiesel.db
-
-# Frontend
-FRONTEND_PORT=3000
-REACT_APP_API_URL=https://chatbot-wiso.de/api
-
-# Optional: OpenAI GPT-4o-mini
-OPENAI_API_KEY=sk-...
-USE_GPT_FOR_GENERATION=true
-
-# Logging
-LOG_LEVEL=INFO
-EOF
-chmod 600 .env
+cd /opt/wiesel
+git pull origin main
 ```
 
-## Schritt 4: Docker Compose (Production)
+## Environment konfigurieren
 
-Verwende die `docker-compose.yml` für Multi-Container:
+Datei: `backend/.env`
 
-```yaml
-version: '3.8'
+Minimal für lokalen/Testbetrieb:
 
-services:
-  backend:
-    build: ./backend
-    environment:
-      - ENVIRONMENT=production
-      - DATABASE_PATH=/data/wiesel.db
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./knowledge_base:/app/knowledge_base:ro
-      - /data/wiesel.db:/data/wiesel.db
-    restart: always
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-
-  frontend:
-    build: ./frontend
-    environment:
-      - REACT_APP_API_URL=https://chatbot-wiso.de/api
-    ports:
-      - "3000:3000"
-    restart: always
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      - backend
-      - frontend
-    restart: always
-
-volumes:
-  data:
-    driver: local
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+MOCK_LTI_MODE=true
+JWT_SECRET=change-me-for-any-shared-environment
 ```
 
-## Schritt 5: Nginx Setup (SSL/TLS)
+Für Produktion mit StudOn:
 
-Erstelle `nginx.conf`:
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+MOCK_LTI_MODE=false
+LTI_CONSUMER_KEY=...
+LTI_CONSUMER_SECRET=...
+JWT_SECRET=long-random-secret
+```
+
+Regeln:
+
+- `.env` niemals committen.
+- `JWT_SECRET` in geteilter Umgebung immer explizit setzen.
+- LTI-Secrets nur auf der Zielmaschine oder in einem echten Secret Store halten.
+- Provider-/Credit-/API-Fehler gehören in Logs, nicht in Screenshots für Studierende.
+
+## Start mit Docker Compose
+
+```bash
+docker compose up --build -d
+```
+
+Status prüfen:
+
+```bash
+docker compose ps
+docker compose logs -f wiesel-backend
+```
+
+Lokal testen:
+
+```text
+http://localhost:8001/chat?debug=true
+```
+
+Healthcheck:
+
+```bash
+curl http://localhost:8001/health
+```
+
+Erwartung bei funktionierendem API-Key und erfolgreichem/noch nicht fehlgeschlagenem LLM-Zustand:
+
+```json
+{"status":"healthy","db":"connected","llm":"connected"}
+```
+
+Der Healthcheck ist technisch. Er wird nicht als Online/Offline-Status im UI angezeigt.
+
+## Start ohne Docker
+
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+Die App läuft dann auf:
+
+```text
+http://localhost:8001
+```
+
+## Reverse Proxy
+
+Für öffentlichen Betrieb sollte ein Reverse Proxy TLS terminieren und auf den Backend-Port `8001` weiterleiten.
+
+Nginx-Beispiel:
 
 ```nginx
-upstream backend {
-    least_conn;
-    server backend:8000;
-}
-
 server {
     listen 80;
     server_name chatbot-wiso.de;
-    
-    # Redirect zu HTTPS
-    return 301 https://$server_name$request_uri;
+    return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
     server_name chatbot-wiso.de;
-    
+
     ssl_certificate /etc/letsencrypt/live/chatbot-wiso.de/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/chatbot-wiso.de/privkey.pem;
-    
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    
-    # Frontend
+
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # API
-    location /api {
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        
-        # WebSocket support (für Live-Updates)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-## Schritt 6: SSL Certificate (Let's Encrypt)
+Danach:
 
 ```bash
-# Certbot installieren
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## TLS mit Let's Encrypt
+
+```bash
+sudo apt update
 sudo apt install -y certbot python3-certbot-nginx
-
-# Zertifikat anfordern
-sudo certbot certonly --standalone -d chatbot-wiso.de -d www.chatbot-wiso.de
-
-# Auto-Renewal konfigurieren
+sudo certbot --nginx -d chatbot-wiso.de
 sudo systemctl enable certbot.timer
 ```
 
-## Schritt 7: Starten
+## StudOn / LTI 1.1
+
+Produktionsbetrieb über:
+
+```text
+POST https://chatbot-wiso.de/lti/launch
+```
+
+Wichtig:
+
+- In Produktion `MOCK_LTI_MODE=false` setzen.
+- `LTI_CONSUMER_KEY` und `LTI_CONSUMER_SECRET` müssen exakt zu StudOn passen.
+- Der Launch erzeugt eine Session und leitet auf `/chat?token=...&session_id=...` weiter.
+- Nonces werden gegen Wiederverwendung geprüft.
+
+Lokale Debug-URL bleibt:
+
+```text
+/chat?debug=true
+```
+
+## Updates deployen
 
 ```bash
 cd /opt/wiesel
-
-# Environment laden
-export $(cat .env | xargs)
-
-# Docker Container starten
-docker-compose up -d --scale backend=3
-
-# Status prüfen
-docker-compose ps
-docker-compose logs -f backend
-```
-
-## Schritt 8: Monitoring & Logs
-
-```bash
-# Alle Container sehen
-docker ps
-
-# Backend-Logs
-docker-compose logs -f backend
-
-# Frontend-Logs
-docker-compose logs -f frontend
-
-# In Echtzeit monitoren (Optional)
-docker stats
-```
-
-## Updates durchführen
-
-```bash
-cd /opt/wiesel
-
-# Neueste Version pullen
 git pull origin main
-
-# Neubauen
-docker-compose build
-
-# Neue Container starten (mit Blue-Green Deployment)
-docker-compose up -d --no-deps --build
+docker compose up --build -d
+docker compose logs -f wiesel-backend
 ```
 
-## Backup
+Danach kurz testen:
 
 ```bash
-# Tägliches Backup der SQLite DB
-0 2 * * * cp /data/wiesel.db /backup/wiesel-$(date +\%Y\%m\%d).db
-
-# In crontab hinzufügen
-crontab -e
+curl http://localhost:8001/health
 ```
+
+Und im Browser:
+
+```text
+https://chatbot-wiso.de/chat?debug=true
+```
+
+Debug-URLs nicht breit an Studierende verteilen. Überraschung: Debug ist Debug.
+
+## Daten und Backups
+
+Aktuell wird SQLite genutzt. Im Compose-Setup liegt die DB über Volume-Mapping bei:
+
+```text
+backend/wiesel.db -> /app/wiesel.db
+```
+
+Ein einfaches Backup:
+
+```bash
+mkdir -p /opt/wiesel-backups
+sqlite3 /opt/wiesel/backend/wiesel.db ".backup '/opt/wiesel-backups/wiesel-$(date +%Y%m%d-%H%M%S).db'"
+```
+
+Cron-Beispiel:
+
+```cron
+0 2 * * * sqlite3 /opt/wiesel/backend/wiesel.db ".backup '/opt/wiesel-backups/wiesel-$(date +\%Y\%m\%d).db'"
+```
+
+Für parallele Nutzung WAL aktivieren:
+
+```bash
+sqlite3 backend/wiesel.db "PRAGMA journal_mode=WAL;"
+```
+
+## Logs und Fehleranalyse
+
+Backend-Logs:
+
+```bash
+docker compose logs -f wiesel-backend
+```
+
+Typische Fälle:
+
+- `Claude API error`: Provider/API/Credit/Netzwerkproblem. Sichtbar für Studierende nur als neutrale Fallback-Antwort.
+- `Blocked likely system-prompt leak`: Modell wollte interne Promptteile ausgeben; Antwort wurde abgefangen.
+- `LTI validation failed`: Consumer Key, Secret, Timestamp, Nonce oder Signatur prüfen.
+
+Keine rohen API-Fehler ins UI kopieren. Das Backend ist nicht die Theaterbühne für Provider-Gedärme.
 
 ## Troubleshooting
 
-**Backend startet nicht:**
+Backend startet nicht:
+
 ```bash
-docker-compose logs backend
-# Prüfe: OPENAI_API_KEY, DATABASE_PATH, Requirements
+docker compose logs wiesel-backend
 ```
 
-**Keine Verbindung zu API:**
+Prüfen:
+
+- existiert `backend/.env`?
+- ist `ANTHROPIC_API_KEY` gesetzt?
+- ist `JWT_SECRET` gesetzt?
+- ist Port `8001` frei?
+
+Healthcheck unhealthy:
+
 ```bash
-curl -X GET https://chatbot-wiso.de/api/health
-# Sollte {"status": "ok"} zurückgeben
+curl http://localhost:8001/health
+docker compose logs --tail=100 wiesel-backend
 ```
 
-**Hohe CPU-Last:**
-```bash
-docker stats
-# Ggf. mehr Backend-Replicas: docker-compose up -d --scale backend=5
-```
+Mögliche Ursachen:
 
-## Performance-Tuning
+- kein Anthropic API-Key
+- letzter LLM-Call fehlgeschlagen
+- Provider/Credit/Netzwerkproblem
 
-Für 500 concurrent users:
+LTI scheitert:
 
-```yaml
-backend:
-  deploy:
-    replicas: 3  # Oder mehr bei >400 users
-    resources:
-      limits:
-        cpus: '2'
-        memory: 2G
+- `MOCK_LTI_MODE=false` gesetzt?
+- Consumer Key korrekt?
+- Consumer Secret korrekt?
+- Serverzeit plausibel?
+- Launch-URL exakt `/lti/launch`?
 
-# Datenbank WAL-Mode aktivieren
-sqlite3 /data/wiesel.db "PRAGMA journal_mode=WAL;"
-```
+UI lädt, aber Chat antwortet nicht:
 
----
+- Browser-Konsole prüfen
+- `/api/session/{session_id}` testen
+- `/api/chat` im Backend-Log prüfen
+- Session-ID gültig?
 
-**Fragen?** Kontakt: Till (tilt@fau.de) oder erstelle ein Issue.
+## Skalierungshinweise
+
+Für O-Woche/Lastspitzen:
+
+- Reverse Proxy vor FastAPI setzen.
+- Mehr Uvicorn-Worker statt unnötiger Frontend-Komplexität.
+- LLM-Latenzen und Fehlerraten loggen.
+- Rate Limits ergänzen, bevor die API-Rechnung zur pädagogischen Maßnahme wird.
+- SQLite beobachten; erst bei realem Druck auf Postgres migrieren.
+
+## Betriebsprinzipien
+
+- Kein sichtbarer Online/Offline-Badge im UI.
+- Keine Provider-Namen in Nutzerantworten.
+- Keine Rohchats in Berichten zitieren.
+- Faktenänderungen zuerst in `knowledge_base/` pflegen.
+- Tonänderungen zuerst in `system-prompt.md` pflegen.
+- Deployments nach Änderungen immer mit echtem Chat-Request testen, nicht nur mit „Container läuft“. Container laufen auch, während innen Unsinn passiert. Das ist ihr Talent.

@@ -1,191 +1,132 @@
-# Wiesel Backend – LTI 1.1 FastAPI
+# Wiesel Backend – FastAPI, LTI 1.1, Claude
 
-Minimales Backend für Wiesel-Chatbot mit LTI 1.1-Integration für StudOn.
+Das Backend ist die zentrale Wiesel-Anwendung: Es liefert die Chat-UI aus, validiert StudOn/LTI-Launches, verwaltet Sessions in SQLite und ruft Claude Haiku 4.5 mit System-Prompt und Markdown-Wissensbasis auf.
 
 ## Stack
 
-- **FastAPI** (async web framework)
-- **SQLAlchemy + SQLite** (session management & chat history)
-- **PyJWT** (session tokens)
-- **oauthlib** (LTI 1.0a signature validation)
-- **Anthropic Claude API** (Haiku 4.5 model)
+- FastAPI + Uvicorn
+- SQLAlchemy + SQLite
+- PyJWT für Session Tokens
+- oauthlib für LTI-1.1/OAuth-1.0a-Signaturen
+- Anthropic SDK, Modell `claude-haiku-4-5`
+- Prompt Caching für System-Prompt und Wissensbasis
 
-## Architecture
+## Struktur
 
-```
+```text
 backend/
-├── main.py                 # FastAPI app, all endpoints
-├── requirements.txt        # Python deps
-└── .env.example           # Environment variables template
+├── main.py             # FastAPI app, alle zentralen Endpunkte
+├── requirements.txt    # Python dependencies
+├── static/chat.html    # statische Chat-UI
+└── scraper/            # Hilfsskripte für Wissensquellen
 ```
 
-## Endpoints
+## Endpunkte
 
-### LTI 1.1
-- `POST /lti/launch` – StudOn handshake (OAuth 1.0a signature validation)
-  - Input: LTI payload from StudOn
-  - Output: Redirect to `/chat?token=<jwt_token>`
-  - Stores session in SQLite with user context
+- `GET /` – Redirect auf `/chat?debug=true`
+- `GET /chat?debug=true` – lokale Debug-Session erzeugen
+- `GET /chat?...` – Chat-UI ausliefern
+- `POST /lti/launch` – StudOn/LTI-Launch validieren und Session erzeugen
+- `POST /api/chat` – Chatnachricht verarbeiten
+- `POST /api/chat/flag` – Session als auffällig markieren
+- `GET /api/session/{session_id}` – Session-Metadaten für die UI
+- `GET /api/wiki` – aktuell geladene Wissensbasis ausgeben
+- `GET /api/logs/daily` – Tageslogs strukturiert exportieren
+- `GET /health` – technischer Healthcheck
 
-### Chat API
-- `POST /api/chat` – Send query, get Claude response
-  - Input: `{query: string, session_id: string}`
-  - Output: `{response: string, session_id, timestamp}`
-  - Maintains chat history per session
-  - Includes Karpathy Wiki context in system prompt
-
-- `GET /api/wiki` – Fetch Karpathy Wiki (markdown)
-  - Output: `{content: markdown, format, timestamp}`
-
-- `GET /api/session/<session_id>` – Get session metadata
-  - Output: user_id, course_id, roles, timestamps
-
-### Health
-- `GET /` – Service info
-- `GET /health` – Health check (for Docker/K8s)
-
-## Local Development
-
-### Setup
+## Lokale Entwicklung
 
 ```bash
 cd wiesel
 
-# Create .env
-cp backend/.env.example backend/.env
-# Edit backend/.env with your keys:
-# - ANTHROPIC_API_KEY=sk-your-key
-# - LTI_CONSUMER_KEY/SECRET (mock for local testing)
-
-# Install deps
-pip install -r backend/requirements.txt
-
-# Run
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+docker compose up --build
 ```
 
-### Docker
+Dann:
+
+```text
+http://localhost:8001/chat?debug=true
+```
+
+Ohne Docker:
 
 ```bash
-docker-compose up --build
+cd backend
+pip install -r requirements.txt
+python main.py
 ```
 
-App runs on `http://localhost:8000`
+## Environment
 
-### Testing
+Datei: `backend/.env`
 
-**Health check:**
-```bash
-curl http://localhost:8000/health
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+MOCK_LTI_MODE=true
+JWT_SECRET=change-me
+LTI_CONSUMER_KEY=test_consumer_key_mock
+LTI_CONSUMER_SECRET=test_consumer_secret_mock
 ```
 
-**Mock LTI Launch** (without StudOn):
-```bash
-# This would normally come from StudOn with OAuth 1.0a signature
-# For now, test via POST /api/chat directly with a session_id
+Produktion:
+
+```env
+MOCK_LTI_MODE=false
+LTI_CONSUMER_KEY=...
+LTI_CONSUMER_SECRET=...
+JWT_SECRET=long-random-secret
 ```
 
-**Chat (direct):**
-```bash
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"query": "Wie melde ich mich an?", "session_id": "test-session"}'
+## LTI 1.1
+
+StudOn sendet einen signierten POST auf:
+
+```text
+/lti/launch
 ```
 
-**Wiki:**
-```bash
-curl http://localhost:8000/api/wiki
-```
+Das Backend prüft:
 
-## LTI 1.1 Integration (StudOn)
+- Consumer Key
+- OAuth-Signatur
+- Timestamp-Skew
+- Nonce-Wiederverwendung
 
-### How it works
+Bei gültigem Launch wird eine Session in SQLite angelegt und die UI mit Token und Session-ID geöffnet.
 
-1. Student clicks "Wiesel" link in StudOn course
-2. StudOn POSTs to `https://unwritten.chatbot-wiso.de/lti/launch` with:
-   - OAuth 1.0a signature (signed with Consumer Secret)
-   - LTI context: user_id, course_id, roles, user name, course name
-3. Backend validates signature
-4. Creates session (SQLite)
-5. Generates JWT token
-6. Redirects to frontend iframe: `/chat?token=<jwt>`
-7. Frontend loads Chat Widget in iframe, maintains session
+## Claude-Integration
 
-### Configuration (Phase 2)
+Das Backend lädt:
 
-When RRZE provides StudOn access:
+- `system-prompt.md`
+- `knowledge_base/wissen-basis.md`
+- weitere Markdown-Dateien unter `knowledge_base/`
 
-1. Get Consumer Key/Secret from StudOn-Admin
-2. Set env vars: `LTI_CONSUMER_KEY`, `LTI_CONSUMER_SECRET`
-3. Register Launch URL: `https://chatbot-wiso.de/lti/launch`
-4. Deploy to RRZE VM
+Diese Inhalte werden als Systemkontext an Claude Haiku 4.5 geschickt. Der Systemkontext nutzt Anthropic Prompt Caching.
 
-### Security Notes
+Fehlerverhalten:
 
-- OAuth 1.0a signature validated on every launch
-- Nonce deduplicated (replay attack prevention)
-- Timestamps within 1 hour checked
-- JWT tokens expire after 8 hours
-- All traffic HTTPS-only (Cloudflare Tunnel / RRZE)
+- Prompt-Leak-Verdacht wird blockiert.
+- Provider-/Credit-/API-Fehler werden mit Stacktrace geloggt.
+- Nutzer*innen sehen nur eine neutrale technische Fallback-Antwort.
 
-## Database Schema
+Keine internen Providerdetails im Frontend. Wir sind hier nicht im Infrastruktur-Beichtstuhl.
 
-### `sessions`
-- `id` (PK): JWT session ID
-- `user_id`: LTI user_id (from StudOn)
-- `course_id`: LTI course_id
-- `user_role`: student/instructor/admin
-- `user_name`, `course_name`: From LTI context
-- `nonce`: OAuth nonce (dedupe)
-- `created_at`, `last_accessed`: Timestamps
+## Datenbank
 
-### `chat_messages`
-- `id` (PK): Auto-increment
-- `session_id` (FK): Link to session
-- `role`: "user" or "assistant"
-- `content`: Message text
-- `created_at`: Timestamp
+Tabellen:
 
-## Claude Integration
+- `sessions`
+- `chat_messages`
+- `chat_flags`
 
-**Model:** `claude-3-5-haiku-20241022`
-- Fast, low-cost
-- 512 token max output
-- System prompt includes Wiesel persona + constraints
-
-**Context:**
-- Last 4 chat messages (sliding window)
-- Karpathy Wiki (first 3000 chars truncated)
-- System prompt with persona + knowledge boundaries
-
-## Karpathy Wiki Loading
-
-- Reads from `/knowledge_base/wissen-basis.md`
-- Markdown format (human & machine readable)
-- Auto-included in Claude system prompt for context
-- Exposed via `GET /api/wiki` for frontend visualization
-
-## Deployment Checklist
-
-- [ ] RRZE VM SSH access
-- [ ] LTI Consumer Key/Secret from StudOn-Admin
-- [ ] Domain: chatbot-wiso.de (or unwritten.chatbot-wiso.de)
-- [ ] Cloudflare Tunnel configured
-- [ ] ANTHROPIC_API_KEY set securely
-- [ ] StudOn: Register Launch URL
-- [ ] Test LTI handshake end-to-end
-- [ ] Monitor logs for errors
+SQLite reicht für den aktuellen Betrieb. Bei echter Last zuerst WAL, Worker und Schreibpfade prüfen. Nicht reflexhaft Postgres herbeibeschwören, nur weil es erwachsener klingt.
 
 ## Monitoring
 
-- Logs to stdout (Docker compatible)
-- Health endpoint at `GET /health`
-- SQLite queries logged
-- Claude API errors captured
+```bash
+docker compose logs -f wiesel-backend
+curl http://localhost:8001/health
+```
 
-## Next Steps
-
-1. **Frontend Chat Widget** – React component to embed in iframe
-2. **Wiki Visualization** – Turn wissen-basis.md into visual Wissenslandkarte
-3. **RRZE Deployment** – Docker + systemd + monitoring
-4. **Feedback Loop** – Weekly cronjob analyzes chat interactions
+Der Healthcheck ist für Technik und Monitoring. Die UI zeigt daraus keinen Online/Offline-Status.

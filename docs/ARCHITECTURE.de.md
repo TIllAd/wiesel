@@ -1,342 +1,203 @@
-# wiesel-Architektur (Technische Übersicht)
+# Architektur – Wiesel
 
-## Systemdesign
+Diese Datei beschreibt den aktuellen Stand des Wiesel-Systems. Nicht den alten Wunschzettel mit React-Frontend, OpenAI und TF-IDF-RAG. Der liegt gedanklich im Museum.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        BROWSER / LTI FRAME                   │
-│                  (StudOn Integration, Phase 2)               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                    HTTP/WebSocket
-                           │
-        ┌──────────────────┴──────────────────┐
-        │                                     │
-    ┌───▼────┐                          ┌────▼────┐
-    │ Nginx  │◄────────────────────────►│ React   │
-    │ (SSL)  │   (Port 443)              │ Widget  │
-    └───┬────┘                          └────┬────┘
-        │                                    │
-        └────────────────┬───────────────────┘
-                         │
-                   REST API (/api)
-                         │
-        ┌────────────────▼────────────────┐
-        │                                 │
-    ┌───▼───────┐              ┌────────▼─────┐
-    │ FastAPI   │◄────────────►│ TF-IDF RAG   │
-    │ Backend   │  (Port 8000) │  Engine      │
-    │ (3x)      │              │              │
-    └───┬───────┘              └────┬─────────┘
-        │                           │
-        │                    ┌──────▼──────────┐
-        │                    │ Knowledge Base  │
-        │                    │                 │
-        │          ┌─────────┼──────────────┐  │
-        │          │         │              │  │
-        │      ┌───▼───┐ ┌───▼─────┐  ┌───▼──┐│
-        │      │FAQs   │ │Karpathy │  │Cache││
-        │      │.json  │ │Wiki.md  │  │(LRU)││
-        │      └───────┘ └─────────┘  └─────┘│
-        │                                    │
-        └────────────────────────────────────┘
-        │
-    ┌───▼──────────┐
-    │ SQLite DB    │
-    │ (Feedback,   │
-    │  User Events)│
-    └──────────────┘
+## Kurzbild
+
+```text
+StudOn / Browser
+      │
+      │  LTI 1.1 Launch oder Debug-Chat
+      ▼
+FastAPI Backend :8001
+      ├── statische Chat-UI aus backend/static/chat.html
+      ├── /lti/launch für StudOn
+      ├── /api/chat für Chatnachrichten
+      ├── /api/chat/flag für Auffälligkeitsmarkierungen
+      ├── /api/wiki für geladene Wissensbasis
+      ├── /health für technisches Monitoring
+      └── SQLite für Sessions, Chatmessages, Flags
+      │
+      ▼
+Anthropic Claude Haiku 4.5
+      ▲
+      │  system-prompt.md + knowledge_base/*.md
+      │  mit Prompt Caching
+      │
+Markdown-Wissensbasis
 ```
 
-## Component Breakdown
+## Komponenten
 
-### 1. Frontend (React)
+### Backend
 
-**Datei:** `frontend/src/ChatWidget.jsx`
+Datei: `backend/main.py`
 
-```javascript
-<ChatWidget>
-  ├── Input Field (User Query)
-  ├── Chat History Display
-  │   ├── User Message
-  │   ├── Bot Response (mit Quellen)
-  │   └── Feedback Buttons (👍 / 👎)
-  └── Category Filter (A-G)
-```
+Das Backend ist eine FastAPI-App. Sie übernimmt LTI-Launch, Session-Erzeugung, Chat-API, SQLite-Persistenz, Prompt-Zusammenbau, Anthropic-Aufruf und technische Healthchecks.
 
-**Features:**
-- Material Design (kleine Komponente, für Embedding in StudOn geeignet)
-- Responsive (Mobile + Desktop)
-- Keine externen Dependencies (außer React)
-- Real-time Feedback zum Backend
+Wichtige Aufgaben:
 
-### 2. Backend (FastAPI)
+- LTI 1.1 OAuth-1.0a-Signatur validieren, wenn `MOCK_LTI_MODE=false`.
+- Debug-Sessions für lokale Tests über `/chat?debug=true` erzeugen.
+- Chatverlauf pro Session in SQLite speichern.
+- Wissensbasis aus `knowledge_base/` laden.
+- `system-prompt.md` mit der Wissensbasis kombinieren.
+- Claude Haiku 4.5 aufrufen.
+- Prompt-Leakage erkennen und neutral abfangen.
+- Provider-/Credit-/API-Fehler intern loggen und nur eine neutrale Fallback-Antwort ausgeben.
 
-**Datei:** `backend/main.py`
+### Chat-UI
+
+Datei: `backend/static/chat.html`
+
+Die UI ist kein separates React-Projekt mehr. Sie ist eine statische HTML/CSS/JS-Datei, die direkt vom Backend ausgeliefert wird.
+
+Funktionen:
+
+- Chatverlauf im Browser darstellen
+- Schnellfragen für typische Erstsemester-Themen
+- Bildanhang per Base64 an die Chat-API
+- optionale Spracheingabe über Browser-APIs
+- Wiesel-Avatar-Zustände
+- Chat als „auffällig“ markieren
+- Session-Kontext aus `/api/session/{session_id}` anzeigen
+
+Bewusst entfernt: Online/Offline-Badge. Der Status war mehr Kontrollillusion als Nutzen. Fehler gehören sauber in Antwort und Log, nicht als Ampel-Deko in den Header.
+
+### LLM-Schicht
+
+Provider: Anthropic
+
+Modell: `claude-haiku-4-5`
+
+Das System nutzt das Anthropic SDK und Prompt Caching:
 
 ```python
-app = FastAPI(title="wiesel")
-
-@app.post("/api/chat")
-async def chat(query: str, session_id: str):
-    # 1. RAG: Suche ähnlichste FAQs
-    results = rag_engine.search(query, top_k=5)
-    
-    # 2. Optional: GPT-4o-mini für finale Antwort
-    answer = await openai_call(query, results)
-    
-    # 3. Speichere Feedback (anonym)
-    logger.log_interaction(session_id, query, answer)
-    
-    return {"answer": answer, "sources": results}
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
+response = client.messages.create(
+    model="claude-haiku-4-5",
+    max_tokens=1024,
+    system=system_blocks,
+    messages=messages,
+    extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+)
 ```
 
-**Stack:**
-- Python 3.11+
-- FastAPI (async, schnell)
-- Pydantic (Validation)
-- SQLAlchemy (DB-Zugriff)
-- scikit-learn (TF-IDF, Cosine Similarity)
+Der System-Prompt und die Wissensbasis werden als gecachter Systemblock geschickt. Das reduziert Kosten und Latenz bei wiederholten Anfragen, besonders während Tests oder O-Woche-Last.
 
-### 3. RAG Engine
+### Prompt und Wissensbasis
 
-**Datei:** `backend/rag_engine.py`
+Dateien:
 
-```python
-class RAGEngine:
-    def __init__(self, faqs_path: str, wiki_path: str):
-        self.faqs = load_json(faqs_path)
-        self.wiki = load_markdown(wiki_path)
-        
-        # TF-IDF Vectorizer
-        self.vectorizer = TfidfVectorizer(
-            max_features=5000,
-            stop_words='german',
-            lowercase=True,
-            ngram_range=(1, 2)
-        )
-        
-        # Vektorisiere alle FAQs
-        self.faq_vectors = self.vectorizer.fit_transform(
-            [f['antwort'] for f in self.faqs]
-        )
-    
-    def search(self, query: str, top_k: int = 5):
-        """Finde ähnlichste FAQs"""
-        query_vector = self.vectorizer.transform([query])
-        
-        # Cosine Similarity
-        scores = cosine_similarity(query_vector, self.faq_vectors)[0]
-        
-        # Top K
-        top_indices = np.argsort(scores)[-top_k:][::-1]
-        
-        results = []
-        for idx in top_indices:
-            if scores[idx] > 0.1:  # Min threshold
-                results.append({
-                    'faq_id': self.faqs[idx]['id'],
-                    'frage': self.faqs[idx]['frage'],
-                    'antwort': self.faqs[idx]['antwort'],
-                    'score': float(scores[idx]),
-                    'kategorie': self.faqs[idx]['kategorie']
-                })
-        
-        return results
-```
+- `system-prompt.md`
+- `knowledge_base/**/*.md`
 
-**Warum TF-IDF + nicht Embeddings?**
-- ✓ Keine GPU nötig, keine API-Aufrufe
-- ✓ Schnell (< 50ms für 10k FAQs)
-- ✓ Transparent (interpretierbar)
-- ✓ Deterministisch (kein Randomness)
-- ⚠ Nicht so gut bei semantischen Synonymen (z.B. "Prüfung" vs. "Exam")
+`system-prompt.md` definiert Identität, Ton, Grenzen, Sicherheitsregeln und Verhalten bei Unsicherheit. Die Wissensbasis liefert Fakten zu Campo, StudOn, IDm, Prüfungsamt, FAUcard, BAföG, Bibliothek, Studienstart, O-Woche und Anlaufstellen.
 
-**Upgrade-Pfad:** Zu Sentence Transformers, wenn nötig.
+Die Wissensbasis wird beim Request aus Markdown-Dateien geladen. `wissen-basis.md` wird bevorzugt zuerst eingefügt, danach weitere Markdown-Dateien sortiert nach Pfad.
 
-### 4. Knowledge Base
+Prinzip: Fakten kommen aus der Wissensbasis. Wenn die Wissensbasis unscharf ist, darf Wiesel nicht selbstsicher raten.
 
-**Struktur:**
+### Datenhaltung
 
-```
-knowledge_base/
-├── faqs.json
-│   ├── ID (wiso-001, etc.)
-│   ├── Kategorie (A-G)
-│   ├── Frage / Antwort
-│   ├── Quelle (Vorlesung, Skript)
-│   ├── Tags (für Filterung)
-│   └── Schwierigkeit (1-5)
-│
-├── karpathy_wiki.md
-│   └── LLM-Grundlagen, Transformer, Attention
-│
-└── categories.json
-    └── Metadaten für UI
-```
+Datenbank: SQLite
 
-**Format Beispiel (faqs.json):**
+Tabellen:
+
+- `sessions`: LTI-/Debug-Session, User-/Kurskontext, Nonce, Zeitstempel
+- `chat_messages`: User- und Assistant-Nachrichten pro Session
+- `chat_flags`: Session-weite Auffälligkeitsmarkierungen
+
+SQLite reicht für den aktuellen MVP/Testbetrieb. Für höhere Last muss man nicht sofort eine Datenbank-Kathedrale bauen. Erst messen, dann migrieren. Alles andere ist Architekturtheater.
+
+### Fehler- und Sicherheitsverhalten
+
+Kritische Regeln:
+
+- System-Prompt wird nicht ausgegeben.
+- Vermutete Prompt-Leaks werden durch `SYSTEM_PROMPT_LEAK_FALLBACK` ersetzt.
+- Anthropic-/Provider-/Credit-Fehler werden mit Stacktrace geloggt, aber nicht an Studierende weitergereicht.
+- Die sichtbare Antwort bei LLM-Problemen ist neutral: „Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal.“
+- Interne Modell-/Providerdetails gehören nicht ins Frontend.
+
+### Healthcheck
+
+Endpunkt: `GET /health`
+
+Der Healthcheck ist für Docker, Monitoring und Debugging gedacht. Er ist nicht Teil der sichtbaren Nutzererfahrung.
+
+Beispiel:
+
 ```json
 {
-  "id": "e-001",
-  "kategorie": "E",
-  "frage": "Welche Prüfungsformen gibt es?",
-  "antwort": "Klausur (60-90 Min), mündlich, Hausarbeit, Referat, Kombination.",
-  "quelle": "WiSo Modulhandbuch 2025",
-  "schwierigkeit": 1,
-  "tags": ["Prüfung", "Exam"]
+  "status": "healthy",
+  "db": "connected",
+  "llm": "connected",
+  "last_llm_success": "...",
+  "last_llm_error": null
 }
 ```
 
-### 5. Datenspeicherung (SQLite)
+Wenn der LLM-Aufruf zuletzt fehlgeschlagen ist oder kein API-Key vorhanden ist, meldet der Healthcheck `unhealthy`. Das UI zeigt daraus aber keinen Badge.
 
-**Schema:**
+## Endpunkte
 
-```sql
--- Interaktionen / Feedback
-CREATE TABLE interactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  session_id TEXT,              -- Anonyme Session
-  query TEXT,
-  answer_faq_id TEXT,           -- Welche FAQ wurde genutzt?
-  confidence FLOAT,             -- TF-IDF Score
-  user_feedback INT,            -- -1 / 0 / 1
-  feedback_timestamp DATETIME
-);
+| Endpoint | Zweck |
+|---|---|
+| `GET /` | Redirect auf `/chat?debug=true` |
+| `GET /chat?debug=true` | lokale Debug-Session starten |
+| `GET /chat?...` | Chat-UI ausliefern |
+| `POST /lti/launch` | StudOn/LTI-Launch entgegennehmen |
+| `POST /api/chat` | Chatnachricht verarbeiten |
+| `POST /api/chat/flag` | Session als auffällig markieren |
+| `GET /api/session/{session_id}` | Session-Metadaten für UI |
+| `GET /api/wiki` | geladene Wissensbasis anzeigen |
+| `GET /api/logs/daily` | Tageslogs strukturiert exportieren |
+| `GET /health` | technischer Healthcheck |
 
-CREATE INDEX idx_session ON interactions(session_id);
-CREATE INDEX idx_faq ON interactions(answer_faq_id);
-```
+## Lokale Laufzeit
 
-**Privacyaspekte:**
-- Keine IP-Adressen
-- Keine Benutzer-IDs
-- Session-IDs sind anonyme UUIDs
-- Retention: 90 Tage, dann GDPR-konform löschen
+Docker Compose startet aktuell einen Backend-Container auf Port `8001`:
 
-### 6. Docker Setup
-
-**Dockerfile (Backend):**
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/ .
-COPY knowledge_base/ ./knowledge_base/
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-**docker-compose.yml:**
-```yaml
-version: '3.8'
-
-services:
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./knowledge_base:/app/knowledge_base:ro
-      - sqlite_data:/data
-    environment:
-      - DATABASE_PATH=/data/wiesel.db
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-
-volumes:
-  sqlite_data:
-```
-
-## Anforderungen & Skalierung
-
-### Anfrage-Verarbeitung
-
-```
-User Query
-├─ Parse Input (1ms)
-├─ TF-IDF Search (50ms für 10k FAQs)
-├─ Optional: GPT-4o-mini Call (2-3s)
-├─ Format Response (10ms)
-└─ Log to SQLite (20ms)
-
-Gesamt: ~100-200ms (ohne GPT), ~2.5s (mit GPT)
-```
-
-### Concurrent Users
-
-**Performance Goals:**
-- 500 concurrent users bei Semesterstart
-- P95 Response Time: < 500ms
-- Uptime: 99.9%
-
-**Konfiguration:**
-```yaml
-# 3x Backend mit 4 Workers
-backend:
-  replicas: 3
-  workers: 4
-  # = 12 parallel requests
-  # = ~500 users (mit pooling)
-```
-
-**Skalierung bei Bedarf:**
-1. Mehr Backend-Replicas: `docker-compose up -d --scale backend=5`
-2. Zu einem echten Embedding-Modell upgraden (bessere Qualität)
-3. Caching-Layer (Redis) für häufige Queries
-
-## Monitoring & Observability
-
-**Logs:**
 ```bash
-docker-compose logs -f backend
+docker compose up --build
 ```
 
-**Metriken (Optional: Prometheus):**
-- `wiesel_queries_total` (Counter)
-- `wiesel_response_time_ms` (Histogram)
-- `wiesel_faq_hits` (Pro FAQ)
+Ohne Docker:
 
-**Errors:**
-- Alle Python Exceptions → logs
-- Alle API Errors (400, 500) → logs + SQLite
-
-## Security
-
-1. **HTTPS/TLS**: Nginx mit Let's Encrypt
-2. **CORS**: Nur studOn-Domänen
-3. **Rate Limiting**: 100 req/min pro Session
-4. **Input Validation**: Pydantic + Max Query Length
-5. **SQL Injection**: SQLAlchemy ORM
-6. **Environment Secrets**: .env (nicht in Git)
-
-## LTI 1.1 Integration (Phase 2)
-
-Geplante StudOn-Integration:
-
-```
-StudOn
-  └─ LTI 1.1 Deep Link
-       └─ iFrame: https://chatbot-wiso.de/lti/launch
-            └─ Backend validiert LTI Signature
-            └─ FrontendRendert ChatWidget
-            └─ session_id = LTI user_id (anonym)
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
 ```
 
----
+Dann:
 
-**Fragen zur Architektur?** Schreib an Till oder erstelle ein Issue.
+```text
+http://localhost:8001/chat?debug=true
+```
+
+## Skalierung
+
+Der aktuelle Engpass ist nicht HTML oder SQLite, sondern LLM-Latenz, Provider-Verfügbarkeit und Wissensbasisqualität.
+
+Sinnvolle nächste Schritte bei Last:
+
+1. Uvicorn/Gunicorn-Worker sauber konfigurieren.
+2. SQLite WAL aktivieren und Schreibpfade beobachten.
+3. Häufige statische Assets über Nginx ausliefern.
+4. Rate Limits pro Session/IP ergänzen.
+5. Erst bei echter Schreiblast auf Postgres wechseln.
+
+Nicht sinnvoll: ein separates Frontend oder Embedding-RAG bauen, nur weil es moderner klingt. Erst wenn die Qualitätsdaten zeigen, dass Markdown-Kontext nicht reicht.
+
+## Projektkultur
+
+Wiesel ist ein Studienassistenzsystem, kein Demo-Spielzeug. Die Kultur im Projekt ist: direkt, faktennah, datenschutzbewusst, wartbar für Nicht-Techniker*innen und allergisch gegen hübsche Scheinlösungen.
+
+Bei Konflikten gilt:
+
+1. Studierende nicht falsch leiten.
+2. Offizielle Stellen nicht überstimmen.
+3. Interne Technik nicht offenlegen.
+4. Kurz antworten.
+5. Charakter nur dort einsetzen, wo er nicht stört.
