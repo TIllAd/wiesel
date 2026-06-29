@@ -187,6 +187,7 @@
     #input-area { display:flex; gap:8px; padding:11px 14px; border-top:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
     #query { flex:1; background:#fff; border:1px solid var(--border); border-radius:13px; color:var(--text); font-family:var(--font); font-size:14px; font-weight:600; padding:10px 14px; resize:none; outline:none; transition:border-color .15s; max-height:120px; overflow-y:auto; line-height:1.5; }
     #query:focus { border-color:var(--navy); }
+    body.voice-recording #query { border:1.5px solid #2563eb; }
     #query::placeholder { color:var(--tdim); opacity:.5; }
     #send { background:var(--orange); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 2px 8px rgba(216,90,48,.3); }
     #send:hover { transform:scale(1.07); box-shadow:0 4px 14px rgba(216,90,48,.45); }
@@ -228,14 +229,31 @@
     .msg-img { max-width: 220px; border-radius: 10px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
 
     #mic-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--tdim); font-size: 20px;
-      padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
-      transition: all .15s; flex-shrink: 0;
+      position:relative;
+      background:#eef4ff; border:1px solid #d6e3ff; cursor:pointer;
+      color:#2563eb; font-size:20px;
+      width:38px; height:38px; border-radius:999px;
+      padding:0; align-self:flex-end;
+      transition:transform .15s, box-shadow .15s, background .15s, border-color .15s, color .15s; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:none;
+      overflow:visible;
     }
-    #mic-btn:hover { color: var(--navy); }
-    #mic-btn.recording { color: var(--orange); animation: micpulse 1s ease-in-out infinite; }
-    @keyframes micpulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.2);opacity:.7} }
+    #mic-btn:hover { transform:scale(1.04); box-shadow:0 4px 12px rgba(37,99,235,.18); }
+    #mic-btn.recording { background:#2563eb; border-color:#2563eb; color:#fff; box-shadow:0 4px 12px rgba(37,99,235,.22); }
+    #mic-btn.voice-pulse::before,
+    #mic-btn.voice-pulse::after {
+      content:""; position:absolute; inset:-7px; border:2px solid #2563eb; border-radius:999px;
+      opacity:.42; animation:mic-ring .9s ease-out 1; pointer-events:none;
+    }
+    #mic-btn.voice-pulse::after { animation-delay:.16s; }
+    #mic-btn.timeout { background:#eef4ff; border:1.5px solid #2563eb; color:#2563eb; }
+    #mic-btn.timeout::before {
+      content:""; position:absolute; inset:-5px; border:2px solid transparent; border-top-color:#2563eb;
+      border-radius:999px; animation:mic-arc-spin .8s linear infinite; pointer-events:none;
+    }
+    @keyframes mic-ring { 0%{transform:scale(.88);opacity:.5} 100%{transform:scale(1.55);opacity:0} }
+    @keyframes mic-arc-spin { to{transform:rotate(360deg)} }
   </style>
 </head>
 <body>
@@ -296,7 +314,7 @@
   <button class="img-remove-btn" onclick="removeImage()" title="Entfernen">✕</button>
 </div>
 <div id="input-area">
-  <textarea id="query" placeholder="Stell deine Frage…" rows="1"></textarea>
+  <textarea id="query" placeholder="Stell deine Frage…" rows="1" maxlength="2000"></textarea>
   <button id="attach-btn" title="Bild anhängen" aria-label="Bild anhängen" onclick="document.getElementById('file-input').click()">
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M16.5 6.5 8.1 14.9a3 3 0 0 0 4.2 4.2l8.1-8.1a5 5 0 0 0-7.1-7.1L5.2 12a7 7 0 0 0 9.9 9.9l7.2-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -323,6 +341,7 @@
   const sendBtn    = document.getElementById('send');
   const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
   const MAX_IMAGE_DIMENSION = 1600;
+  const MAX_QUERY_CHARS = 2000;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
   if (sessionId) {
@@ -492,6 +511,10 @@
   async function send() {
     const text = queryEl.value.trim();
     if (!text && !pendingImageBase64) return;
+    if (text.length > MAX_QUERY_CHARS) {
+      addMessage('error', `⚠️ Deine Nachricht ist zu lang. Kürz sie bitte auf maximal ${MAX_QUERY_CHARS} Zeichen.`);
+      return;
+    }
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
     if (pendingImageBase64) window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
     addMessage('user', text);
@@ -611,17 +634,80 @@
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
-  let recognition = null, isRecording = false;
+  let recognition = null, isRecording = false, isVoiceStarting = false, silenceTimer = null, timeoutUiTimer = null, voiceStartGuardTimer = null, voicePulseTimer = null, voiceTimedOut = false;
+  let voiceBaseText = '', voiceFinalTranscript = '', voiceInterimTranscript = '';
   const micBtn = document.getElementById('mic-btn');
+  const VOICE_SILENCE_TIMEOUT_MS = 60000;
+  const VOICE_NO_INPUT_TIMEOUT_MS = 10000;
+  const VOICE_START_GUARD_MS = 3500;
 
   function showVoiceError(message) {
     addMessage('error', '⚠️ ' + message);
   }
 
-  function resetVoiceInput() {
-    isRecording = false;
-    micBtn.classList.remove('recording');
+  function setVoiceRecordingUi(active) {
     micBtn.disabled = false;
+    micBtn.classList.toggle('recording', active);
+    document.body.classList.toggle('voice-recording', active);
+    if (!active) {
+      clearTimeout(voicePulseTimer);
+      voicePulseTimer = null;
+      micBtn.classList.remove('voice-pulse');
+    }
+  }
+
+  function triggerVoicePulse() {
+    if (!isRecording) return;
+    clearTimeout(voicePulseTimer);
+    micBtn.classList.remove('voice-pulse');
+    void micBtn.offsetWidth;
+    micBtn.classList.add('voice-pulse');
+    voicePulseTimer = setTimeout(() => {
+      micBtn.classList.remove('voice-pulse');
+      voicePulseTimer = null;
+    }, 1100);
+  }
+
+  function resetVoiceInput({ commit = true } = {}) {
+    if (commit) commitVoiceTranscript();
+    isRecording = false;
+    isVoiceStarting = false;
+    clearTimeout(silenceTimer);
+    clearTimeout(voiceStartGuardTimer);
+    silenceTimer = null;
+    voiceStartGuardTimer = null;
+    voiceBaseText = queryEl.value;
+    voiceFinalTranscript = '';
+    voiceInterimTranscript = '';
+    setVoiceRecordingUi(false);
+    if (!voiceTimedOut) micBtn.classList.remove('timeout');
+  }
+
+  function showVoiceTimeout() {
+    voiceTimedOut = true;
+    isRecording = false;
+    isVoiceStarting = false;
+    commitVoiceTranscript();
+    clearTimeout(silenceTimer);
+    clearTimeout(timeoutUiTimer);
+    clearTimeout(voiceStartGuardTimer);
+    silenceTimer = null;
+    voiceStartGuardTimer = null;
+    voiceFinalTranscript = '';
+    voiceInterimTranscript = '';
+    setVoiceRecordingUi(false);
+    micBtn.classList.add('timeout');
+    try { recognition.stop(); } catch {}
+    timeoutUiTimer = setTimeout(() => {
+      voiceTimedOut = false;
+      micBtn.classList.remove('timeout');
+      micBtn.disabled = false;
+    }, 1400);
+  }
+
+  function resetVoiceSilenceTimer(timeoutMs = VOICE_SILENCE_TIMEOUT_MS) {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(showVoiceTimeout, timeoutMs);
   }
 
   function voiceErrorMessage(errorCode) {
@@ -637,6 +723,21 @@
     return messages[errorCode] || 'Spracheingabe konnte nicht gestartet werden.';
   }
 
+  function composeVoiceText(baseText, spokenText) {
+    const base = (baseText || '').trim();
+    const spoken = (spokenText || '').trim();
+    if (!spoken) return base;
+    if (!base) return spoken;
+    return `${base} ${spoken}`;
+  }
+
+  function commitVoiceTranscript() {
+    const spoken = `${voiceFinalTranscript} ${voiceInterimTranscript}`.trim();
+    if (!spoken) return;
+    queryEl.value = composeVoiceText(voiceBaseText, spoken).slice(0, MAX_QUERY_CHARS);
+    queryEl.dispatchEvent(new Event('input'));
+  }
+
   if (!window.isSecureContext) {
     micBtn.title = 'Spracheingabe braucht HTTPS oder localhost';
     micBtn.addEventListener('click', () => showVoiceError('Spracheingabe funktioniert nur über HTTPS oder localhost.'));
@@ -645,34 +746,62 @@
     recognition = new SR();
     recognition.lang = 'de-DE';
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.onstart = () => {
+      voiceTimedOut = false;
+      voiceBaseText = queryEl.value;
+      voiceFinalTranscript = '';
+      voiceInterimTranscript = '';
+      clearTimeout(timeoutUiTimer);
+      clearTimeout(voiceStartGuardTimer);
+      isVoiceStarting = false;
       isRecording = true;
-      micBtn.disabled = false;
-      micBtn.classList.add('recording');
+      micBtn.classList.remove('timeout');
+      setVoiceRecordingUi(true);
+      resetVoiceSilenceTimer(VOICE_NO_INPUT_TIMEOUT_MS);
     };
     recognition.onresult = (e) => {
-      const t = Array.from(e.results).map(r => r[0].transcript).join('');
-      queryEl.value = t;
-      queryEl.dispatchEvent(new Event('input'));
+      voiceInterimTranscript = '';
+      for (let i = e.resultIndex; i < e.results.length; i += 1) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) voiceFinalTranscript += transcript + ' ';
+        else voiceInterimTranscript += transcript;
+      }
+      resetVoiceSilenceTimer();
+      triggerVoicePulse();
     };
-    recognition.onend = resetVoiceInput;
+    recognition.onend = () => resetVoiceInput({ commit: true });
     recognition.onerror = (event) => {
-      resetVoiceInput();
+      resetVoiceInput({ commit: false });
       if (event.error !== 'aborted') showVoiceError(voiceErrorMessage(event.error));
     };
     micBtn.addEventListener('click', () => {
-      if (isRecording) {
-        recognition.stop();
+      if (isRecording || isVoiceStarting) {
+        try { recognition.stop(); } catch {}
+        resetVoiceInput({ commit: isRecording });
         return;
       }
 
       try {
-        micBtn.disabled = true;
+        voiceTimedOut = false;
+        isVoiceStarting = true;
+        voiceBaseText = queryEl.value;
+        voiceFinalTranscript = '';
+        voiceInterimTranscript = '';
+        clearTimeout(timeoutUiTimer);
+        clearTimeout(voiceStartGuardTimer);
+        micBtn.classList.remove('timeout');
+        setVoiceRecordingUi(true);
         recognition.lang = document.documentElement.lang === 'en' ? 'en-US' : 'de-DE';
         recognition.start();
+        voiceStartGuardTimer = setTimeout(() => {
+          if (!isRecording && isVoiceStarting) {
+            resetVoiceInput({ commit: false });
+            showVoiceError('Spracheingabe startet nicht. Prüfe bitte kurz Mikrofon-Zugriff im Browser.');
+          }
+        }, VOICE_START_GUARD_MS);
       } catch {
-        resetVoiceInput();
+        resetVoiceInput({ commit: false });
         showVoiceError('Spracheingabe läuft schon oder konnte nicht gestartet werden. Versuch es gleich nochmal.');
       }
     });
