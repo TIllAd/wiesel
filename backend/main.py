@@ -37,6 +37,25 @@ from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+app = FastAPI(title="Wiesel Backend", description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)", version="0.1.0")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled server error", exc_info=True)
+    return JSONResponse({"detail": "Etwas ist schiefgelaufen. Versuch es nochmal."}, status_code=500)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code in {400, 413, 429}:
+        detail = exc.detail
+    else:
+        if exc.status_code >= 500:
+            logger.error("HTTP server error", exc_info=True)
+        detail = "Etwas ist schiefgelaufen. Versuch es nochmal."
+    return JSONResponse({"detail": detail}, status_code=exc.status_code, headers=exc.headers)
+
 # ============================================================================
 # CONFIG
 # ============================================================================
@@ -509,9 +528,6 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
 # FASTAPI APP
 # ============================================================================
 
-app = FastAPI(title="Wiesel Backend", description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)", version="0.1.0")
-
-
 @app.middleware("http")
 async def reject_oversized_chat_requests(request: Request, call_next):
     if request.url.path == "/api/chat":
@@ -604,9 +620,9 @@ async def lti_launch(request: Request):
         db.commit()
         token = create_jwt_token(session_id)
         return RedirectResponse(url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}", status_code=302)
-    except Exception as e:
-        logger.error(f"LTI Launch error: {e}", exc_info=True)
-        return JSONResponse({"error": str(e)}, status_code=500)
+    except Exception:
+        logger.error("LTI Launch error", exc_info=True)
+        raise HTTPException(status_code=500)
     finally:
         db.close()
 
@@ -657,9 +673,9 @@ async def chat_endpoint(request: ChatRequest):
         return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Chat error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=TECHNICAL_ERROR_FALLBACK)
+    except Exception:
+        logger.error("Chat error", exc_info=True)
+        raise HTTPException(status_code=500)
     finally:
         db.close()
 
@@ -669,9 +685,9 @@ async def wiki_endpoint():
     try:
         content = load_knowledge_base()
         return {"content": content, "format": "markdown", "timestamp": datetime.utcnow().isoformat()}
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
+    except Exception:
+        logger.error("Wiki endpoint error", exc_info=True)
+        raise HTTPException(status_code=500)
 
 @app.post("/api/chat/flag")
 async def flag_chat_session(request: ChatFlagRequest):
