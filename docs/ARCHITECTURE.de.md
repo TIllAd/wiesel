@@ -146,7 +146,7 @@ Wenn der LLM-Aufruf zuletzt fehlgeschlagen ist oder kein API-Key vorhanden ist, 
 
 Die Kostenformel nutzt ENV-Werte in USD pro 1 Mio Tokens: `LLM_INPUT_USD_PER_MTOK`, `LLM_OUTPUT_USD_PER_MTOK`, `LLM_CACHE_WRITE_USD_PER_MTOK`, `LLM_CACHE_READ_USD_PER_MTOK`, plus `USD_PER_EUR`. Das ist eine Schätzung für Reporting und Dashboard-Steuerung, keine Provider-Rechnung und kein Backend-Limit. Dafür gibt es Rechnungen. Schockierend.
 
-`export_analytics.py` exportiert globale und sessionbezogene `llm_usage`-Summen in die JSON-Datei unter `C:\Users\tillt\hermes\analytics\analytics_YYYY-MM-DD.json`. Analysen sollen diese Datei verwenden, nicht direkt die DB.
+`export_analytics.py` exportiert globale und sessionbezogene `llm_usage`-Summen für einen Kalendertag in die JSON-Datei unter `C:\\Users\\tillt\\hermes\\analytics\\analytics_YYYY-MM-DD.json`. Standard ist heute; ein anderer Tag kann über `WIESEL_ANALYTICS_DATE=YYYY-MM-DD` gewählt werden. Der Export enthält Messdaten, keine Dashboard-Szenarien; Cent-Projektionen werden in `docs/cost-cache-model.html` berechnet. Analysen sollen diese Datei verwenden, nicht direkt die DB.
 
 ## Endpunkte
 

@@ -136,7 +136,7 @@
       <tr><td>Folgeanfrage-Kosten</td><td id="t-warm">–</td><td>Jedes weitere Anfrage bei bereits geladenem Kontext</td></tr>
       <tr><td>Günstigstes Szenario (Ø)</td><td id="t-best">–</td><td>100 Anfragen pro Kaltstart; Kontext bleibt lange aktiv</td></tr>
       <tr><td>Ungünstigstes Szenario (Ø)</td><td id="t-worst2">–</td><td>Kein Anfrage nutzt den geladenen Kontext eines anderen</td></tr>
-      <tr><td>Anfragen pro Monat (Hochrechnung)</td><td id="t-month">–</td><td>Basierend auf gemessenen Anfragen im Berichtszeitraum</td></tr>
+      <tr><td>Anfragen pro Monat (Hochrechnung)</td><td id="t-month">–</td><td>Basierend auf gemessenen LLM-Requests im Berichtszeitraum</td></tr>
     </table>
     <p class="note" id="note-text"></p>
     <div class="formula" id="formula-text"></div>
@@ -152,15 +152,85 @@ function fmt(eur) {
   if (eur >= 1) return eur.toFixed(2).replace('.', ',') + ' €';
   return (eur * 100).toFixed(2).replace('.', ',') + ' ct';
 }
-function fmtCt(ct) { return ct.toFixed(2).replace('.', ',') + ' ct'; }
+function fmtCt(ct) { return Number(ct || 0).toFixed(2).replace('.', ',') + ' ct'; }
+
+const PRICE_DEFAULTS = {
+  input_usd_per_mtok: 1.00,
+  output_usd_per_mtok: 5.00,
+  cache_write_usd_per_mtok: 1.25,
+  cache_read_usd_per_mtok: 0.10,
+  usd_per_eur: 1.08
+};
+
+function usageValue(...keys) {
+  const usage = DATA.llm_usage || {};
+  for (const key of keys) {
+    if (usage[key] !== undefined && usage[key] !== null) return Number(usage[key]) || 0;
+  }
+  return 0;
+}
+
+function reportDate() {
+  const source = DATA.periode || DATA.exported_at || new Date().toISOString();
+  const match = String(source).match(/\d{4}-\d{2}-\d{2}/);
+  return match ? new Date(match[0] + 'T12:00:00') : new Date();
+}
+
+function buildCostModel() {
+  const legacy = DATA.kosten_modell || null;
+  const reqs = Math.max(1, usageValue('requests_erfolgreich', 'requests_successful'));
+  const costEur = usageValue('kosten_eur_geschaetzt', 'estimated_cost_eur');
+  const costUsd = usageValue('kosten_usd_geschaetzt', 'estimated_cost_usd');
+  const prices = {...PRICE_DEFAULTS, ...(legacy?.preise || {})};
+  const usdEur = costUsd > 0 && costEur > 0 ? costEur / costUsd : prices.usd_per_eur;
+
+  const cacheCreation = usageValue('cache_creation_input_tokens');
+  const cacheRead = usageValue('cache_read_input_tokens');
+  const input = usageValue('input_tokens');
+  const output = usageValue('output_tokens');
+  const coldstarts = Math.max(1, usageValue('cache_write_requests'));
+  const avgCacheWriteTokens = cacheCreation / coldstarts;
+
+  const cacheWriteUsd = (avgCacheWriteTokens / 1e6) * prices.cache_write_usd_per_mtok;
+  const warmPerReqUsd =
+    (cacheRead / 1e6 / reqs) * prices.cache_read_usd_per_mtok +
+    (input / 1e6 / reqs) * prices.input_usd_per_mtok +
+    (output / 1e6 / reqs) * prices.output_usd_per_mtok;
+
+  const costCt = n => Number((((cacheWriteUsd / Math.max(1, n)) + warmPerReqUsd) / usdEur * 100).toFixed(4));
+  const avgCt = costEur > 0 ? Number((costEur / reqs * 100).toFixed(4)) : 0;
+
+  const d = reportDate();
+  const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const daysElapsed = Math.max(1, d.getDate());
+  const daysRemaining = Math.max(0, daysInMonth - daysElapsed);
+  const measuredRequests = Math.max(0, usageValue('requests_erfolgreich', 'requests_successful'));
+  const requestsPerMonth = Math.round(measuredRequests / daysElapsed * daysInMonth);
+
+  return {
+    gemessen_eur: costEur,
+    schnitt_ct_pro_request: avgCt,
+    warm_request_ct: Number((warmPerReqUsd / usdEur * 100).toFixed(4)),
+    worst_case_ct: costCt(1),
+    best_case_ct: costCt(100),
+    usd_eur_kurs: Number(usdEur.toFixed(4)),
+    preise: prices,
+    costCt,
+    projektion_monat_eur: {
+      nachrichten_pro_monat: requestsPerMonth,
+      nachrichten_seit_monatsanfang: measuredRequests,
+      tage_vergangen: daysElapsed,
+      tage_verbleibend: daysRemaining
+    }
+  };
+}
 
 function costCt(n) {
-  const km = DATA.kosten_modell;
-  return km.szenarien_ct[String(n)] ?? km.worst_case_ct;
+  return buildCostModel().costCt(n);
 }
 
 function buildChart() {
-  const km = DATA.kosten_modell;
+  const km = buildCostModel();
   const measuredCt = km.schnitt_ct_pro_request;
 
   document.getElementById('chart-loading').style.display = 'none';
@@ -255,11 +325,10 @@ function snapBack() {
 
 function updateSlider(n) {
   if (!DATA) return;
-  const km = DATA.kosten_modell;
+  const km = buildCostModel();
   const c = costCt(n);
   const total1k = c * 10;
   const worst1k = km.worst_case_ct * 10;
-  const best1k = km.best_case_ct * 10;
   const saving = (worst1k - total1k) / worst1k * 100;
   const savedEur = (worst1k - total1k) / 100;
   const monthly = c * km.projektion_monat_eur.nachrichten_pro_monat / 100;
@@ -286,15 +355,18 @@ function updateSlider(n) {
 }
 
 function populate() {
-  const km = DATA.kosten_modell;
+  const km = buildCostModel();
   const st = DATA.statistik;
-  MEASURED_N = Math.max(1, Math.min(100, Math.round(st.nachrichten_gesamt / Math.max(st.sessions_gesamt, 1))));
+  MEASURED_N = Math.max(1, Math.min(100, Math.round(
+    usageValue('requests_erfolgreich', 'requests_successful') /
+    Math.max(usageValue('cache_write_requests'), 1)
+  )));
 
   document.getElementById('periode-label').textContent =
     `Berichtszeitraum: ${DATA.periode} · Exportiert: ${DATA.exported_at.slice(0,10)}`;
 
   document.getElementById('c-gesamt').textContent = fmt(km.gemessen_eur);
-  document.getElementById('c-gesamt-sub').textContent = `${st.sessions_gesamt} Sitzungen, ${st.nachrichten_gesamt} Anfragen`;
+  document.getElementById('c-gesamt-sub').textContent = `${st.sessions_gesamt} Sitzungen, ${st.nachrichten_gesamt} Nachrichten`;
   document.getElementById('c-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
   document.getElementById('c-warm').textContent = fmtCt(km.warm_request_ct);
   document.getElementById('c-worst').textContent = fmtCt(km.worst_case_ct);
@@ -313,9 +385,8 @@ function populate() {
   document.getElementById('note-text').textContent =
     `Empfehlung: Für das Dashboard die Kaltstart-Kosten, Folgeanfrage-Kosten und Anfragen pro Kaltstart separat ausweisen. Der reine Durchschnittswert ist bei kleinen Stichproben durch den einmaligen Kaltstart-Aufwand verzerrt.`;
 
-  const tb = km.token_basis;
   document.getElementById('formula-text').textContent =
-    `Modell: ${(DATA.llm_usage.modelle || []).join(', ')} · Preisbasis: Input $1/MTok · Output $5/MTok · Kaltstart-Laden $1.25/MTok · Folgeanfrage $0.10/MTok · USD/EUR ${km.usd_eur_kurs}`;
+    `Modell: ${(DATA.llm_usage.modelle || DATA.llm_usage.models || []).join(', ')} · Preisbasis Dashboard: Input $${km.preise.input_usd_per_mtok}/MTok · Output $${km.preise.output_usd_per_mtok}/MTok · Kaltstart-Laden $${km.preise.cache_write_usd_per_mtok}/MTok · Folgeanfrage $${km.preise.cache_read_usd_per_mtok}/MTok · USD/EUR ${km.usd_eur_kurs}`;
 
   buildChart();
   document.getElementById('slider').value = MEASURED_N;
