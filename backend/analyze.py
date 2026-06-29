@@ -51,7 +51,7 @@ def percentile(values, p):
     return sorted(values)[idx]
 
 def empty_usage_summary():
-    return {"requests_total":0,"requests_successful":0,"requests_error":0,"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"tokens_total":0,"estimated_cost_usd":0.0,"estimated_cost_eur":0.0,"avg_cost_eur_per_request":0.0,"avg_cost_eur_per_successful_request":0.0,"latency_ms_avg":None,"latency_ms_p95":None,"models":[]}
+    return {"requests_total":0,"requests_successful":0,"requests_error":0,"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_write_requests":0,"tokens_total":0,"estimated_cost_usd":0.0,"estimated_cost_eur":0.0,"avg_cost_eur_per_request":0.0,"avg_cost_eur_per_successful_request":0.0,"latency_ms_avg":None,"latency_ms_p95":None,"models":[]}
 
 def usage_summary(rows):
     if not rows: return empty_usage_summary()
@@ -61,6 +61,7 @@ def usage_summary(rows):
     output_tok = sum(int(r["output_tokens"] or 0) for r in rows)
     cache_cre  = sum(int(r["cache_creation_input_tokens"] or 0) for r in rows)
     cache_read = sum(int(r["cache_read_input_tokens"] or 0) for r in rows)
+    cache_write_requests = sum(1 for r in rows if int(r["cache_creation_input_tokens"] or 0) > 0)
     cost_usd   = sum(float(r["estimated_cost_usd"] or 0) for r in rows)
     cost_eur   = sum(float(r["estimated_cost_eur"] or 0) for r in rows)
     total      = len(rows)
@@ -68,6 +69,7 @@ def usage_summary(rows):
         "requests_total": total, "requests_successful": len(successful), "requests_error": len(rows)-len(successful),
         "input_tokens": input_tok, "output_tokens": output_tok,
         "cache_creation_input_tokens": cache_cre, "cache_read_input_tokens": cache_read,
+        "cache_write_requests": cache_write_requests,
         "tokens_total": input_tok+output_tok+cache_cre+cache_read,
         "estimated_cost_usd": round(cost_usd,6), "estimated_cost_eur": round(cost_eur,6),
         "avg_cost_eur_per_request": round(cost_eur/total,6) if total else 0.0,
@@ -182,39 +184,12 @@ def analyse(target_date):
     }
 
 
-# ── Cost model ───────────────────────────────────────────────────────────────
-def build_kosten_modell(usage, total_messages, days_back=1):
-    reqs = usage["requests_successful"] or 1
-    cache_write_usd = (usage["cache_creation_input_tokens"] / 1e6) * 1.25
-    warm_per_req_usd = (
-        (usage["cache_read_input_tokens"] / 1e6 / reqs) * 0.10
-        + (usage["input_tokens"] / 1e6 / reqs) * 1.0
-        + (usage["output_tokens"] / 1e6 / reqs) * 5.0
-    )
-    usd_eur = usage["estimated_cost_eur"] / usage["estimated_cost_usd"] if usage["estimated_cost_usd"] else 1.08
-    def cost_ct(n): return round(((cache_write_usd / n) + warm_per_req_usd) / usd_eur * 100, 4)
-    msgs_per_month = round(total_messages / days_back * 30)
-    avg_ct = round(usage["avg_cost_eur_per_successful_request"] * 100, 4)
-    return {
-        "hinweis": "Berechnet aus echten Token-Daten dieses Tagesberichts.",
-        "usd_eur_kurs": round(usd_eur, 4),
-        "gemessen_eur": usage["estimated_cost_eur"],
-        "schnitt_ct_pro_request": avg_ct,
-        "warm_request_ct": round(warm_per_req_usd / usd_eur * 100, 4),
-        "szenarien_ct": {str(n): cost_ct(n) for n in range(1, 101)},
-        "projektion_1000_requests_eur": {"worst": round(cost_ct(1)*10,2), "current": round(avg_ct*10,2), "best": round(cost_ct(100)*10,2)},
-        "projektion_monat_eur": {"nachrichten_pro_monat": msgs_per_month, "worst": round(cost_ct(1)*msgs_per_month/100,2), "current": round(avg_ct*msgs_per_month/100,2), "best": round(cost_ct(100)*msgs_per_month/100,2)},
-    }
-
-
 # ── Combined HTML Report ──────────────────────────────────────────────────────
 def build_combined_html(result, target_date):
     import html as htmllib
 
     usage    = result["llm_usage"]
     flagged  = result["flagged_sessions"]
-    kosten   = build_kosten_modell(usage, result["total_messages"])
-
     # Inject into cost template if available
     cost_section = ""
     if HTML_TEMPLATE.exists():
@@ -223,7 +198,6 @@ def build_combined_html(result, target_date):
             "periode": f"Tagesbericht {target_date}",
             "statistik": {"sessions_gesamt": result["total_sessions"], "nachrichten_gesamt": result["total_messages"], "durchschnitt_pro_session": result["avg_session_len"]},
             "llm_usage": {**usage, "kosten_eur_geschaetzt": usage["estimated_cost_eur"], "kosten_usd_geschaetzt": usage["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": usage["avg_cost_eur_per_successful_request"], "modelle": usage["models"]},
-            "kosten_modell": kosten,
             "sessions": [],
         }
         cost_section = HTML_TEMPLATE.read_text(encoding="utf-8").replace("__ANALYTICS_DATA__", json.dumps(analytics_data, ensure_ascii=False))
@@ -506,8 +480,7 @@ if __name__ == "__main__":
                 "exported_at": datetime.now().isoformat(),
                 "periode": f"Tagesbericht {target}",
                 "statistik": {"sessions_gesamt": result["total_sessions"], "nachrichten_gesamt": result["total_messages"], "durchschnitt_pro_session": result["avg_session_len"]},
-                "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"]},
-                "kosten_modell": build_kosten_modell(result["llm_usage"], result["total_messages"]),
+                "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"], "cache_write_requests": result["llm_usage"]["cache_write_requests"]},
                 "sessions": [],
             }, f, ensure_ascii=False, indent=2)
         print(f"✅ analytics_latest.json aktualisiert")

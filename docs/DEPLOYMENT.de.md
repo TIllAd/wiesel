@@ -101,7 +101,7 @@ Kosten-/Usage-Check nach ein paar Requests:
 python export_analytics.py
 ```
 
-Der Export enthält dann `llm_usage` mit Request-Zahl, Tokenverbrauch, Cache-Nutzung, geschätzten EUR-Kosten, P95-Latenz und Fehleranzahl. Für Analysen wird diese JSON-Datei verwendet, nicht die Roh-DB. Ja, das ist Absicht.
+Der Export enthält dann die Tagesdaten für heute mit `llm_usage`: Request-Zahl, Tokenverbrauch, Cache-Nutzung, geschätzte EUR-Kosten, P95-Latenz und Fehleranzahl. Für einen bestimmten Tag kann `WIESEL_ANALYTICS_DATE=YYYY-MM-DD python export_analytics.py` genutzt werden. Für Analysen wird diese JSON-Datei verwendet, nicht die Roh-DB. Ja, das ist Absicht.
 
 ## Start ohne Docker
 
