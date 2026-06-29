@@ -247,7 +247,7 @@
   </div>
 </div>
 
-<input type="file" id="file-input" accept="image/*">
+<input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
 <div id="img-preview" style="display:none" class="img-preview-wrap">
   <img id="img-thumb" src="" alt="preview">
   <span class="img-preview-label" id="img-name"></span>
@@ -275,6 +275,9 @@
   const messagesEl = document.getElementById('messages');
   const queryEl    = document.getElementById('query');
   const sendBtn    = document.getElementById('send');
+  const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+  const MAX_IMAGE_DIMENSION = 1600;
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
@@ -462,20 +465,59 @@
     sendBtn.disabled = false;
   }
 
-  document.getElementById('file-input').addEventListener('change', function() {
-    const file = this.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const dataUrl = e.target.result;
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function prepareImage(file) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      throw new Error('Bitte nur JPG, PNG oder WebP hochladen.');
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error('Das Bild ist zu groß. Maximum: 3 MB.');
+    }
+
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / bitmap.width, MAX_IMAGE_DIMENSION / bitmap.height);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob) throw new Error('Das Bild konnte nicht verarbeitet werden.');
+    if (blob.size > MAX_IMAGE_BYTES) {
+      throw new Error('Das Bild bleibt nach Kompression zu groß. Maximum: 3 MB.');
+    }
+
+    return await blobToDataUrl(blob);
+  }
+
+  document.getElementById('file-input').addEventListener('change', async function() {
+    const file = this.files[0];
+    this.value = '';
+    if (!file) return;
+
+    try {
+      const dataUrl = await prepareImage(file);
       pendingImageBase64 = dataUrl.split(',')[1];
-      const mimeMatch = dataUrl.match(/^data:([^;]+);/);
-      pendingImageType = mimeMatch ? mimeMatch[1] : (file.type || 'image/jpeg');
-      document.getElementById('img-thumb').src = e.target.result;
+      pendingImageType = 'image/jpeg';
+      document.getElementById('img-thumb').src = dataUrl;
       document.getElementById('img-name').textContent = file.name;
       document.getElementById('img-preview').style.display = 'flex';
       sendBtn.disabled = false;
-    };
-    reader.readAsDataURL(file); this.value = '';
+    } catch (err) {
+      removeImage();
+      addMessage('error', '⚠️ ' + (err.message || 'Bild konnte nicht verarbeitet werden.'));
+    }
   });
 
   function removeImage() {
