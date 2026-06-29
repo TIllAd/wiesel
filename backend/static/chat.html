@@ -127,7 +127,6 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.12));
     }
 
-
     .av-idle     { animation: avbob 3s ease-in-out infinite; }
     .av-think    { animation: avtilt 0.8s ease-in-out infinite; }
     .av-found    { animation: avcheer .6s ease-in-out 1 forwards; }
@@ -192,6 +191,8 @@
     #send { background:var(--orange); border:none; border-radius:13px; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 2px 8px rgba(216,90,48,.3); }
     #send:hover { transform:scale(1.07); box-shadow:0 4px 14px rgba(216,90,48,.45); }
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    #char-limit-hint { display:none; text-align:center; font-size:.65rem; color:#b91c1c; background:#fff0f0; padding:4px 14px; flex-shrink:0; }
 
     .fnote { text-align:center; font-size:.58rem; color:var(--tdim); opacity:.5; padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
 
@@ -323,6 +324,7 @@
   <button id="mic-btn">🎤</button>
   <button id="send" disabled>↑</button>
 </div>
+<div id="char-limit-hint"></div>
 <div class="fnote" id="footer-note"></div>
 
 <script src="/static/strings.js"></script>
@@ -331,7 +333,6 @@
   const token     = params.get('token');
   const sessionId = params.get('session_id') || null;
   const isDebugSession = params.get('debug') === '1' || (sessionId || '').startsWith('debug_session_wiesel_');
-  // Name aus URL-Param (LTI setzt ?user=...) oder Fallback
   window._userName = decodeURIComponent(params.get('user') || '');
   if (!token && params.get('mock') !== '1') {
     document.getElementById('no-session').style.display = 'block';
@@ -391,7 +392,7 @@
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { 
+      .then(data => {
         if (data?.course_name) document.getElementById('ctx-label').textContent = data.course_name;
         if (data?.user_name && data.user_name !== 'Debug Student' && data.user_name !== 'Eval Student') {
           window._userName = data.user_name;
@@ -431,8 +432,6 @@
     if (rePositive.test(t)) return 'found';
     return ['talk','think','found'][Math.floor(Math.random()*3)];
   }
-
-
 
   const typingPhrases = T.typingPhrases;
 
@@ -500,7 +499,6 @@
       row.appendChild(makeWieselSVG(avatarState));
     } else if (role === 'user') {
       if (text) { const span = document.createElement('span'); span.textContent = text; bubble.appendChild(span); }
-
     } else {
       bubble.textContent = text;
     }
@@ -531,19 +529,25 @@
   let pendingImageType = null;
 
   function loadGreeting() {
-    // Begrüßung ist UI-Text, kein Chat. Nicht ans LLM schicken.
-    // Sonst wird aus einem internen Startsignal wieder Prompt-Orakeltheater.
     const greeting = T.greeting;
     addMessage('bot', greeting, detectAvatarState(greeting));
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
   loadGreeting();
+
   queryEl.addEventListener('input', () => {
     queryEl.style.height = 'auto';
     queryEl.style.height = queryEl.scrollHeight + 'px';
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+    const hint = document.getElementById('char-limit-hint');
+    if (hint) {
+      const atLimit = queryEl.value.length >= MAX_QUERY_CHARS;
+      hint.style.display = atLimit ? 'block' : 'none';
+      if (atLimit) hint.textContent = T.tooLong;
+    }
   });
+
   queryEl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   sendBtn.addEventListener('click', send);
 
@@ -558,6 +562,8 @@
     if (pendingImageBase64) window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
     addMessage('user', text);
     queryEl.value = ''; queryEl.style.height = 'auto'; sendBtn.disabled = true;
+    const hint = document.getElementById('char-limit-hint');
+    if (hint) hint.style.display = 'none';
     addTyping();
     const readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = T.readImage; }, 1400);
     try {
@@ -589,7 +595,6 @@
     if (file.size > MAX_IMAGE_BYTES) {
       throw new Error(T.imageSizeError);
     }
-
     let bitmap;
     try {
       bitmap = await createImageBitmap(file);
@@ -599,18 +604,15 @@
     const scale = Math.min(1, MAX_IMAGE_DIMENSION / bitmap.width, MAX_IMAGE_DIMENSION / bitmap.height);
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
-
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
     if (!blob) throw new Error(T.imageProcessError);
     if (blob.size > MAX_IMAGE_BYTES) {
       throw new Error(T.imageCompressedTooLarge);
     }
-
     return await blobToDataUrl(blob);
   }
 
@@ -659,10 +661,8 @@
     event.preventDefault();
     messagesEl.classList.remove('drag-over');
     document.body.classList.remove('file-drag-active');
-
     const file = event.dataTransfer.files?.[0];
     if (!file) return;
-
     await handleImageFile(file);
   });
 
@@ -811,7 +811,6 @@
         resetVoiceInput({ commit: isRecording });
         return;
       }
-
       try {
         voiceTimedOut = false;
         isVoiceStarting = true;
