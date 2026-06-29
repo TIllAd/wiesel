@@ -106,6 +106,7 @@ Tabellen:
 - `sessions`: LTI-/Debug-Session, User-/Kurskontext, Nonce, Zeitstempel
 - `chat_messages`: User- und Assistant-Nachrichten pro Session
 - `chat_flags`: Session-weite Auffälligkeitsmarkierungen
+- `llm_usage`: Modell, Tokenverbrauch, Prompt-Cache-Nutzung, geschätzte Kosten, Latenz und Fehlerklasse pro LLM-Request
 
 SQLite reicht für den aktuellen MVP/Testbetrieb. Für höhere Last muss man nicht sofort eine Datenbank-Kathedrale bauen. Erst messen, dann migrieren. Alles andere ist Architekturtheater.
 
@@ -138,6 +139,14 @@ Beispiel:
 ```
 
 Wenn der LLM-Aufruf zuletzt fehlgeschlagen ist oder kein API-Key vorhanden ist, meldet der Healthcheck `unhealthy`. Das UI zeigt daraus aber keinen Badge.
+
+### LLM-Usage und Kosten
+
+`call_claude()` schreibt nach jedem Provider-Aufruf in `llm_usage`. Erfolgreiche Requests speichern Tokenzahlen aus `response.usage`, Prompt-Cache-Reads/Writes, geschätzte EUR/USD-Kosten und Latenz. Fehlgeschlagene Requests speichern zumindest Modell, Zeit und Fehlerklasse. Dadurch sehen Analytics später nicht nur „wie viele Chats“, sondern auch „wie teuer, wie langsam, wie kaputt“.
+
+Die Kostenformel nutzt ENV-Werte in USD pro 1 Mio Tokens: `LLM_INPUT_USD_PER_MTOK`, `LLM_OUTPUT_USD_PER_MTOK`, `LLM_CACHE_WRITE_USD_PER_MTOK`, `LLM_CACHE_READ_USD_PER_MTOK`, plus `USD_PER_EUR`. Das ist eine Schätzung für Reporting und Dashboard-Steuerung, keine Provider-Rechnung und kein Backend-Limit. Dafür gibt es Rechnungen. Schockierend.
+
+`export_analytics.py` exportiert globale und sessionbezogene `llm_usage`-Summen in die JSON-Datei unter `C:\Users\tillt\hermes\analytics\analytics_YYYY-MM-DD.json`. Analysen sollen diese Datei verwenden, nicht direkt die DB.
 
 ## Endpunkte
 
@@ -185,7 +194,7 @@ Sinnvolle nächste Schritte bei Last:
 1. Uvicorn/Gunicorn-Worker sauber konfigurieren.
 2. SQLite WAL aktivieren und Schreibpfade beobachten.
 3. Häufige statische Assets über Nginx ausliefern.
-4. Rate Limits pro Session/IP ergänzen.
+4. Missbrauchsschutz pro Session/IP nur bei realem Bedarf ergänzen; Budgetgrenzen gehören ins Dashboard/Monitoring, nicht als versteckter Backend-Hardstop.
 5. Erst bei echter Schreiblast auf Postgres wechseln.
 
 Nicht sinnvoll: ein separates Frontend oder Embedding-RAG bauen, nur weil es moderner klingt. Erst wenn die Qualitätsdaten zeigen, dass Markdown-Kontext nicht reicht.
