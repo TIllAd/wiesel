@@ -1,24 +1,11 @@
 #!/usr/bin/env python3
 """
 Exportiert geflaggte Wiesel-Chats als lesbaren HTML-Report.
-
-Standard: liest direkt aus backend/wiesel.db und nimmt ausschließlich Sessions mit
-Chat-/Session-Flag. Alte per-message Flags werden ignoriert.
+Sidebar-Layout: linke Sidebar mit Session-Liste, rechts Chat-Ansicht.
 
 Usage:
-  cd C:/Users/tillt/wiesel
   python export_flagged_chats_html.py --open
   python export_flagged_chats_html.py --days 30 --open
-  python export_flagged_chats_html.py --archive --open
-  python export_flagged_chats_html.py --json C:/Users/tillt/hermes/analytics/analytics_2026-06-28.json --open
-
-Default output überschreibt immer:
-  reports/flagged-chats-latest.html
-  reports/flagged-chats-latest.md
-
-Mit --archive werden zusätzlich timestamped Kopien erzeugt:
-  reports/flagged-chats-YYYYMMDD_HHMMSS.html
-  reports/flagged-chats-YYYYMMDD_HHMMSS.md
 """
 
 from __future__ import annotations
@@ -40,37 +27,28 @@ DEFAULT_OUT_DIR = Path(__file__).parent / "reports"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Geflaggte Wiesel-Chats als HTML exportieren.")
-    parser.add_argument("--db", default=str(DEFAULT_DB), help="Pfad zur SQLite-DB, Default: backend/wiesel.db")
-    parser.add_argument("--json", help="Optional: analytics_YYYY-MM-DD.json statt DB lesen")
-    parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR), help="Output-Ordner, Default: reports/")
-    parser.add_argument("--days", type=int, default=30, help="Nur Sessions seit N Tagen aus DB, Default: 30")
-    parser.add_argument("--include-unflagged", action="store_true", help="Auch ungeflaggte Sessions aufnehmen. Normalerweise Unsinn, aber bitte.")
-    parser.add_argument("--open", action="store_true", help="HTML nach Export öffnen")
-    parser.add_argument(
-        "--archive",
-        action="store_true",
-        help="Zusätzlich timestamped Archivkopien schreiben. Standard überschreibt nur flagged-chats-latest.*",
-    )
-    parser.add_argument(
-        "--split-gaps-minutes",
-        type=int,
-        default=20,
-        help="Nachrichten innerhalb einer Session in Blöcke splitten, wenn länger als N Minuten Pause war. Default: 20. Mit 0 deaktivieren.",
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", default=str(DEFAULT_DB))
+    parser.add_argument("--json", help="Optional: analytics JSON statt DB")
+    parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
+    parser.add_argument("--days", type=int, default=30)
+    parser.add_argument("--include-unflagged", action="store_true")
+    parser.add_argument("--open", action="store_true")
+    parser.add_argument("--archive", action="store_true")
+    parser.add_argument("--split-gaps-minutes", type=int, default=20)
     return parser.parse_args()
 
 
 def open_file(path: Path) -> None:
     try:
         if sys.platform.startswith("win"):
-            os.startfile(path.resolve())  # type: ignore[attr-defined]
+            os.startfile(path.resolve())
         elif sys.platform == "darwin":
             subprocess.Popen(["open", str(path.resolve())])
         else:
             subprocess.Popen(["xdg-open", str(path.resolve())])
     except Exception as exc:
-        print(f"Konnte HTML nicht automatisch öffnen: {exc}")
+        print(f"Konnte HTML nicht öffnen: {exc}")
 
 
 def qmark(value: Any) -> str:
@@ -86,159 +64,53 @@ def has_table(conn: sqlite3.Connection, table: str) -> bool:
 def load_from_db(db_path: Path, days: int, include_unflagged: bool) -> dict[str, Any]:
     if not db_path.exists():
         raise FileNotFoundError(f"DB nicht gefunden: {db_path}")
-
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     try:
-        if not has_table(conn, "sessions") or not has_table(conn, "chat_messages"):
-            raise RuntimeError("DB enthält nicht die erwarteten Tabellen sessions/chat_messages")
-
         flags_exist = has_table(conn, "chat_flags")
         since = (datetime.now() - timedelta(days=days)).isoformat()
-
         sessions = conn.execute(
-            """
-            SELECT * FROM sessions
-            WHERE created_at IS NULL OR created_at >= ?
-            ORDER BY created_at DESC
-            """,
+            "SELECT * FROM sessions WHERE created_at IS NULL OR created_at >= ? ORDER BY created_at DESC",
             (since,),
         ).fetchall()
 
-        exported_sessions: list[dict[str, Any]] = []
+        exported = []
         for s in sessions:
             sid = s["id"]
             flag_rows = []
             if flags_exist:
                 flag_rows = conn.execute(
-                    """
-                    SELECT id, session_id, tag, created_at
-                    FROM chat_flags
-                    WHERE session_id = ? AND message_id IS NULL
-                    ORDER BY created_at ASC
-                    """,
+                    "SELECT id, session_id, tag, created_at FROM chat_flags WHERE session_id = ? AND message_id IS NULL ORDER BY created_at ASC",
                     (sid,),
                 ).fetchall()
-
             if not include_unflagged and not flag_rows:
                 continue
-
             messages = conn.execute(
-                """
-                SELECT id, role, content, created_at
-                FROM chat_messages
-                WHERE session_id = ?
-                ORDER BY created_at ASC, id ASC
-                """,
+                "SELECT id, role, content, created_at FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC, id ASC",
                 (sid,),
             ).fetchall()
-
-            session_flags = [
-                {"id": f["id"], "tag": f["tag"], "created_at": f["created_at"]}
-                for f in flag_rows
-            ]
-
-            exported_sessions.append(
-                {
-                    "session_id": sid,
-                    "user": s["user_name"] if "user_name" in s.keys() else None,
-                    "course": s["course_name"] if "course_name" in s.keys() else None,
-                    "created_at": s["created_at"] if "created_at" in s.keys() else None,
-                    "last_accessed": s["last_accessed"] if "last_accessed" in s.keys() else None,
-                    "flags": session_flags,
-                    "messages": [
-                        {
-                            "id": m["id"],
-                            "role": m["role"],
-                            "content": m["content"],
-                            "created_at": m["created_at"],
-                        }
-                        for m in messages
-                    ],
-                }
-            )
-
-        return {
-            "source": str(db_path),
-            "mode": "sqlite",
-            "generated_at": datetime.now().isoformat(timespec="seconds"),
-            "days": days,
-            "sessions": exported_sessions,
-        }
+            exported.append({
+                "session_id": sid,
+                "user": s["user_name"] if "user_name" in s.keys() else None,
+                "course": s["course_name"] if "course_name" in s.keys() else None,
+                "created_at": s["created_at"] if "created_at" in s.keys() else None,
+                "flags": [{"id": f["id"], "tag": f["tag"], "created_at": f["created_at"]} for f in flag_rows],
+                "messages": [{"id": m["id"], "role": m["role"], "content": m["content"], "created_at": m["created_at"]} for m in messages],
+            })
+        return {"source": str(db_path), "mode": "sqlite", "generated_at": datetime.now().isoformat(timespec="seconds"), "sessions": exported}
     finally:
         conn.close()
 
 
-def load_from_analytics_json(json_path: Path, include_unflagged: bool) -> dict[str, Any]:
-    if not json_path.exists():
-        raise FileNotFoundError(f"JSON nicht gefunden: {json_path}")
-    data = json.loads(json_path.read_text(encoding="utf-8"))
-    exported_sessions: list[dict[str, Any]] = []
-
-    for s in data.get("sessions", []):
-        session_flags = s.get("flags", []) or []
-        messages = []
-        for idx, turn in enumerate(s.get("verlauf", []), start=1):
-            user_time = turn.get("zeitpunkt")
-            messages.append(
-                {
-                    "id": f"{idx}u",
-                    "role": "user",
-                    "content": turn.get("frage", ""),
-                    "created_at": user_time,
-                }
-            )
-            messages.append(
-                {
-                    "id": f"{idx}a",
-                    "role": "assistant",
-                    "content": turn.get("antwort", ""),
-                    "created_at": user_time,
-                }
-            )
-
-        if not include_unflagged and not session_flags:
-            continue
-
-        exported_sessions.append(
-            {
-                "session_id": s.get("session_id"),
-                "user": s.get("user"),
-                "course": s.get("kurs"),
-                "created_at": s.get("gestartet_am"),
-                "last_accessed": None,
-                "flags": session_flags,
-                "messages": messages,
-            }
-        )
-
-    return {
-        "source": str(json_path),
-        "mode": "analytics-json",
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "period": data.get("periode"),
-        "sessions": exported_sessions,
-    }
-
-
-def short(text: str, n: int = 180) -> str:
+def short(text: str, n: int = 80) -> str:
     cleaned = " ".join((text or "").split())
-    return cleaned if len(cleaned) <= n else cleaned[: n - 1] + "…"
+    return cleaned if len(cleaned) <= n else cleaned[:n-1] + "…"
 
 
 def render_inline_markdown(text: str) -> str:
-    """Sehr kleiner Markdown-Inline-Renderer für Chat-Reports.
-
-    Kein komplettes Markdown-Paket, weil dieser Export portabel bleiben soll.
-    Reicht für Wiesel-Antworten: Links, **fett**, *kursiv*, `code`.
-    """
     escaped = html.escape(text)
-
-    def link_repl(match: re.Match[str]) -> str:
-        label = match.group(1)
-        url = match.group(2)
-        return f"<a href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>{label}</a>"
-
+    def link_repl(m):
+        return f"<a href='{html.escape(m.group(2), quote=True)}' target='_blank'>{m.group(1)}</a>"
     escaped = re.sub(r"\[([^\]]+)\]\((https?://[^\s)]+)\)", link_repl, escaped)
     escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
     escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
@@ -247,309 +119,214 @@ def render_inline_markdown(text: str) -> str:
 
 
 def render_message_markdown(content: Any) -> str:
-    """Rendert Markdown-ish Chattext als HTML.
-
-    Unterstützt absichtlich nur die Formen, die in Wiesel-Antworten wirklich vorkommen:
-    Überschriften, Listen, Blockquotes, Fenced Code, Links, Bold/Italic/Inline-Code.
-    Mehr wäre wieder so ein Framework-Altar für drei Sternchen. Nein.
-    """
     lines = qmark(content).splitlines()
     out: list[str] = []
     paragraph: list[str] = []
-    in_ul = False
-    in_ol = False
-    in_code = False
+    in_ul = in_ol = in_code = False
     code_lines: list[str] = []
 
-    def flush_paragraph() -> None:
+    def flush_p():
         nonlocal paragraph
         if paragraph:
-            out.append(f"<p>{'<br>'.join(render_inline_markdown(line) for line in paragraph)}</p>")
+            out.append(f"<p>{'<br>'.join(render_inline_markdown(l) for l in paragraph)}</p>")
             paragraph = []
 
-    def close_lists() -> None:
+    def close_lists():
         nonlocal in_ul, in_ol
-        if in_ul:
-            out.append("</ul>")
-            in_ul = False
-        if in_ol:
-            out.append("</ol>")
-            in_ol = False
+        if in_ul: out.append("</ul>"); in_ul = False
+        if in_ol: out.append("</ol>"); in_ol = False
 
-    for raw_line in lines:
-        line = raw_line.rstrip()
-        stripped = line.strip()
-
-        if stripped.startswith("```"):
-            flush_paragraph()
-            close_lists()
+    for raw in lines:
+        line = raw.rstrip()
+        s = line.strip()
+        if s.startswith("```"):
+            flush_p(); close_lists()
             if in_code:
                 out.append(f"<pre class='code-block'><code>{html.escape(chr(10).join(code_lines))}</code></pre>")
-                code_lines = []
-                in_code = False
+                code_lines = []; in_code = False
             else:
                 in_code = True
             continue
+        if in_code: code_lines.append(line); continue
+        if not s: flush_p(); close_lists(); continue
+        h = re.match(r"^(#{1,4})\s+(.+)$", s)
+        if h:
+            flush_p(); close_lists()
+            lvl = min(len(h.group(1)) + 2, 6)
+            out.append(f"<h{lvl}>{render_inline_markdown(h.group(2))}</h{lvl}>"); continue
+        b = re.match(r"^[-*]\s+(.+)$", s)
+        if b:
+            flush_p()
+            if in_ol: out.append("</ol>"); in_ol = False
+            if not in_ul: out.append("<ul>"); in_ul = True
+            out.append(f"<li>{render_inline_markdown(b.group(1))}</li>"); continue
+        n = re.match(r"^\d+[.)]\s+(.+)$", s)
+        if n:
+            flush_p()
+            if in_ul: out.append("</ul>"); in_ul = False
+            if not in_ol: out.append("<ol>"); in_ol = True
+            out.append(f"<li>{render_inline_markdown(n.group(1))}</li>"); continue
+        q = re.match(r"^>\s?(.+)$", s)
+        if q:
+            flush_p(); close_lists()
+            out.append(f"<blockquote>{render_inline_markdown(q.group(1))}</blockquote>"); continue
+        close_lists(); paragraph.append(line)
 
-        if in_code:
-            code_lines.append(line)
-            continue
-
-        if not stripped:
-            flush_paragraph()
-            close_lists()
-            continue
-
-        heading = re.match(r"^(#{1,4})\s+(.+)$", stripped)
-        if heading:
-            flush_paragraph()
-            close_lists()
-            level = min(len(heading.group(1)) + 2, 6)
-            out.append(f"<h{level}>{render_inline_markdown(heading.group(2))}</h{level}>")
-            continue
-
-        bullet = re.match(r"^[-*]\s+(.+)$", stripped)
-        if bullet:
-            flush_paragraph()
-            if in_ol:
-                out.append("</ol>")
-                in_ol = False
-            if not in_ul:
-                out.append("<ul>")
-                in_ul = True
-            out.append(f"<li>{render_inline_markdown(bullet.group(1))}</li>")
-            continue
-
-        numbered = re.match(r"^\d+[.)]\s+(.+)$", stripped)
-        if numbered:
-            flush_paragraph()
-            if in_ul:
-                out.append("</ul>")
-                in_ul = False
-            if not in_ol:
-                out.append("<ol>")
-                in_ol = True
-            out.append(f"<li>{render_inline_markdown(numbered.group(1))}</li>")
-            continue
-
-        quote = re.match(r"^>\s?(.+)$", stripped)
-        if quote:
-            flush_paragraph()
-            close_lists()
-            out.append(f"<blockquote>{render_inline_markdown(quote.group(1))}</blockquote>")
-            continue
-
-        close_lists()
-        paragraph.append(line)
-
-    flush_paragraph()
-    close_lists()
+    flush_p(); close_lists()
     if in_code:
         out.append(f"<pre class='code-block'><code>{html.escape(chr(10).join(code_lines))}</code></pre>")
     return "".join(out) or "<p>–</p>"
 
 
-def parse_dt(value: Any) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-
-
-def split_message_blocks(messages: list[dict[str, Any]], gap_minutes: int) -> list[dict[str, Any]]:
-    """Gruppiert lange Debug-Sessions in lesbare Gesprächsblöcke.
-
-    Debug Mode nutzt oft dieselbe session_id immer wieder. Ein Session-Flag ist dann korrekt,
-    aber der Export wirkt wie ein Chat-Monster. Also splitten wir rein visuell nach Zeitlücken.
-    Die DB bleibt unverändert. Kleine Gnade für menschliche Augen.
-    """
-    if not messages:
-        return []
-    if gap_minutes <= 0:
-        return [{"start": messages[0].get("created_at"), "end": messages[-1].get("created_at"), "messages": messages}]
-
-    blocks: list[dict[str, Any]] = []
-    current: list[dict[str, Any]] = []
-    previous_dt: datetime | None = None
-    gap = timedelta(minutes=gap_minutes)
-
-    for message in messages:
-        current_dt = parse_dt(message.get("created_at"))
-        if current and current_dt and previous_dt and current_dt - previous_dt > gap:
-            blocks.append({"start": current[0].get("created_at"), "end": current[-1].get("created_at"), "messages": current})
-            current = []
-        current.append(message)
-        if current_dt:
-            previous_dt = current_dt
-
-    if current:
-        blocks.append({"start": current[0].get("created_at"), "end": current[-1].get("created_at"), "messages": current})
-    return blocks
-
-
 def render_html(report: dict[str, Any], split_gaps_minutes: int = 20) -> str:
     sessions = report.get("sessions", [])
     total_messages = sum(len(s.get("messages", [])) for s in sessions)
-    total_session_flags = sum(len(s.get("flags", [])) for s in sessions)
+    total_flags = sum(len(s.get("flags", [])) for s in sessions)
 
-
-    overview_rows = []
-    cards = []
+    sidebar_items = []
     for idx, s in enumerate(sessions, start=1):
-        sid = qmark(s.get("session_id"))
-        anchor = f"s{idx}"
-        session_flags = s.get("flags", []) or []
-        messages = s.get("messages", []) or []
+        flags = s.get("flags", [])
+        messages = s.get("messages", [])
         first_user = next((m.get("content", "") for m in messages if m.get("role") == "user"), "")
-        flag_badges = "".join(
-            f"<span class='flag'>{html.escape(qmark(f.get('tag')))} · {html.escape(qmark(f.get('created_at')))}</span>"
-            for f in session_flags
-        ) or "<span class='muted'>keine Session-Flags</span>"
-
-        overview_rows.append(
-            "<tr>"
-            f"<td><a href='#{anchor}'>{idx}</a></td>"
-            f"<td>{html.escape(qmark(s.get('created_at')))}</td>"
-            f"<td>{html.escape(qmark(s.get('user')))}</td>"
-            f"<td>{html.escape(qmark(s.get('course')))}</td>"
-            f"<td>{len(session_flags)}</td>"
-            f"<td>{html.escape(short(first_user))}</td>"
-            "</tr>"
+        time_str = (s.get("created_at") or "")[:16].replace("T", " ")
+        flag_tag = flags[0].get("tag", "") if flags else ""
+        sidebar_items.append(
+            f"<div class='sidebar-item' onclick=\"showSession('s{idx}')\" id='nav-s{idx}'>"
+            f"<div class='si-num'>#{idx}</div>"
+            f"<div class='si-body'>"
+            f"<div class='si-flag'>⚠️ {html.escape(flag_tag)}</div>"
+            f"<div class='si-time'>{html.escape(time_str)} · {len(messages)} Msgs</div>"
+            f"<div class='si-preview'>{html.escape(short(first_user, 60))}</div>"
+            f"</div></div>"
         )
 
-        block_html = []
-        blocks = split_message_blocks(messages, split_gaps_minutes)
-        for block_idx, block in enumerate(blocks, start=1):
-            block_messages = block.get("messages", []) or []
-            first_user_in_block = next((m.get("content", "") for m in block_messages if m.get("role") == "user"), "")
-            message_html = []
-            for m in block_messages:
-                role = qmark(m.get("role"))
-                role_class = "user" if role == "user" else "assistant" if role == "assistant" else "other"
-                message_html.append(
-                    f"<div class='message {role_class}'>"
-                    f"<div class='message-meta'>{html.escape(role)} · ID {html.escape(qmark(m.get('id')))} · {html.escape(qmark(m.get('created_at')))}</div>"
-                    f"<div class='message-content'>{render_message_markdown(m.get('content'))}</div>"
-                    "</div>"
-                )
-            open_attr = " open" if block_idx == len(blocks) else ""
-            block_html.append(
-                f"<details class='block'{open_attr}>"
-                f"<summary><strong>Block {block_idx}</strong> · {len(block_messages)} Nachrichten · {html.escape(qmark(block.get('start')))} → {html.escape(qmark(block.get('end')))} · erster Prompt: {html.escape(short(first_user_in_block, 120))}</summary>"
-                f"{''.join(message_html)}"
-                "</details>"
+    panels = []
+    for idx, s in enumerate(sessions, start=1):
+        messages = s.get("messages", [])
+        flags = s.get("flags", [])
+        time_str = (s.get("created_at") or "")[:16].replace("T", " ")
+        flag_badges = "".join(
+            f"<span class='flag'>⚠️ {html.escape(f.get('tag',''))} · {html.escape((f.get('created_at') or '')[:16])}</span>"
+            for f in flags
+        )
+        msg_html = []
+        for m in messages:
+            role = m.get("role", "")
+            content = m.get("content", "") or ""
+            ts = (m.get("created_at") or "")[:16].replace("T", " ")
+            role_label = "🎓 Student" if role == "user" else "🐾 Wiesel"
+            msg_html.append(
+                f"<div class='msg msg-{role}'>"
+                f"<div class='msg-header'><span class='msg-role'>{role_label}</span><span class='msg-time'>{html.escape(ts)}</span></div>"
+                f"<div class='msg-body'>{render_message_markdown(content)}</div>"
+                f"</div>"
             )
-
-        debug_warning = ""
-        if sid == "debug_session_wiesel" or len(messages) > 80:
-            debug_warning = (
-                "<div class='warning'><strong>Hinweis:</strong> Diese Session ist ungewöhnlich lang. "
-                "Das kann bei alten Debug-Sessions passieren, die noch dieselbe session_id wiederverwendet haben, "
-                "oder bei absichtlich langen Tests. Der Report splittet das hier nur visuell in Zeitblöcke. "
-                "Die DB bleibt unverändert.</div>"
-            )
-
-        cards.append(
-            f"<section class='card' id='{anchor}'>"
-            f"<div class='card-head'><h2>#{idx} · {html.escape(sid)}</h2><a href='#top'>nach oben</a></div>"
-            f"<div class='meta'>User: {html.escape(qmark(s.get('user')))} · Kurs: {html.escape(qmark(s.get('course')))} · Start: {html.escape(qmark(s.get('created_at')))} · Letzter Zugriff: {html.escape(qmark(s.get('last_accessed')))}</div>"
-            f"<div class='flags'>{flag_badges}</div>"
-            f"{debug_warning}"
-            f"<details open><summary>{len(messages)} Nachrichten anzeigen · in {len(blocks)} Blöcke gesplittet</summary>{''.join(block_html)}</details>"
-            "</section>"
+        display = "flex" if idx == 1 else "none"
+        panels.append(
+            f"<div class='panel' id='s{idx}' style='display:{display}'>"
+            f"<div class='panel-header'>"
+            f"<div><strong>Session #{idx}</strong> · {html.escape(time_str)} · {len(messages)} Nachrichten</div>"
+            f"<div class='panel-flags'>{flag_badges}</div>"
+            f"</div>"
+            f"<div class='chat-area'>{''.join(msg_html)}</div>"
+            f"</div>"
         )
 
     return f"""<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wiesel · Geflaggte Chats</title>
 <style>
-:root {{ color-scheme: dark; --bg:#0d1117; --card:#161b22; --line:#30363d; --text:#e6edf3; --muted:#8b949e; --yellow:#d29922; --blue:#58a6ff; --user:#102033; --assistant:#161b22; --flag:#e3b341; --warn:#ffcc66; }}
-body {{ margin:0; padding:32px; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }}
-h1 {{ margin:0 0 8px; font-size:30px; }}
-h2 {{ margin:0; font-size:18px; }}
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+:root {{ --bg:#0d1117; --sidebar:#161b22; --card:#1c2128; --line:#30363d; --text:#e6edf3; --muted:#8b949e; --blue:#58a6ff; --yellow:#d29922; --flag:#e3b341; --user-bg:#0d2137; --bot-bg:#1c2128; --user-border:#1f4a73; --bot-border:#30363d; }}
+body {{ background:var(--bg); color:var(--text); font:15px/1.6 system-ui,-apple-system,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }}
+.topbar {{ padding:14px 20px; background:var(--sidebar); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-shrink:0; }}
+.topbar h1 {{ font-size:18px; font-weight:700; }}
+.pill {{ padding:4px 10px; background:rgba(88,166,255,.12); border:1px solid rgba(88,166,255,.3); border-radius:999px; font-size:13px; color:var(--blue); }}
+.gen {{ color:var(--muted); font-size:12px; margin-left:auto; }}
+.layout {{ display:flex; flex:1; overflow:hidden; }}
+.sidebar {{ width:280px; flex-shrink:0; background:var(--sidebar); border-right:1px solid var(--line); overflow-y:auto; }}
+.sidebar-item {{ padding:14px 16px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; gap:10px; transition:background .15s; }}
+.sidebar-item:hover {{ background:rgba(255,255,255,.04); }}
+.sidebar-item.active {{ background:rgba(88,166,255,.1); border-left:3px solid var(--blue); padding-left:13px; }}
+.si-num {{ color:var(--muted); font-size:13px; font-weight:600; width:22px; flex-shrink:0; padding-top:1px; }}
+.si-body {{ flex:1; min-width:0; }}
+.si-flag {{ font-size:13px; font-weight:600; color:var(--flag); }}
+.si-time {{ font-size:12px; color:var(--muted); margin-top:2px; }}
+.si-preview {{ font-size:13px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); }}
+.main {{ flex:1; overflow:hidden; }}
+.panel {{ flex-direction:column; height:100%; overflow:hidden; }}
+.panel-header {{ padding:16px 24px; background:var(--card); border-bottom:1px solid var(--line); flex-shrink:0; }}
+.panel-header strong {{ font-size:16px; }}
+.panel-flags {{ margin-top:8px; }}
+.flag {{ display:inline-block; padding:3px 10px; border-radius:999px; background:rgba(210,153,34,.18); color:var(--flag); font-size:12px; font-weight:600; margin-right:6px; }}
+.chat-area {{ flex:1; overflow-y:auto; padding:24px 32px; display:flex; flex-direction:column; gap:20px; min-width:0; width:100%; }}
+.msg {{ border-radius:14px; max-width:75%; min-width:0; box-sizing:border-box; }}
+.msg-user {{ background:var(--user-bg); border:1px solid var(--user-border); align-self:flex-end; }}
+.msg-assistant {{ background:var(--bot-bg); border:1px solid var(--bot-border); align-self:flex-start; }}
+.msg-header {{ padding:8px 14px; display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }}
+.msg-role {{ font-size:12px; font-weight:700; color:var(--muted); }}
+.msg-time {{ font-size:11px; color:var(--muted); }}
+.msg-body {{ padding:14px 18px; word-break:break-word; overflow-wrap:break-word; }}
+.msg-body p {{ margin:0 0 10px; }}
+.msg-body p:last-child {{ margin-bottom:0; }}
+.msg-body ul,.msg-body ol {{ margin:8px 0 10px 20px; }}
+.msg-body li {{ margin:4px 0; }}
+.msg-body strong {{ color:#fff; }}
+.msg-body a {{ color:var(--blue); }}
+.msg-body code {{ padding:2px 5px; border-radius:4px; background:rgba(110,118,129,.28); font-size:13px; font-family:monospace; }}
+.msg-body h3,.msg-body h4 {{ margin:12px 0 6px; color:#f0f6fc; }}
+.msg-body blockquote {{ margin:8px 0; padding:8px 12px; border-left:3px solid var(--yellow); background:rgba(210,153,34,.08); color:#ffdf8a; }}
+pre.code-block {{ margin:8px 0; padding:12px; background:#0d1117; border:1px solid var(--line); border-radius:8px; overflow:auto; font:13px/1.5 monospace; white-space:pre-wrap; }}
+.empty {{ padding:48px; text-align:center; color:var(--muted); font-size:16px; }}
 a {{ color:var(--blue); }}
-.meta, .muted, .message-meta {{ color:var(--muted); }}
-.stats {{ display:flex; gap:12px; flex-wrap:wrap; margin:18px 0 24px; }}
-.stat {{ padding:10px 14px; background:var(--card); border:1px solid var(--line); border-radius:12px; }}
-.table-wrap {{ overflow:auto; margin:20px 0 28px; border:1px solid var(--line); border-radius:12px; }}
-table {{ width:100%; border-collapse:collapse; background:var(--card); }}
-th, td {{ padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }}
-th {{ color:var(--muted); font-weight:600; }}
-.card {{ margin:22px 0; padding:18px; background:var(--card); border:1px solid rgba(210,153,34,.55); border-radius:14px; }}
-.card-head {{ display:flex; align-items:center; justify-content:space-between; gap:16px; }}
-.flags {{ margin:12px 0; }}
-.flag {{ display:inline-block; margin:4px 6px 0 0; padding:3px 8px; border-radius:999px; background:rgba(210,153,34,.18); color:var(--flag); font-size:12px; font-weight:600; }}
-details {{ margin-top:12px; }}
-summary {{ cursor:pointer; color:var(--muted); margin-bottom:12px; }}
-.block {{ padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.02); }}
-.block + .block {{ margin-top:12px; }}
-.warning {{ margin:12px 0; padding:10px 12px; border:1px solid rgba(255,204,102,.55); background:rgba(255,204,102,.10); color:var(--warn); border-radius:12px; }}
-.message {{ border:1px solid var(--line); border-radius:12px; margin:10px 0; overflow:hidden; }}
-.message.user {{ background:var(--user); }}
-.message.assistant {{ background:var(--assistant); }}
-.message-meta {{ padding:8px 12px; border-bottom:1px solid var(--line); font-size:12px; }}
-.message-content {{ padding:14px 16px; }}
-.message-content :first-child {{ margin-top:0; }}
-.message-content :last-child {{ margin-bottom:0; }}
-.message-content p {{ margin:0 0 12px; }}
-.message-content h3, .message-content h4, .message-content h5, .message-content h6 {{ margin:16px 0 8px; color:#f0f6fc; line-height:1.25; }}
-.message-content h3 {{ font-size:18px; }}
-.message-content h4 {{ font-size:16px; }}
-.message-content h5, .message-content h6 {{ font-size:15px; }}
-.message-content ul, .message-content ol {{ margin:8px 0 14px 22px; padding:0; }}
-.message-content li {{ margin:4px 0; }}
-.message-content strong {{ color:#fff; font-weight:700; }}
-.message-content code {{ padding:2px 5px; border-radius:5px; background:rgba(110,118,129,.28); font:13px ui-monospace, SFMono-Regular, Consolas, monospace; }}
-.message-content blockquote {{ margin:10px 0; padding:8px 12px; border-left:3px solid var(--yellow); background:rgba(210,153,34,.08); color:#ffdf8a; }}
-pre.code-block {{ margin:10px 0; padding:12px; overflow:auto; white-space:pre-wrap; word-wrap:break-word; border:1px solid var(--line); border-radius:10px; background:#0d1117; font:14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }}
-pre.code-block code {{ padding:0; background:transparent; }}
-.empty {{ padding:24px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); }}
 </style>
 </head>
-<body id="top">
-<h1>Wiesel · Geflaggte Chats</h1>
-<div class="meta">Quelle: {html.escape(qmark(report.get('source')))} · Modus: {html.escape(qmark(report.get('mode')))} · Export: {html.escape(qmark(report.get('generated_at')))}</div>
-<div class="stats">
-  <div class="stat">Geflaggte Sessions: <strong>{len(sessions)}</strong></div>
-  <div class="stat">Nachrichten: <strong>{total_messages}</strong></div>
-  <div class="stat">Session-Flags: <strong>{total_session_flags}</strong></div>
+<body>
+<div class="topbar">
+  <h1>🐾 Wiesel · Geflaggte Chats</h1>
+  <span class="pill">{len(sessions)} Sessions</span>
+  <span class="pill">{total_messages} Nachrichten</span>
+  <span class="pill">{total_flags} Flags</span>
+  <span class="gen">Export: {html.escape(report.get('generated_at',''))}</span>
 </div>
-<div class="table-wrap"><table><thead><tr><th>#</th><th>Start</th><th>User</th><th>Kurs</th><th>Session-Flags</th><th>Erster Prompt</th></tr></thead><tbody>{''.join(overview_rows)}</tbody></table></div>
-{''.join(cards) if cards else '<div class="empty">Keine geflaggten Chats gefunden. Entweder hat niemand geklickt, oder ihr exportiert aus der falschen DB. Beides wäre typisch.</div>'}
+<div class="layout">
+  <div class="sidebar">{"".join(sidebar_items)}</div>
+  <div class="main">
+    {"".join(panels) if panels else '<div class="empty">Keine geflaggten Sessions.</div>'}
+  </div>
+</div>
+<script>
+function showSession(id) {{
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  const p = document.getElementById(id);
+  if (p) p.style.display = 'flex';
+  const n = document.getElementById('nav-' + id);
+  if (n) n.classList.add('active');
+}}
+document.addEventListener('DOMContentLoaded', () => {{
+  const first = document.querySelector('.sidebar-item');
+  if (first) first.classList.add('active');
+}});
+</script>
 </body>
 </html>"""
 
 
 def render_markdown(report: dict[str, Any], split_gaps_minutes: int = 20) -> str:
-    lines = []
-    lines.append(f"# Wiesel · Geflaggte Chats · {report.get('generated_at')}")
-    lines.append("")
-    lines.append(f"Quelle: {report.get('source')}")
-    lines.append("")
+    lines = [f"# Wiesel · Geflaggte Chats · {report.get('generated_at')}", ""]
     for idx, s in enumerate(report.get("sessions", []), start=1):
         lines.append(f"## {idx}. {s.get('session_id')}")
-        lines.append(f"User: {qmark(s.get('user'))} · Kurs: {qmark(s.get('course'))} · Start: {qmark(s.get('created_at'))}")
+        lines.append(f"Start: {qmark(s.get('created_at'))} · User: {qmark(s.get('user'))}")
         lines.append("")
-        if s.get("flags"):
-            lines.append("Session-Flags: " + ", ".join(f"{f.get('tag')} ({f.get('created_at')})" for f in s.get("flags", [])))
+        for m in s.get("messages", []):
+            lines.append(f"**{m.get('role')}** · {m.get('created_at')}")
             lines.append("")
-        messages = s.get("messages", []) or []
-        if s.get("session_id") == "debug_session_wiesel" or len(messages) > 80:
-            lines.append("> Hinweis: ungewöhnlich lange Session. Das kann bei alten Debug-Sessions passieren, die noch dieselbe session_id wiederverwendet haben, oder bei absichtlich langen Tests. Der Export splittet nur visuell nach Zeitlücken; die DB bleibt unverändert.")
+            lines.append(qmark(m.get("content")))
             lines.append("")
-        for block_idx, block in enumerate(split_message_blocks(messages, split_gaps_minutes), start=1):
-            block_messages = block.get("messages", []) or []
-            lines.append(f"### Block {block_idx} · {len(block_messages)} Nachrichten · {qmark(block.get('start'))} → {qmark(block.get('end'))}")
-            lines.append("")
-            for m in block_messages:
-                lines.append(f"#### {m.get('role')} · {m.get('created_at')}")
-                lines.append("")
-                lines.append(qmark(m.get("content")))
-                lines.append("")
     return "\n".join(lines)
 
 
@@ -559,7 +336,10 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.json:
-        report = load_from_analytics_json(Path(args.json), args.include_unflagged)
+        report = json.loads(Path(args.json).read_text(encoding="utf-8"))
+        report["source"] = args.json
+        report["mode"] = "json"
+        report["generated_at"] = datetime.now().isoformat(timespec="seconds")
     else:
         report = load_from_db(Path(args.db), args.days, args.include_unflagged)
 
@@ -571,23 +351,12 @@ def main() -> int:
     html_path.write_text(html_content, encoding="utf-8")
     md_path.write_text(md_content, encoding="utf-8")
 
-    archived_paths: list[Path] = []
     if args.archive:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        archive_html_path = out_dir / f"flagged-chats-{ts}.html"
-        archive_md_path = out_dir / f"flagged-chats-{ts}.md"
-        archive_html_path.write_text(html_content, encoding="utf-8")
-        archive_md_path.write_text(md_content, encoding="utf-8")
-        archived_paths = [archive_html_path, archive_md_path]
+        (out_dir / f"flagged-chats-{ts}.html").write_text(html_content, encoding="utf-8")
+        (out_dir / f"flagged-chats-{ts}.md").write_text(md_content, encoding="utf-8")
 
-    print("Geflaggte Chats exportiert:")
-    print(f"  Sessions: {len(report.get('sessions', []))}")
-    print(f"  HTML: {html_path}")
-    print(f"  Markdown: {md_path}")
-    if archived_paths:
-        print("  Archiv:")
-        for path in archived_paths:
-            print(f"    {path}")
+    print(f"✅ {len(report.get('sessions', []))} geflaggte Sessions exportiert → {html_path}")
 
     if args.open:
         open_file(html_path)

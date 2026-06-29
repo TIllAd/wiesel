@@ -32,12 +32,17 @@ git pull origin main
 
 Datei: `backend/.env`
 
-Minimal für lokalen/Testbetrieb:
+Minimal für lokalen/Testbetrieb. Die LLM-Preise sind Reporting-Schätzwerte nach Claude Haiku 4.5 Public Pricing (5m Cache Write), keine Abrechnungslogik:
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
 MOCK_LTI_MODE=true
 JWT_SECRET=change-me-for-any-shared-environment
+USD_PER_EUR=1.08
+LLM_INPUT_USD_PER_MTOK=1.00
+LLM_OUTPUT_USD_PER_MTOK=5.00
+LLM_CACHE_WRITE_USD_PER_MTOK=1.25
+LLM_CACHE_READ_USD_PER_MTOK=0.10
 ```
 
 Für Produktion mit StudOn:
@@ -89,6 +94,14 @@ Erwartung bei funktionierendem API-Key und erfolgreichem/noch nicht fehlgeschlag
 ```
 
 Der Healthcheck ist technisch. Er wird nicht als Online/Offline-Status im UI angezeigt.
+
+Kosten-/Usage-Check nach ein paar Requests:
+
+```bash
+python export_analytics.py
+```
+
+Der Export enthält dann `llm_usage` mit Request-Zahl, Tokenverbrauch, Cache-Nutzung, geschätzten EUR-Kosten, P95-Latenz und Fehleranzahl. Für Analysen wird diese JSON-Datei verwendet, nicht die Roh-DB. Ja, das ist Absicht.
 
 ## Start ohne Docker
 
@@ -287,7 +300,7 @@ Für O-Woche/Lastspitzen:
 - Reverse Proxy vor FastAPI setzen.
 - Mehr Uvicorn-Worker statt unnötiger Frontend-Komplexität.
 - LLM-Latenzen und Fehlerraten loggen.
-- Rate Limits ergänzen, bevor die API-Rechnung zur pädagogischen Maßnahme wird.
+- Kosten im Dashboard/Monitoring beobachten; keine versteckten Budget-Hardstops im Backend einbauen.
 - SQLite beobachten; erst bei realem Druck auf Postgres migrieren.
 
 ## Betriebsprinzipien

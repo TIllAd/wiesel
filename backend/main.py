@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session as SQLSession
 
@@ -42,13 +42,24 @@ LTI_CONSUMER_SECRET = os.getenv("LTI_CONSUMER_SECRET", "test_consumer_secret_moc
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
-DATABASE_URL = "sqlite:///./wiesel.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wiesel.db")
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 DEFAULT_GREETING = "Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?"
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
 TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
 LLM_HEALTH = {"ok": bool(ANTHROPIC_API_KEY), "last_success": None, "last_error": None}
+
+# USD pro 1 Mio Tokens. Defaults reflect Claude Haiku 4.5 public pricing:
+# base input 1.00, 5m cache write 1.25, cache hits/refreshes 0.10, output 5.00.
+# Configurable because model pricing changes more often than documentation survives.
+# (A familiar little tragedy.)
+USD_PER_EUR = float(os.getenv("USD_PER_EUR", "1.08"))
+LLM_INPUT_USD_PER_MTOK = float(os.getenv("LLM_INPUT_USD_PER_MTOK", "1.00"))
+LLM_OUTPUT_USD_PER_MTOK = float(os.getenv("LLM_OUTPUT_USD_PER_MTOK", "5.00"))
+LLM_CACHE_WRITE_USD_PER_MTOK = float(os.getenv("LLM_CACHE_WRITE_USD_PER_MTOK", "1.25"))
+LLM_CACHE_READ_USD_PER_MTOK = float(os.getenv("LLM_CACHE_READ_USD_PER_MTOK", "0.10"))
 
 # ============================================================================
 # DATABASE SETUP
@@ -90,6 +101,22 @@ class ChatFlag(Base):
     message_id = Column(Integer, nullable=True, index=True)
     tag = Column(String, default="auffaelligkeit", index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class LLMUsage(Base):
+    __tablename__ = "llm_usage"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, index=True)
+    model = Column(String, index=True)
+    input_tokens = Column(Integer, default=0)
+    output_tokens = Column(Integer, default=0)
+    cache_creation_input_tokens = Column(Integer, default=0)
+    cache_read_input_tokens = Column(Integer, default=0)
+    estimated_cost_usd = Column(Float, default=0.0)
+    estimated_cost_eur = Column(Float, default=0.0)
+    latency_ms = Column(Integer, nullable=True)
+    error_type = Column(String, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 Base.metadata.create_all(bind=engine)
@@ -291,7 +318,60 @@ def is_ambiguous_first_message(query: str, chat_history: list) -> bool:
     return False
 
 
-async def call_claude(query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
+def estimate_llm_cost_usd(
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    cache_creation_input_tokens: int = 0,
+    cache_read_input_tokens: int = 0,
+) -> float:
+    return (
+        input_tokens * LLM_INPUT_USD_PER_MTOK
+        + output_tokens * LLM_OUTPUT_USD_PER_MTOK
+        + cache_creation_input_tokens * LLM_CACHE_WRITE_USD_PER_MTOK
+        + cache_read_input_tokens * LLM_CACHE_READ_USD_PER_MTOK
+    ) / 1_000_000
+
+
+def record_llm_usage(
+    session_id: str,
+    model: str,
+    usage=None,
+    latency_ms: int | None = None,
+    error_type: str | None = None,
+) -> None:
+    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    cache_creation_input_tokens = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
+    cache_read_input_tokens = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+    estimated_cost_usd = estimate_llm_cost_usd(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_creation_input_tokens=cache_creation_input_tokens,
+        cache_read_input_tokens=cache_read_input_tokens,
+    )
+    db = SessionLocal()
+    try:
+        db.add(LLMUsage(
+            session_id=session_id,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_creation_input_tokens=cache_creation_input_tokens,
+            cache_read_input_tokens=cache_read_input_tokens,
+            estimated_cost_usd=estimated_cost_usd,
+            estimated_cost_eur=estimated_cost_usd / USD_PER_EUR if USD_PER_EUR else estimated_cost_usd,
+            latency_ms=latency_ms,
+            error_type=error_type,
+        ))
+        db.commit()
+    except Exception:
+        logger.error("Could not record LLM usage", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
+
+
+async def call_claude(session_id: str, query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     messages = []
@@ -330,14 +410,17 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
     # ────────────────────────────────────────────────────────────────────────
 
     try:
+        started_at = datetime.utcnow()
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model=ANTHROPIC_MODEL,
             max_tokens=1024,
             system=system_blocks,
             messages=messages,
             extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
-        logger.info(f"Cache: input={response.usage.input_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)}")
+        latency_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
+        record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, usage=response.usage, latency_ms=latency_ms)
+        logger.info(f"LLM usage: input={response.usage.input_tokens} | output={response.usage.output_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)} | latency_ms={latency_ms}")
         text = response.content[0].text
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
@@ -346,6 +429,7 @@ async def call_claude(query: str, chat_history: list = None, kb_content: str = "
         return text
     except Exception as e:
         logger.error("Claude API error", exc_info=True)
+        record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, error_type=e.__class__.__name__)
         LLM_HEALTH.update({"ok": False, "last_error": datetime.utcnow().isoformat()})
         return TECHNICAL_ERROR_FALLBACK
 
@@ -465,7 +549,7 @@ async def chat_endpoint(request: ChatRequest):
 
         kb_content = load_knowledge_base()
 
-        response = await call_claude(request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
+        response = await call_claude(request.session_id, request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
 
         if request.query != "__greeting__":
             db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query or "[Bild gesendet]"))

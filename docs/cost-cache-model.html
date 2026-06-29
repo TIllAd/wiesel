@@ -3,250 +3,355 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wiesel Kostenmodell: Prompt Cache</title>
+<title>Wiesel Kostenmodell</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-  .wrap { max-width:1120px; margin:0 auto; padding:36px 28px 46px; }
-  h1 { margin:0 0 8px; font-size:30px; letter-spacing:-0.03em; }
-  h2 { margin:0 0 10px; font-size:18px; }
-  .lead { color:var(--muted); margin:0 0 26px; font-size:15px; max-width:840px; line-height:1.55; }
+  .wrap { max-width:1120px; margin:0 auto; padding:36px 28px 56px; }
+  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.03em; }
+  h2 { margin:0 0 10px; font-size:17px; font-weight:600; }
+  .lead { color:var(--muted); margin:0 0 10px; font-size:14px; max-width:860px; line-height:1.6; }
+  .explainer { background:#0c1a2e; border:1px solid #1e3a5f; border-radius:14px; padding:18px 22px; margin:0 0 28px; max-width:860px; }
+  .explainer p { margin:0 0 8px; font-size:14px; line-height:1.65; color:#93c5fd; }
+  .explainer p:last-child { margin:0; }
+  .explainer strong { color:#bfdbfe; }
   .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0; }
-  .card, .panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
+  .card, .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
   .card { padding:16px; }
   .panel { padding:22px; margin-top:18px; }
-  .k { color:var(--muted); font-size:12px; margin-bottom:7px; }
-  .v { font-size:25px; font-weight:780; letter-spacing:-.02em; }
+  .k { color:var(--muted); font-size:12px; margin-bottom:6px; line-height:1.4; }
+  .v { font-size:24px; font-weight:700; letter-spacing:-.02em; }
   .s { color:#64748b; font-size:12px; margin-top:5px; line-height:1.35; }
-  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
-  td, th { border-bottom:1px solid var(--line); padding:10px 8px; text-align:left; vertical-align:top; }
-  th { color:#cbd5e1; } td { color:#94a3b8; }
-  .note { color:var(--muted); font-size:13px; line-height:1.5; margin-top:16px; }
-  .formula { color:#cbd5e1; background:#020617; border:1px solid var(--line); padding:12px; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; overflow:auto; }
-  .chart-wrap { position:relative; width:100%; height:380px; margin-top:16px; }
+  .chart-wrap { position:relative; width:100%; height:360px; margin-top:18px; }
   .legend { display:flex; flex-wrap:wrap; gap:18px; margin-top:14px; font-size:12px; color:#94a3b8; }
   .legend-item { display:flex; align-items:center; gap:7px; }
-  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-  .legend-line { width:22px; height:2px; border-radius:1px; flex-shrink:0; }
   .legend-dash { width:22px; height:0; border-top:2px dashed; flex-shrink:0; }
-  .slider-row { display:flex; align-items:center; gap:12px; margin:14px 0 6px; }
-  .slider-label { font-size:13px; color:#94a3b8; min-width:180px; }
-  .slider-val { font-size:14px; font-weight:600; color:#e5e7eb; min-width:100px; text-align:right; }
-  .metrics-cur { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:16px 0 0; }
+  .legend-line { width:22px; height:2.5px; border-radius:1px; flex-shrink:0; }
+  .slider-block { margin:18px 0 0; }
+  .slider-row { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+  .slider-label { font-size:13px; color:#94a3b8; min-width:200px; }
+  .slider-val { font-size:14px; font-weight:600; color:#e5e7eb; min-width:110px; text-align:right; }
+  .slider-hint { font-size:12px; color:#475569; margin:0 0 14px; }
+  .slider-wrap { position: relative; flex: 1; height: 36px; display: flex; align-items: center; }
+  .slider-track { position: absolute; left: 0; right: 0; height: 4px; background: #1e293b; border-radius: 2px; }
+  .slider-fill { position: absolute; left: 0; height: 4px; background: #eda100; border-radius: 2px; pointer-events: none; }
+  .slider-thumb { position: absolute; width: 20px; height: 20px; background: #eda100; border-radius: 50%; top: 50%; transform: translate(-50%, -50%); cursor: pointer; box-shadow: 0 0 0 4px rgba(237,161,0,0.2); transition: box-shadow .15s; }
+  .slider-thumb:hover { box-shadow: 0 0 0 7px rgba(237,161,0,0.25); }
+  .slider-thumb:active { box-shadow: 0 0 0 9px rgba(237,161,0,0.3); }
+  input[type=range].hidden-range { position: absolute; left: 0; right: 0; width: 100%; opacity: 0; height: 36px; cursor: pointer; margin: 0; }
+  .metrics-cur { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:16px 0 0; }
   .mc { background:#020617; border:1px solid var(--line); border-radius:12px; padding:14px; }
   .mc .k { margin-bottom:5px; }
   .mc .v { font-size:22px; }
-  input[type=range] { accent-color:#eda100; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+  td, th { border-bottom:1px solid var(--line); padding:10px 8px; text-align:left; vertical-align:top; }
+  th { color:#cbd5e1; font-weight:500; } td { color:#94a3b8; }
+  .note { color:var(--muted); font-size:13px; line-height:1.6; margin-top:16px; }
+  .formula { color:#64748b; background:#020617; border:1px solid var(--line); padding:12px; border-radius:10px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:11px; overflow:auto; margin-top:12px; }
+  .loading { color:#475569; font-size:14px; padding:40px 0; text-align:center; }
   @media (max-width:860px) { .grid { grid-template-columns:1fr 1fr; } .metrics-cur { grid-template-columns:1fr 1fr; } }
   @media (max-width:560px) { .grid { grid-template-columns:1fr; } .metrics-cur { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Wiesel Kostenmodell: Prompt Cache</h1>
-  <p class="lead">Basis: 4 echte Claude-Haiku-4.5-Requests aus dem Analytics-Export vom 28.06.2026. Der große Prompt-/Knowledge-Kontext wird zuerst in den Cache geschrieben; Folgefragen lesen denselben Kontext deutlich billiger. Der normale Durchschnitt ist bei kleinen Samples deshalb etwas heimtückisch. Überraschung: Durchschnitte lügen gerne.</p>
+  <h1>Wiesel — Betriebskosten</h1>
+  <p class="lead" id="periode-label">Lade Daten…</p>
 
-  <div class="grid">
-    <div class="card"><div class="k">Gemessen gesamt</div><div class="v">0,1217 €</div><div class="s">4 erfolgreiche Requests</div></div>
-    <div class="card"><div class="k">Aktueller Schnitt</div><div class="v">3,04 ct</div><div class="s">durch Cache-Write noch hoch</div></div>
-    <div class="card"><div class="k">Warm Request</div><div class="v">0,95 ct</div><div class="s">Cache vorhanden, Folgefrage</div></div>
-    <div class="card"><div class="k">Worst Case</div><div class="v">10,25 ct</div><div class="s">jeder Request schreibt Cache neu</div></div>
+  <div class="explainer">
+    <p><strong>Wie entstehen die Kosten?</strong> Wiesel lädt beim ersten Anfrage alle Wissensinhalte (Studienordnung, FAQs, Adressen) einmalig in den Arbeitsspeicher des KI-Modells. Dieser Schritt kostet einmalig mehr — danach nutzt jedes weitere Anfrage denselben Kontext zu einem Bruchteil des Preises.</p>
+    <p>Das bedeutet: Je mehr Anfragen auf einen Kaltstart folgen, desto günstiger wird jedes einzelne. Der Schieberegler unten zeigt, wie stark dieser Effekt ist.</p>
+  </div>
+
+  <div class="grid" id="top-cards">
+    <div class="card"><div class="k">Gemessen gesamt</div><div class="v" id="c-gesamt">–</div><div class="s" id="c-gesamt-sub">–</div></div>
+    <div class="card"><div class="k">Ø Kosten pro Anfrage</div><div class="v" id="c-schnitt">–</div><div class="s">aktuell gemessen</div></div>
+    <div class="card"><div class="k">Günstiges Folgeanfrage</div><div class="v" id="c-warm">–</div><div class="s">Kontext bereits geladen</div></div>
+    <div class="card"><div class="k">Teuerster Einzelfall</div><div class="v" id="c-worst">–</div><div class="s">Kaltstart, kein Folgeanfrage</div></div>
   </div>
 
   <div class="panel">
-    <h2>Kosten pro Anfrage — Szenarien im Vergleich</h2>
-    <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">Je mehr Anfragen denselben Cache nutzen, desto günstiger wird jede einzelne. Schiebe den Regler um zu sehen, wie sich dein aktuelles Szenario entwickelt.</p>
+    <h2>Kosten pro Anfrage — je nach Nutzungsintensität</h2>
+    <p style="color:#64748b;font-size:13px;margin:0;line-height:1.6;">Die drei Linien zeigen drei Szenarien: pessimistisch (roter Strich), realistisch-optimistisch (grüner Strich) und den aktuellen Messwert (grau, fest). Die orange Linie lässt sich mit dem Schieberegler anpassen.</p>
 
-    <div class="slider-row">
-      <span class="slider-label">Anfragen pro Cache-Zyklus (Current)</span>
-      <input type="range" min="1" max="100" value="4" id="slider" style="flex:1;" />
-      <span class="slider-val"><span id="slider-val">4</span> Anfragen</span>
-
+    <div class="slider-block">
+      <div class="slider-row">
+        <span class="slider-label">Anfragen pro Kaltstart</span>
+        <div class="slider-wrap">
+          <div class="slider-track"></div>
+          <div class="slider-fill" id="slider-fill" style="width:3.03%"></div>
+          <div class="slider-thumb" id="slider-thumb" style="left:3.03%"></div>
+          <input type="range" class="hidden-range" min="1" max="100" value="4" id="slider" />
+        </div>
+        <span class="slider-val"><span id="slider-val">4</span> Anfragen</span>
+        <button id="snapbtn" onclick="snapBack()" style="margin-left:10px;padding:6px 13px;border-radius:8px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;font-size:12px;cursor:pointer;white-space:nowrap;transition:color .15s;">↩ Messwert</button>
+      </div>
+      <p class="slider-hint">Ein „Kaltstart" passiert z. B. nach einem Server-Neustart oder einer Wissensaktualisieurng. Je mehr Anfragen danach folgen, desto geringer die Kosten pro Anfrage.</p>
     </div>
 
     <div class="metrics-cur">
-      <div class="mc"><div class="k">Current — Ø pro Anfrage</div><div class="v" id="cur-avg" style="color:#eda100;">3,04 ct</div><div class="s" id="cur-sub">bei 4 Anfragen/Zyklus</div></div>
-      <div class="mc"><div class="k">Current — 1.000 Anfragen <span id="monthly-label" style="color:#64748b;font-weight:400;">(≈ <span id="cur-monthly">0,23</span> € / Monat)</span></div><div class="v" id="cur-total">30,40 €</div><div class="s">Worst: 102,50 € · Best: 10,50 €</div></div>
-      <div class="mc"><div class="k">Ersparnis vs. Worst Case</div><div class="v" id="cur-saving" style="color:#1baf7a;">70%</div><div class="s" id="cur-saving-sub">bei 1.000 Anfragen: 72,10 € gespart</div></div>
+      <div class="mc">
+        <div class="k">Szenario — Ø pro Anfrage</div>
+        <div class="v" id="cur-avg" style="color:#eda100;">–</div>
+        <div class="s" id="cur-sub">–</div>
+      </div>
+      <div class="mc">
+        <div class="k">Anfragen pro Monat (gemessen)</div>
+        <div class="v" id="cur-month-count" style="color:#93c5fd;">–</div>
+        <div class="s" id="cur-month-count-sub">hochgerechnet aus Berichtszeitraum</div>
+      </div>
+      <div class="mc">
+        <div class="k">Monatsprognose (dieser Monat)</div>
+        <div class="v" id="cur-month" style="color:#93c5fd;">–</div>
+        <div class="s" id="cur-month-sub">–</div>
+      </div>
+      <div class="mc">
+        <div class="k">Ersparnis gegenüber Worst Case</div>
+        <div class="v" id="cur-saving" style="color:#1baf7a;">–</div>
+        <div class="s" id="cur-saving-sub">Worst Case = jede Anfrage startet neu, kein Kontext gespeichert</div>
+      </div>
     </div>
 
     <div class="chart-wrap">
-      <canvas id="kostenChart" role="img" aria-label="Drei Kostenszenarien als Linien über Anfragen pro Cache-Zyklus">Kosten pro Anfrage für Worst, Current und Best case.</canvas>
+      <div class="loading" id="chart-loading">Lade Daten…</div>
+      <canvas id="kostenChart" role="img" aria-label="Kosten pro Anfrage in drei Szenarien" style="display:none;"></canvas>
     </div>
 
     <div class="legend">
-      <div class="legend-item"><div class="legend-dash" style="border-color:#e34948;"></div>Worst case — Cache nie wiederverwendet</div>
-      <div class="legend-item"><div class="legend-line" style="background:#eda100;height:2.5px;"></div>Current — einstellbar</div>
-      <div class="legend-item"><div class="legend-dash" style="border-color:#1baf7a;"></div>Best case — 100 Anfragen/Zyklus</div>
-      <div class="legend-item"><div class="legend-dash" style="border-color:rgba(148,163,184,0.5);"></div>Gemessen — tatsächliche 4 Anfragen</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:#e34948;"></div>Ungünstigstes Szenario — jeder Start ist ein Kaltstart</div>
+      <div class="legend-item"><div class="legend-line" style="background:#eda100;"></div>Einstellbares Szenario</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:#1baf7a;"></div>Günstigstes Szenario — 100 Anfragen pro Kaltstart</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:rgba(148,163,184,0.4);"></div>Tatsächlich gemessen</div>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card"><div class="k">Cache Write Tokens</div><div class="v">79.691</div><div class="s">großer Kontext einmal teuer</div></div>
-    <div class="card"><div class="k">Cache Read Tokens</div><div class="v">239.073</div><div class="s">≈ 3,0 Cache-Hits im Sample</div></div>
-    <div class="card"><div class="k">Input Tokens</div><div class="v">3.047</div><div class="s">kleiner Normal-Input über 4 Requests</div></div>
-    <div class="card"><div class="k">Output Tokens</div><div class="v">1.588</div><div class="s">Antworttext; pro Token teurer</div></div>
-  </div>
-
   <div class="panel">
-    <h2>Dashboard-Werte, die nicht irreführen</h2>
-    <table>
+    <h2>Kennzahlen im Detail</h2>
+    <table id="detail-table">
       <tr><th>Kennzahl</th><th>Wert</th><th>Bedeutung</th></tr>
-      <tr><td>Average Cost</td><td>3,04 ct</td><td>aktueller Messwert; bei nur 4 Requests durch Cache-Aufbau verzerrt</td></tr>
-      <tr><td>Cold Start Cost</td><td>10,25 ct</td><td>erste Anfrage nach Prompt-/Knowledge-Änderung</td></tr>
-      <tr><td>Warm Request Cost</td><td>0,95 ct</td><td>realistischer Folge-Request bei stabilem Cache</td></tr>
-      <tr><td>Best Case Average</td><td>1,05 ct</td><td>Cache bleibt lange warm; 100 Requests pro Cache-Write</td></tr>
-      <tr><td>Worst Case Average</td><td>10,25 ct</td><td>Cache wird nie sinnvoll wiederverwendet</td></tr>
-      <tr><td>Cache-Hits pro Write</td><td>3,0</td><td>je höher, desto billiger wird der Schnitt</td></tr>
+      <tr><td>Ø Kosten pro Anfrage</td><td id="t-schnitt">–</td><td>Aktueller Messwert; bei wenigen Gesprächen durch den einmaligen Kaltstart-Aufwand noch erhöht</td></tr>
+      <tr><td>Kaltstart-Kosten</td><td id="t-worst">–</td><td>Erstes Anfrage nach Server-Neustart oder Wissensänderung</td></tr>
+      <tr><td>Folgeanfrage-Kosten</td><td id="t-warm">–</td><td>Jedes weitere Anfrage bei bereits geladenem Kontext</td></tr>
+      <tr><td>Günstigstes Szenario (Ø)</td><td id="t-best">–</td><td>100 Anfragen pro Kaltstart; Kontext bleibt lange aktiv</td></tr>
+      <tr><td>Ungünstigstes Szenario (Ø)</td><td id="t-worst2">–</td><td>Kein Anfrage nutzt den geladenen Kontext eines anderen</td></tr>
+      <tr><td>Anfragen pro Monat (Hochrechnung)</td><td id="t-month">–</td><td>Basierend auf gemessenen Anfragen im Berichtszeitraum</td></tr>
     </table>
-    <p class="note">Empfehlung fürs Dashboard: Average Cost, Warm Request Cost, Cache Write Cost und Cache Hits pro Write getrennt anzeigen. Sonst sieht ein kleiner Testlauf teurer aus als der spätere Betrieb. Das wäre zwar dramatisch, aber eben auch falsch.</p>
-    <div class="formula">Preise: Claude Haiku 4.5 · Input $1/MTok · Output $5/MTok · 5m Cache Write $1.25/MTok · Cache Hit $0.10/MTok · USD/EUR 1.08</div>
+    <p class="note" id="note-text"></p>
+    <div class="formula" id="formula-text"></div>
   </div>
 </div>
 
 <script>
-const CACHE_WRITE = (79691 / 1e6) * 1.25;
-const WARM_PER_REQ = ((239073 / 1e6 / 3) * 0.10) + ((3047 / 1e6) * 1.0) + ((1588 / 1e6) * 5.0);
-const EUR = 1.08;
+let DATA = null;
+let chart = null;
+const xs = Array.from({length: 100}, (_, i) => i + 1);
 
-function cost(n) {
-  return ((CACHE_WRITE / n) + WARM_PER_REQ) / EUR * 100;
+function fmt(eur) {
+  if (eur >= 1) return eur.toFixed(2).replace('.', ',') + ' €';
+  return (eur * 100).toFixed(2).replace('.', ',') + ' ct';
+}
+function fmtCt(ct) { return ct.toFixed(2).replace('.', ',') + ' ct'; }
+
+function costCt(n) {
+  const km = DATA.kosten_modell;
+  return km.szenarien_ct[String(n)] ?? km.worst_case_ct;
 }
 
-const xs = Array.from({length: 100}, (_, i) => i + 1);
-const worstVal = cost(1);
-const bestVal = cost(100);
+function buildChart() {
+  const km = DATA.kosten_modell;
+  const measuredCt = km.schnitt_ct_pro_request;
 
-const ctx = document.getElementById('kostenChart').getContext('2d');
-const chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: xs,
-    datasets: [
-      {
-        label: 'Gemessen (4 Anfragen)',
-        data: xs.map(() => cost(4)),
-        borderColor: 'rgba(148,163,184,0.35)',
-        borderWidth: 1.5,
-        borderDash: [3, 3],
-        pointRadius: 0,
-        tension: 0,
-        fill: false
-      },
-      {
-        label: 'Worst case',
-        data: xs.map(() => worstVal),
-        borderColor: '#e34948',
-        borderWidth: 2,
-        borderDash: [6, 4],
-        pointRadius: 0,
-        tension: 0,
-        fill: false
-      },
-      {
-        label: 'Current',
-        data: xs.map(() => cost(4)),
-        borderColor: '#eda100',
-        borderWidth: 2.5,
-        pointRadius: 0,
-        tension: 0,
-        fill: false
-      },
-      {
-        label: 'Best case',
-        data: xs.map(() => bestVal),
-        borderColor: '#1baf7a',
-        borderWidth: 2,
-        borderDash: [6, 4],
-        pointRadius: 0,
-        tension: 0,
-        fill: false
-      },
-      {
-        label: 'Current marker',
-        data: xs.map(x => x === 4 ? cost(4) : null),
-        borderColor: '#eda100',
-        backgroundColor: '#eda100',
-        pointRadius: xs.map(x => x === 4 ? 8 : 0),
-        pointBorderColor: '#0f172a',
-        pointBorderWidth: 2,
-        showLine: false
-      }
-    ]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#020617',
-        titleColor: '#e5e7eb',
-        bodyColor: '#94a3b8',
-        borderColor: '#1e293b',
-        borderWidth: 1,
-        callbacks: {
-          title: items => `${items[0].label} Anfragen/Zyklus`,
-          label: item => {
-            if (item.datasetIndex === 4) return null;
-            const n = ['Gemessen','Worst case','Current','Best case'];
-            return `${n[item.datasetIndex]}: ${item.parsed.y.toFixed(2)} ct`;
-          }
+  document.getElementById('chart-loading').style.display = 'none';
+  const canvas = document.getElementById('kostenChart');
+  canvas.style.display = 'block';
+
+  const ctx = canvas.getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: xs,
+      datasets: [
+        {
+          label: 'Ungünstigstes Szenario',
+          data: xs.map(() => km.worst_case_ct),
+          borderColor: '#e34948', borderWidth: 2, borderDash: [6,4],
+          pointRadius: 0, tension: 0, fill: false
         },
-        filter: item => item.datasetIndex < 4
-      }
+        {
+          label: 'Einstellbares Szenario',
+          data: xs.map(() => costCt(MEASURED_N)),
+          borderColor: '#eda100', borderWidth: 2.5,
+          pointRadius: 0, tension: 0, fill: false
+        },
+        {
+          label: 'Günstigstes Szenario',
+          data: xs.map(() => km.best_case_ct),
+          borderColor: '#1baf7a', borderWidth: 2, borderDash: [6,4],
+          pointRadius: 0, tension: 0, fill: false
+        },
+        {
+          label: 'Gemessen',
+          data: xs.map(() => measuredCt),
+          borderColor: 'rgba(148,163,184,0.35)', borderWidth: 1.5, borderDash: [3,3],
+          pointRadius: 0, tension: 0, fill: false
+        },
+        {
+          label: 'Marker',
+          data: xs.map(x => x === MEASURED_N ? costCt(MEASURED_N) : null),
+          borderColor: '#eda100', backgroundColor: '#eda100',
+          pointRadius: xs.map(x => x === MEASURED_N ? 8 : 0),
+          pointBorderColor: '#0f172a', pointBorderWidth: 2,
+          showLine: false
+        }
+      ]
     },
-    scales: {
-      x: {
-        title: { display: true, text: 'Anfragen pro Cache-Zyklus', color: '#64748b', font: { size: 12 } },
-        ticks: { color: '#64748b', callback: (v,i) => [0,9,19,29,39,49,59,69,79,89,99].includes(i) ? i+1 : '' },
-        grid: { color: '#1e293b' }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#020617', titleColor: '#e5e7eb',
+          bodyColor: '#94a3b8', borderColor: '#1e293b', borderWidth: 1,
+          callbacks: {
+            title: items => `${items[0].label} Anfragen pro Kaltstart`,
+            label: item => {
+              if (item.datasetIndex === 4 || item.parsed.y === null) return null;
+              const n = ['Ungünstigstes Szenario','Einstellbares Szenario','Günstigstes Szenario','Gemessen'];
+              return `${n[item.datasetIndex]}: ${fmtCt(item.parsed.y)}`;
+            }
+          },
+          filter: item => item.datasetIndex < 4 && item.parsed.y !== null
+        }
       },
-      y: {
-        title: { display: true, text: 'Cent pro Anfrage', color: '#64748b', font: { size: 12 } },
-        min: 0,
-        suggestedMax: 12,
-        ticks: { color: '#64748b', callback: v => v.toFixed(1) + ' ct' },
-        grid: { color: '#1e293b' }
+      scales: {
+        x: {
+          title: { display: true, text: 'Anfragen pro Kaltstart', color: '#64748b', font: { size: 12 } },
+          ticks: { color: '#64748b', callback: (v,i) => [0,9,19,29,39,49,59,69,79,89,99].includes(i) ? i+1 : '' },
+          grid: { color: '#1e293b' }
+        },
+        y: {
+          title: { display: true, text: 'Cent pro Anfrage', color: '#64748b', font: { size: 12 } },
+          min: 0, suggestedMax: 12,
+          ticks: { color: '#64748b', callback: v => v.toFixed(1) + ' ct' },
+          grid: { color: '#1e293b' }
+        }
       }
     }
-  }
-});
+  });
+}
 
-function fmt(val) { return val.toFixed(2).replace('.', ','); }
+let MEASURED_N = 4;
 
-function updateCurrent(n) {
-  const c = cost(n);
-  const total1000 = c * 10;
-  const worst1000 = worstVal * 10;
-  const best1000 = bestVal * 10;
-  const saving = ((worst1000 - total1000) / worst1000 * 100);
-  const savedEur = worst1000 - total1000;
+function snapBack() {
+  const slider = document.getElementById('slider');
+  slider.value = MEASURED_N;
+  document.getElementById('slider-val').textContent = MEASURED_N;
+  updateSliderVisual(MEASURED_N);
+  updateSlider(MEASURED_N);
+}
 
-  const MSGS_PER_MONTH = 243 / 7 * 30;
-  const monthlyCost = c * MSGS_PER_MONTH / 100;
-  document.getElementById('cur-monthly').textContent = fmt(monthlyCost);
-  document.getElementById('cur-sub').textContent = `bei ${n} Anfragen/Zyklus`;
-  document.getElementById('cur-total').textContent = fmt(total1000) + ' €';
+function updateSlider(n) {
+  if (!DATA) return;
+  const km = DATA.kosten_modell;
+  const c = costCt(n);
+  const total1k = c * 10;
+  const worst1k = km.worst_case_ct * 10;
+  const best1k = km.best_case_ct * 10;
+  const saving = (worst1k - total1k) / worst1k * 100;
+  const savedEur = (worst1k - total1k) / 100;
+  const monthly = c * km.projektion_monat_eur.nachrichten_pro_monat / 100;
+  const isSnapped = n === MEASURED_N;
+
+  document.getElementById('cur-avg').textContent = fmtCt(c);
+  document.getElementById('cur-sub').textContent = `bei ${n} Anfrage${n === 1 ? '' : 'n'} pro Kaltstart`;
+  document.getElementById('cur-month').textContent = fmt(monthly);
+  const msub = `Prognose: ${km.projektion_monat_eur.nachrichten_pro_monat} Anfragen/Monat`;
+  document.getElementById('cur-month-sub').textContent = msub;
   document.getElementById('cur-saving').textContent = Math.round(saving) + '%';
-  document.getElementById('cur-saving-sub').textContent = `bei 1.000 Anfragen: ${fmt(savedEur)} € gespart`;
+  document.getElementById('cur-saving-sub').textContent = `Worst Case = ${fmtCt(km.worst_case_ct)} · du sparst ${fmt(savedEur)} / 1.000 Anfragen`;
 
-  chart.data.datasets[2].data = xs.map(() => c);
-  chart.data.datasets[4].data = xs.map(x => x === n ? c : null);
-  chart.data.datasets[4].pointRadius = xs.map(x => x === n ? 8 : 0);
-  chart.update('none');
+  const btn = document.getElementById('snapbtn');
+  btn.style.color = isSnapped ? '#34d399' : '#94a3b8';
+  btn.title = isSnapped ? 'Bereits auf Messwert' : `Zurück auf gemessene ${MEASURED_N} Anfragen`;
+
+  if (chart) {
+    chart.data.datasets[1].data = xs.map(() => c);
+    chart.data.datasets[4].data = xs.map(x => x === n ? c : null);
+    chart.data.datasets[4].pointRadius = xs.map(x => x === n ? 8 : 0);
+    chart.update('none');
+  }
+}
+
+function populate() {
+  const km = DATA.kosten_modell;
+  const st = DATA.statistik;
+  MEASURED_N = Math.max(1, Math.min(100, Math.round(st.nachrichten_gesamt / Math.max(st.sessions_gesamt, 1))));
+
+  document.getElementById('periode-label').textContent =
+    `Berichtszeitraum: ${DATA.periode} · Exportiert: ${DATA.exported_at.slice(0,10)}`;
+
+  document.getElementById('c-gesamt').textContent = fmt(km.gemessen_eur);
+  document.getElementById('c-gesamt-sub').textContent = `${st.sessions_gesamt} Sitzungen, ${st.nachrichten_gesamt} Anfragen`;
+  document.getElementById('c-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
+  document.getElementById('c-warm').textContent = fmtCt(km.warm_request_ct);
+  document.getElementById('c-worst').textContent = fmtCt(km.worst_case_ct);
+
+  document.getElementById('cur-month-count').textContent = km.projektion_monat_eur.nachrichten_pro_monat;
+  const pm = km.projektion_monat_eur;
+  document.getElementById('cur-month-count-sub').textContent = `${pm.nachrichten_seit_monatsanfang} bisher + ${pm.tage_verbleibend} Tage Prognose`;
+
+  document.getElementById('t-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
+  document.getElementById('t-worst').textContent = fmtCt(km.worst_case_ct);
+  document.getElementById('t-warm').textContent = fmtCt(km.warm_request_ct);
+  document.getElementById('t-best').textContent = fmtCt(km.best_case_ct);
+  document.getElementById('t-worst2').textContent = fmtCt(km.worst_case_ct);
+  document.getElementById('t-month').textContent = `${km.projektion_monat_eur.nachrichten_pro_monat} Anfragen`;
+
+  document.getElementById('note-text').textContent =
+    `Empfehlung: Für das Dashboard die Kaltstart-Kosten, Folgeanfrage-Kosten und Anfragen pro Kaltstart separat ausweisen. Der reine Durchschnittswert ist bei kleinen Stichproben durch den einmaligen Kaltstart-Aufwand verzerrt.`;
+
+  const tb = km.token_basis;
+  document.getElementById('formula-text').textContent =
+    `Modell: ${(DATA.llm_usage.modelle || []).join(', ')} · Preisbasis: Input $1/MTok · Output $5/MTok · Kaltstart-Laden $1.25/MTok · Folgeanfrage $0.10/MTok · USD/EUR ${km.usd_eur_kurs}`;
+
+  buildChart();
+  document.getElementById('slider').value = MEASURED_N;
+  document.getElementById('slider-val').textContent = MEASURED_N;
+  document.getElementById('snapbtn').title = `Gemessener Wert: ${MEASURED_N} Anfragen pro Kaltstart`;
+  updateSliderVisual(MEASURED_N);
+  updateSlider(MEASURED_N);
+}
+
+function updateSliderVisual(n) {
+  const pct = ((n - 1) / 99) * 100;
+  document.getElementById('slider-fill').style.width = pct + '%';
+  document.getElementById('slider-thumb').style.left = pct + '%';
 }
 
 document.getElementById('slider').addEventListener('input', e => {
   const n = parseInt(e.target.value);
   document.getElementById('slider-val').textContent = n;
-  updateCurrent(n);
+  updateSliderVisual(n);
+  updateSlider(n);
 });
-updateCurrent(4);
+
+async function loadData() {
+  try {
+    const r = await fetch('analytics_latest.json?t=' + Date.now());
+    if (!r.ok) throw new Error('not found');
+    DATA = await r.json();
+    populate();
+  } catch {
+    document.getElementById('chart-loading').textContent =
+      'Keine Datendatei gefunden — analytics_latest.json muss im gleichen Ordner liegen.';
+  }
+}
+
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
 </html>

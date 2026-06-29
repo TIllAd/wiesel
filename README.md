@@ -19,6 +19,7 @@ Wichtig: Wiesel ersetzt keine offiziellen Stellen. Bei Prüfungen, Fristen, BAf�
 - **Prompting**: `system-prompt.md` plus Markdown-Wissensbasis aus `knowledge_base/`
 - **Kosten/Performance**: Anthropic Prompt Caching für System-Prompt und Wissensbasis
 - **Sessions/Logs**: SQLite über SQLAlchemy
+- **Kostenkontrolle**: Token-/Cache-/Latenz-/Fehlerlogging pro LLM-Request in `llm_usage`
 - **Integration**: LTI 1.1 Launch für StudOn, lokal zusätzlich Debug-Chat
 - **UI**: statisches HTML/CSS/JS unter `backend/static/chat.html`, vom FastAPI-Backend ausgeliefert
 - **Deployment**: Docker / Docker Compose, Standard-Port `8001`
@@ -95,6 +96,12 @@ wiesel/
 - `GET /api/session/{session_id}` – Session-Kontext für UI
 - `GET /api/wiki` – geladene Wissensbasis anzeigen
 - `GET /health` – technischer Healthcheck für Backend/LLM
+
+## Kosten- und Usage-Tracking
+
+Jeder echte LLM-Aufruf schreibt einen Datensatz in `llm_usage`: Modell, Input-/Output-Tokens, Prompt-Cache-Write, Prompt-Cache-Read, geschätzte Kosten in EUR/USD, Latenz und Fehlerklasse. Die Preise sind bewusst über `.env` konfigurierbar; sie dienen der Einordnung, nicht als Buchhaltung mit Steuerberaterhut.
+
+`export_analytics.py` nimmt diese Usage-Daten in die JSON-Exports auf. Für Auswertungen gilt weiter: strukturierte Analytics-Datei verwenden, keine Roh-DB lesen und keine Chatinhalte zitieren.
 
 ## Arbeitskultur
 
