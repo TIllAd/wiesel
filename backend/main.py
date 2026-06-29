@@ -58,6 +58,7 @@ MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(3 * 1024 * 1024)))
 MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "1600"))
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", str(MAX_IMAGE_DIMENSION * MAX_IMAGE_DIMENSION)))
 MAX_CHAT_REQUEST_BYTES = int(os.getenv("MAX_CHAT_REQUEST_BYTES", str(5 * 1024 * 1024)))
+MAX_QUERY_CHARS_HARD = int(os.getenv("MAX_QUERY_CHARS_HARD", "3000"))
 ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
@@ -614,6 +615,9 @@ async def lti_launch(request: Request):
 async def chat_endpoint(request: ChatRequest):
     db = SessionLocal()
     try:
+        if len(request.query or "") > MAX_QUERY_CHARS_HARD:
+            raise HTTPException(status_code=400, detail=f"Deine Nachricht ist zu lang. Kürz sie bitte auf maximal {MAX_QUERY_CHARS_HARD} Zeichen.")
+
         session = db.query(SessionRecord).filter(SessionRecord.id == request.session_id).first()
         if not session:
             raise HTTPException(status_code=401, detail="Invalid session")
@@ -655,7 +659,7 @@ async def chat_endpoint(request: ChatRequest):
         raise
     except Exception as e:
         logger.error(f"Chat error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=TECHNICAL_ERROR_FALLBACK)
     finally:
         db.close()
 
