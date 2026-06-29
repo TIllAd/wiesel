@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wiesel – Dein Studienbegleiter</title>
+  <title></title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
@@ -258,73 +258,74 @@
 </head>
 <body>
 
-<div id="no-session">⚠️ Kein Session-Token. Dein Verlauf wird nicht gespeichert.</div>
+<div id="no-session"></div>
 
 <div class="hbar">
   <div class="hav">
-    <img src="/static/wiesel_standing.png" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">
+    <img id="header-wiesel-img" src="/static/wiesel_standing.png" alt="" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">
   </div>
   <div>
-    <div class="hname"><em>WiSo</em> Wiesel</div>
-    <div class="hsub">Wissenssammler</div>
+    <div class="hname" id="hname"></div>
+    <div class="hsub" id="hsub"></div>
   </div>
-  <div class="hbadge">FAU Erlangen</div>
+  <div class="hbadge" id="hbadge"></div>
   <div id="chat-flag" class="chat-flag-wrap" style="display:none">
-    <button id="chat-flag-btn" class="chat-flag-btn" type="button" title="Diesen Chat markieren">🚩</button>
+    <button id="chat-flag-btn" class="chat-flag-btn" type="button">🚩</button>
     <div class="chat-flag-menu">
-      <div class="flag-help-title">Chat als auffällig markieren</div>
-      <div class="flag-help-text">Markiert diesen kompletten Chat für die spätere Auswertung. Für den nächsten Test bitte danach einen frischen Chat öffnen.</div>
-      <button id="chat-flag-option" class="flag-option" type="button">Auffälligkeit</button>
+      <div class="flag-help-title" id="flag-help-title"></div>
+      <div class="flag-help-text" id="flag-help-text"></div>
+      <button id="chat-flag-option" class="flag-option" type="button"></button>
     </div>
   </div>
   <span id="ctx-label"></span>
 </div>
 
 <div class="kbar">
-  <div class="klabel">Schnellfragen</div>
+  <div class="klabel" id="quick-label"></div>
   <div class="kchips">
-    <div class="kchip" onclick="quickSend('Wie melde ich mich für Prüfungen an?')">🗂️ Prüfungsanmeldung</div>
-    <div class="kchip" onclick="quickSend('Was muss ich vor dem Studienstart erledigen?')">📋 Studienstart</div>
-    <div class="kchip" onclick="quickSend('Wo ist das Prüfungsamt und wann hat es auf?')">📍 Prüfungsamt</div>
-    <div class="kchip" onclick="quickSend('Welche Links brauche ich für die FAU?')">🔗 Wichtige Links</div>
+    <div class="kchip" id="quick-exams"></div>
+    <div class="kchip" id="quick-start"></div>
+    <div class="kchip" id="quick-office"></div>
+    <div class="kchip" id="quick-links"></div>
   </div>
 </div>
 
 <div id="messages">
   <div id="drop-overlay" aria-hidden="true">
     <div class="drop-icon">⇪</div>
-    <div class="drop-title">Drop image here</div>
-    <div class="drop-subtitle">JPEG, PNG or WebP · max. 3 MB</div>
+    <div class="drop-title" id="drop-title"></div>
+    <div class="drop-subtitle" id="drop-subtitle"></div>
   </div>
 </div>
 
 <div id="flag-toast" class="flag-toast" role="status" aria-live="polite">
-  <div class="flag-toast-title">🚩 Chat markiert</div>
-  <div class="flag-toast-text">Diese Unterhaltung ist jetzt als Auffälligkeit gespeichert. Wenn du einen weiteren Fall testen willst, öffne bitte einen frischen Chat, sonst landet alles wieder in derselben Session.</div>
+  <div class="flag-toast-title" id="flag-toast-title"></div>
+  <div class="flag-toast-text" id="flag-toast-text"></div>
   <div class="flag-toast-actions">
-    <button id="flag-toast-close" class="flag-toast-btn secondary" type="button">Hier bleiben</button>
-    <button id="flag-toast-new" class="flag-toast-btn primary" type="button">Frischen Chat öffnen</button>
+    <button id="flag-toast-close" class="flag-toast-btn secondary" type="button"></button>
+    <button id="flag-toast-new" class="flag-toast-btn primary" type="button"></button>
   </div>
 </div>
 
 <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
 <div id="img-preview" style="display:none" class="img-preview-wrap">
-  <img id="img-thumb" src="" alt="preview">
+  <img id="img-thumb" src="" alt="">
   <span class="img-preview-label" id="img-name"></span>
-  <button class="img-remove-btn" onclick="removeImage()" title="Entfernen">✕</button>
+  <button class="img-remove-btn" id="img-remove-btn" onclick="removeImage()">✕</button>
 </div>
 <div id="input-area">
-  <textarea id="query" placeholder="Stell deine Frage…" rows="1" maxlength="2000"></textarea>
-  <button id="attach-btn" title="Bild anhängen" aria-label="Bild anhängen" onclick="document.getElementById('file-input').click()">
+  <textarea id="query" rows="1" maxlength="2000"></textarea>
+  <button id="attach-btn" onclick="document.getElementById('file-input').click()">
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M16.5 6.5 8.1 14.9a3 3 0 0 0 4.2 4.2l8.1-8.1a5 5 0 0 0-7.1-7.1L5.2 12a7 7 0 0 0 9.9 9.9l7.2-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </button>
-  <button id="mic-btn" title="Spracheingabe">🎤</button>
-  <button id="send" title="Senden" disabled>↑</button>
+  <button id="mic-btn">🎤</button>
+  <button id="send" disabled>↑</button>
 </div>
-<div class="fnote">🔒 anonym · FAU WiSo</div>
+<div class="fnote" id="footer-note"></div>
 
+<script src="/static/strings.js"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -343,6 +344,49 @@
   const MAX_IMAGE_DIMENSION = 1600;
   const MAX_QUERY_CHARS = 2000;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const LANG = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+  document.documentElement.lang = LANG;
+
+  const T = window.STRINGS[LANG];
+
+  function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+  function setTitle(id, text) { const el = document.getElementById(id); if (el) { el.title = text; el.setAttribute('aria-label', text); } }
+
+  function applyTranslations() {
+    setText('no-session', T.noSession);
+    document.title = T.pageTitle;
+    document.getElementById('header-wiesel-img').alt = T.wieselAlt;
+    document.getElementById('hname').innerHTML = T.hname;
+    setText('hbadge', T.hbadge);
+    setText('hsub', T.hsub);
+    setTitle('chat-flag-btn', T.flagBtn);
+    setText('flag-help-title', T.flagMenuTitle);
+    setText('flag-help-text', T.flagMenuText);
+    setText('chat-flag-option', T.flagOption);
+    setText('quick-label', T.quickLabel);
+    setText('quick-exams', T.quickExamsLabel);
+    setText('quick-start', T.quickStartLabel);
+    setText('quick-office', T.quickOfficeLabel);
+    setText('quick-links', T.quickLinksLabel);
+    setText('drop-title', T.dropTitle);
+    setText('drop-subtitle', T.dropSubtitle);
+    setText('flag-toast-title', T.flagToastTitle);
+    setText('flag-toast-text', T.flagToastText);
+    setText('flag-toast-close', T.flagToastClose);
+    setText('flag-toast-new', T.flagToastNew);
+    document.getElementById('img-thumb').alt = T.previewAlt;
+    setTitle('img-remove-btn', T.removeImage);
+    queryEl.placeholder = T.queryPlaceholder;
+    setTitle('attach-btn', T.attachImage);
+    setTitle('mic-btn', T.voiceInput);
+    setTitle('send', T.send);
+    setText('footer-note', T.footer);
+    document.getElementById('quick-exams').addEventListener('click', () => quickSend(T.quickExamsPrompt));
+    document.getElementById('quick-start').addEventListener('click', () => quickSend(T.quickStartPrompt));
+    document.getElementById('quick-office').addEventListener('click', () => quickSend(T.quickOfficePrompt));
+    document.getElementById('quick-links').addEventListener('click', () => quickSend(T.quickLinksPrompt));
+  }
+  applyTranslations();
 
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
@@ -371,7 +415,7 @@
     const wrap = document.createElement('div');
     wrap.className = `msg-avatar av-${state}`;
     let src = state === 'dig' ? DIG_VARIANTS[0] : (WIESEL_IMGS[state] || WIESEL_FALLBACK);
-    wrap.innerHTML = `<img src="${src}" alt="Wiesel" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
+    wrap.innerHTML = `<img src="${src}" alt="${T.wieselAlt}" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
     return wrap;
   }
 
@@ -390,12 +434,7 @@
 
 
 
-  const typingPhrases = [
-    'Wo hab ich das nochmal hingelegt…',
-    'Moment, ich wühl kurz nach…',
-    'Irgendwo hier muss das sein…',
-    'Warte, ich kenn das Ding doch…',
-  ];
+  const typingPhrases = T.typingPhrases;
 
   function setupChatFlagControl() {
     if (!sessionId) return;
@@ -415,11 +454,11 @@
         });
         if (!res.ok) throw new Error('flag failed');
         btn.classList.add('flagged');
-        btn.title = 'Chat als Auffälligkeit markiert';
+        btn.title = T.flagBtnMarked;
         showFlagToast();
       } catch {
         btn.disabled = false;
-        btn.title = 'Markierung fehlgeschlagen';
+        btn.title = T.flagBtnFailed;
       }
     });
   }
@@ -494,7 +533,7 @@
   function loadGreeting() {
     // Begrüßung ist UI-Text, kein Chat. Nicht ans LLM schicken.
     // Sonst wird aus einem internen Startsignal wieder Prompt-Orakeltheater.
-    const greeting = 'Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?';
+    const greeting = T.greeting;
     addMessage('bot', greeting, detectAvatarState(greeting));
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
@@ -512,7 +551,7 @@
     const text = queryEl.value.trim();
     if (!text && !pendingImageBase64) return;
     if (text.length > MAX_QUERY_CHARS) {
-      addMessage('error', `⚠️ Deine Nachricht ist zu lang. Kürz sie bitte auf maximal ${MAX_QUERY_CHARS} Zeichen.`);
+      addMessage('error', '⚠️ ' + T.tooLong);
       return;
     }
     const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
@@ -520,17 +559,17 @@
     addMessage('user', text);
     queryEl.value = ''; queryEl.style.height = 'auto'; sendBtn.disabled = true;
     addTyping();
-    const readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = 'Moment, ich les das kurz durch…'; }, 1400);
+    const readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = T.readImage; }, 1400);
     try {
-      const body = {query: text || 'Was siehst du auf diesem Bild?', session_id: sid};
+      const body = {query: text || T.defaultImageQuestion, session_id: sid};
       if (pendingImageBase64) { body.image_base64 = pendingImageBase64; body.image_type = pendingImageType; }
       if (token) body.token = token;
       const res = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
       clearTimeout(readTimer); removeTyping(); removeImage();
-      if (!res.ok) { const err = await res.json().catch(() => ({detail: res.statusText})); addMessage('error', '⚠️ ' + (err.detail || 'Unbekannter Fehler')); return; }
+      if (!res.ok) { addMessage('error', '⚠️ ' + T.genericError); return; }
       const data = await res.json();
       addMessage('bot', data.response, detectAvatarState(data.response));
-    } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ Verbindung fehlgeschlagen.'); }
+    } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ ' + T.genericError); }
     sendBtn.disabled = false;
   }
 
@@ -545,17 +584,17 @@
 
   async function prepareImage(file) {
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      throw new Error('Bitte nur JPG, PNG oder WebP hochladen.');
+      throw new Error(T.imageTypeError);
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      throw new Error('Das Bild ist zu groß. Maximum: 3 MB.');
+      throw new Error(T.imageSizeError);
     }
 
     let bitmap;
     try {
       bitmap = await createImageBitmap(file);
     } catch {
-      throw new Error('Das Bild konnte nicht gelesen werden. Bitte als JPG, PNG oder WebP hochladen.');
+      throw new Error(T.imageReadError);
     }
     const scale = Math.min(1, MAX_IMAGE_DIMENSION / bitmap.width, MAX_IMAGE_DIMENSION / bitmap.height);
     const width = Math.max(1, Math.round(bitmap.width * scale));
@@ -567,9 +606,9 @@
     canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-    if (!blob) throw new Error('Das Bild konnte nicht verarbeitet werden.');
+    if (!blob) throw new Error(T.imageProcessError);
     if (blob.size > MAX_IMAGE_BYTES) {
-      throw new Error('Das Bild bleibt nach Kompression zu groß. Maximum: 3 MB.');
+      throw new Error(T.imageCompressedTooLarge);
     }
 
     return await blobToDataUrl(blob);
@@ -586,7 +625,7 @@
       sendBtn.disabled = false;
     } catch (err) {
       removeImage();
-      addMessage('error', '⚠️ ' + (err.message || 'Bild konnte nicht verarbeitet werden.'));
+      addMessage('error', '⚠️ ' + (err.message || T.imageProcessError));
     }
   }
 
@@ -711,16 +750,7 @@
   }
 
   function voiceErrorMessage(errorCode) {
-    const messages = {
-      'not-allowed': 'Spracheingabe ist im Browser blockiert. Bitte Mikrofon-Zugriff erlauben.',
-      'service-not-allowed': 'Spracheingabe ist für diese Seite blockiert. Bitte HTTPS nutzen und Mikrofon-Zugriff erlauben.',
-      'audio-capture': 'Kein Mikrofon gefunden oder Mikrofon nicht verfügbar.',
-      'network': 'Spracheingabe ist gerade nicht erreichbar. Bitte später erneut versuchen.',
-      'no-speech': 'Ich habe nichts gehört. Versuch es nochmal etwas näher am Mikrofon.',
-      'aborted': 'Spracheingabe abgebrochen.',
-      'language-not-supported': 'Diese Sprache wird von deinem Browser nicht unterstützt.'
-    };
-    return messages[errorCode] || 'Spracheingabe konnte nicht gestartet werden.';
+    return T.voiceErrors[errorCode] || T.voiceErrors.default;
   }
 
   function composeVoiceText(baseText, spokenText) {
@@ -739,8 +769,8 @@
   }
 
   if (!window.isSecureContext) {
-    micBtn.title = 'Spracheingabe braucht HTTPS oder localhost';
-    micBtn.addEventListener('click', () => showVoiceError('Spracheingabe funktioniert nur über HTTPS oder localhost.'));
+    micBtn.title = T.voiceSecureTitle;
+    micBtn.addEventListener('click', () => showVoiceError(T.voiceSecureError));
   } else if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
@@ -797,12 +827,12 @@
         voiceStartGuardTimer = setTimeout(() => {
           if (!isRecording && isVoiceStarting) {
             resetVoiceInput({ commit: false });
-            showVoiceError('Spracheingabe startet nicht. Prüfe bitte kurz Mikrofon-Zugriff im Browser.');
+            showVoiceError(T.voiceStartGuard);
           }
         }, VOICE_START_GUARD_MS);
       } catch {
         resetVoiceInput({ commit: false });
-        showVoiceError('Spracheingabe läuft schon oder konnte nicht gestartet werden. Versuch es gleich nochmal.');
+        showVoiceError(T.voiceStartError);
       }
     });
   } else { micBtn.style.display = 'none'; }
