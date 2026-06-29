@@ -78,9 +78,33 @@
       display:flex; flex-direction:column; gap:10px;
       scroll-behavior:smooth;
       background:var(--bg);
+      position:relative;
     }
     #messages::-webkit-scrollbar { width:4px; }
     #messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    #drop-overlay {
+      position:absolute;
+      inset:18px;
+      z-index:50;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:8px;
+      border:1.5px dashed rgba(37,99,235,.45);
+      border-radius:16px;
+      background:rgba(37,99,235,.055);
+      color:#1d4ed8;
+      pointer-events:none;
+      text-align:center;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);
+      backdrop-filter:blur(2px);
+    }
+    #messages.drag-over #drop-overlay { display:flex; }
+    .drop-icon { width:42px; height:42px; border-radius:999px; background:rgba(37,99,235,.9); color:#fff; display:flex; align-items:center; justify-content:center; font-size:21px; box-shadow:0 8px 18px rgba(37,99,235,.16); }
+    .drop-title { font-size:15px; font-weight:850; color:#1e3a8a; }
+    .drop-subtitle { font-size:12px; font-weight:750; color:#2563eb; }
 
     .msg-row { display:flex; gap:10px; align-items:flex-end; animation:fadeIn .18s ease; }
     .msg-row.user { flex-direction:row-reverse; }
@@ -171,12 +195,23 @@
     .fnote { text-align:center; font-size:.58rem; color:var(--tdim); opacity:.5; padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--bg2); flex-shrink:0; }
 
     #attach-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--tdim); font-size: 20px;
-      padding: 0 4px; align-self: flex-end; margin-bottom: 10px;
-      transition: color .15s; flex-shrink: 0;
+      background:#eef4ff; border:1px solid #d6e3ff; cursor:pointer;
+      color:#2563eb; font-size:20px;
+      width:38px; height:38px; border-radius:999px;
+      padding:0; align-self:flex-end;
+      transition:transform .15s, box-shadow .15s, background .15s; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:none;
     }
-    #attach-btn:hover { color: var(--navy); }
+    #attach-btn:hover,
+    body.file-drag-active #attach-btn {
+      background:#2563eb;
+      border-color:#2563eb;
+      color:#fff;
+      transform:scale(1.04);
+      box-shadow:0 4px 12px rgba(37,99,235,.22);
+    }
+    #attach-btn svg { width:20px; height:20px; display:block; }
     #file-input { display: none; }
 
     .img-preview-wrap {
@@ -237,7 +272,13 @@
   </div>
 </div>
 
-<div id="messages"></div>
+<div id="messages">
+  <div id="drop-overlay" aria-hidden="true">
+    <div class="drop-icon">⇪</div>
+    <div class="drop-title">Drop image here</div>
+    <div class="drop-subtitle">JPEG, PNG or WebP · max. 3 MB</div>
+  </div>
+</div>
 
 <div id="flag-toast" class="flag-toast" role="status" aria-live="polite">
   <div class="flag-toast-title">🚩 Chat markiert</div>
@@ -256,7 +297,11 @@
 </div>
 <div id="input-area">
   <textarea id="query" placeholder="Stell deine Frage…" rows="1"></textarea>
-  <button id="attach-btn" title="Bild anhängen" onclick="document.getElementById('file-input').click()">📎</button>
+  <button id="attach-btn" title="Bild anhängen" aria-label="Bild anhängen" onclick="document.getElementById('file-input').click()">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M16.5 6.5 8.1 14.9a3 3 0 0 0 4.2 4.2l8.1-8.1a5 5 0 0 0-7.1-7.1L5.2 12a7 7 0 0 0 9.9 9.9l7.2-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
   <button id="mic-btn" title="Spracheingabe">🎤</button>
   <button id="send" title="Senden" disabled>↑</button>
 </div>
@@ -507,11 +552,7 @@
     return await blobToDataUrl(blob);
   }
 
-  document.getElementById('file-input').addEventListener('change', async function() {
-    const file = this.files[0];
-    this.value = '';
-    if (!file) return;
-
+  async function handleImageFile(file) {
     try {
       const dataUrl = await prepareImage(file);
       pendingImageBase64 = dataUrl.split(',')[1];
@@ -524,6 +565,43 @@
       removeImage();
       addMessage('error', '⚠️ ' + (err.message || 'Bild konnte nicht verarbeitet werden.'));
     }
+  }
+
+  document.getElementById('file-input').addEventListener('change', async function() {
+    const file = this.files[0];
+    this.value = '';
+    if (!file) return;
+    await handleImageFile(file);
+  });
+
+  function isFileDrag(event) {
+    return Array.from(event.dataTransfer?.types || []).includes('Files');
+  }
+
+  messagesEl.addEventListener('dragover', (event) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    messagesEl.classList.add('drag-over');
+    document.body.classList.add('file-drag-active');
+  });
+
+  messagesEl.addEventListener('dragleave', (event) => {
+    if (!messagesEl.contains(event.relatedTarget)) {
+      messagesEl.classList.remove('drag-over');
+      document.body.classList.remove('file-drag-active');
+    }
+  });
+
+  messagesEl.addEventListener('drop', async (event) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    messagesEl.classList.remove('drag-over');
+    document.body.classList.remove('file-drag-active');
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    await handleImageFile(file);
   });
 
   function removeImage() {
@@ -535,17 +613,68 @@
 
   let recognition = null, isRecording = false;
   const micBtn = document.getElementById('mic-btn');
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+
+  function showVoiceError(message) {
+    addMessage('error', '⚠️ ' + message);
+  }
+
+  function resetVoiceInput() {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.disabled = false;
+  }
+
+  function voiceErrorMessage(errorCode) {
+    const messages = {
+      'not-allowed': 'Spracheingabe ist im Browser blockiert. Bitte Mikrofon-Zugriff erlauben.',
+      'service-not-allowed': 'Spracheingabe ist für diese Seite blockiert. Bitte HTTPS nutzen und Mikrofon-Zugriff erlauben.',
+      'audio-capture': 'Kein Mikrofon gefunden oder Mikrofon nicht verfügbar.',
+      'network': 'Spracheingabe ist gerade nicht erreichbar. Bitte später erneut versuchen.',
+      'no-speech': 'Ich habe nichts gehört. Versuch es nochmal etwas näher am Mikrofon.',
+      'aborted': 'Spracheingabe abgebrochen.',
+      'language-not-supported': 'Diese Sprache wird von deinem Browser nicht unterstützt.'
+    };
+    return messages[errorCode] || 'Spracheingabe konnte nicht gestartet werden.';
+  }
+
+  if (!window.isSecureContext) {
+    micBtn.title = 'Spracheingabe braucht HTTPS oder localhost';
+    micBtn.addEventListener('click', () => showVoiceError('Spracheingabe funktioniert nur über HTTPS oder localhost.'));
+  } else if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
-    recognition.lang = 'de-DE'; recognition.interimResults = true; recognition.continuous = false;
-    recognition.onstart = () => { isRecording = true; micBtn.classList.add('recording'); };
-    recognition.onresult = (e) => { const t = Array.from(e.results).map(r => r[0].transcript).join(''); queryEl.value = t; queryEl.dispatchEvent(new Event('input')); };
-    recognition.onend = () => { isRecording = false; micBtn.classList.remove('recording'); };
-    recognition.onerror = () => { isRecording = false; micBtn.classList.remove('recording'); };
+    recognition.lang = 'de-DE';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onstart = () => {
+      isRecording = true;
+      micBtn.disabled = false;
+      micBtn.classList.add('recording');
+    };
+    recognition.onresult = (e) => {
+      const t = Array.from(e.results).map(r => r[0].transcript).join('');
+      queryEl.value = t;
+      queryEl.dispatchEvent(new Event('input'));
+    };
+    recognition.onend = resetVoiceInput;
+    recognition.onerror = (event) => {
+      resetVoiceInput();
+      if (event.error !== 'aborted') showVoiceError(voiceErrorMessage(event.error));
+    };
     micBtn.addEventListener('click', () => {
-      if (isRecording) { recognition.stop(); setTimeout(() => { if (queryEl.value.trim()) send(); }, 200); }
-      else { recognition.lang = document.documentElement.lang === 'en' ? 'en-US' : 'de-DE'; recognition.continuous = true; recognition.start(); }
+      if (isRecording) {
+        recognition.stop();
+        return;
+      }
+
+      try {
+        micBtn.disabled = true;
+        recognition.lang = document.documentElement.lang === 'en' ? 'en-US' : 'de-DE';
+        recognition.start();
+      } catch {
+        resetVoiceInput();
+        showVoiceError('Spracheingabe läuft schon oder konnte nicht gestartet werden. Versuch es gleich nochmal.');
+      }
     });
   } else { micBtn.style.display = 'none'; }
 
