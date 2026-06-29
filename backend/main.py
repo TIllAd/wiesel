@@ -7,6 +7,9 @@ import os
 import json
 import logging
 import uuid
+import base64
+import binascii
+from io import BytesIO
 from dotenv import load_dotenv
 load_dotenv()
 from datetime import datetime, timedelta
@@ -20,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from pydantic import BaseModel
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session as SQLSession
@@ -50,6 +54,12 @@ SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo w
 TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
 LLM_HEALTH = {"ok": bool(ANTHROPIC_API_KEY), "last_success": None, "last_error": None}
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(3 * 1024 * 1024)))
+MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "1600"))
+MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", str(MAX_IMAGE_DIMENSION * MAX_IMAGE_DIMENSION)))
+MAX_CHAT_REQUEST_BYTES = int(os.getenv("MAX_CHAT_REQUEST_BYTES", str(5 * 1024 * 1024)))
+ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 # USD pro 1 Mio Tokens. Defaults reflect Claude Haiku 4.5 public pricing:
 # base input 1.00, 5m cache write 1.25, cache hits/refreshes 0.10, output 5.00.
@@ -228,17 +238,77 @@ def verify_jwt_token(token: str) -> Optional[dict]:
         return None
 
 
+def _strip_data_url(image_base64: str) -> tuple[str, Optional[str]]:
+    """Return raw base64 payload and optional MIME type from a data URL."""
+    if not image_base64:
+        return "", None
+    if image_base64.startswith("data:") and ";base64," in image_base64:
+        header, payload = image_base64.split(",", 1)
+        mime = header[5:].split(";", 1)[0].lower()
+        return payload, mime
+    return image_base64, None
+
+
+def _detect_mime_from_bytes(image_bytes: bytes) -> Optional[str]:
+    if image_bytes[:3] == b'\xff\xd8\xff':
+        return "image/jpeg"
+    if image_bytes[:8] == bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]):
+        return "image/png"
+    if image_bytes[:12].startswith(b"RIFF") and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
 def _detect_mime(b64: str, fallback: str = "image/jpeg") -> str:
-    import base64 as b64lib
     try:
-        header = b64lib.b64decode(b64[:16])
-        if header[:3] == b'\xff\xd8\xff': return 'image/jpeg'
-        if header[:8] == b'\x89PNG\r\n\x1a\n': return 'image/png'
-        if header[:4] == b'GIF8': return 'image/gif'
-        if header[:4] == b'RIFF': return 'image/webp'
+        payload, data_url_mime = _strip_data_url(b64)
+        header = base64.b64decode(payload[:32], validate=True)
+        return _detect_mime_from_bytes(header) or data_url_mime or fallback
     except Exception:
         pass
     return fallback
+
+
+def validate_image_base64(image_base64: str, requested_mime: str = "image/jpeg") -> tuple[str, str]:
+    """Validate and normalize an uploaded image before it reaches the LLM API."""
+    payload, data_url_mime = _strip_data_url(image_base64)
+    if not payload:
+        raise HTTPException(status_code=400, detail="Bilddaten fehlen.")
+
+    # Base64 expands binary by ~4/3. This pre-check rejects absurd request bodies
+    # before decoding them into memory. Yes, even the obvious guard deserves to exist.
+    max_base64_chars = ((MAX_IMAGE_BYTES + 2) // 3) * 4
+    if len(payload) > max_base64_chars + 4096:
+        raise HTTPException(status_code=413, detail=f"Bild ist zu groß. Maximum: {MAX_IMAGE_BYTES // (1024 * 1024)} MB.")
+
+    try:
+        image_bytes = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültige Bilddaten.")
+
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail=f"Bild ist zu groß. Maximum: {MAX_IMAGE_BYTES // (1024 * 1024)} MB.")
+
+    detected_mime = _detect_mime_from_bytes(image_bytes)
+    requested_mime = (requested_mime or data_url_mime or "").lower()
+    if detected_mime not in ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Nur JPG, PNG oder WebP sind erlaubt.")
+
+    if requested_mime and requested_mime not in ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Nur JPG, PNG oder WebP sind erlaubt.")
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as img:
+            width, height = img.size
+            if width <= 0 or height <= 0 or width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION or width * height > MAX_IMAGE_PIXELS:
+                raise HTTPException(status_code=413, detail=f"Bildauflösung ist zu groß. Maximum: {MAX_IMAGE_DIMENSION}×{MAX_IMAGE_DIMENSION} px.")
+            img.verify()
+    except HTTPException:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültige Bilddatei.")
+
+    return payload, detected_mime
 
 
 def load_knowledge_base() -> str:
@@ -440,6 +510,24 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
 
 app = FastAPI(title="Wiesel Backend", description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)", version="0.1.0")
 
+
+@app.middleware("http")
+async def reject_oversized_chat_requests(request: Request, call_next):
+    if request.url.path == "/api/chat":
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                too_large = int(content_length) > MAX_CHAT_REQUEST_BYTES
+            except ValueError:
+                too_large = False
+            if too_large:
+                return JSONResponse(
+                    {"detail": f"Request ist zu groß. Maximum: {MAX_CHAT_REQUEST_BYTES // (1024 * 1024)} MB."},
+                    status_code=413,
+                )
+    return await call_next(request)
+
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 _static_dir = Path(__file__).parent / "static"
@@ -547,9 +635,14 @@ async def chat_endpoint(request: ChatRequest):
             db.commit()
             return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
 
+        image_base64 = request.image_base64
+        image_type = request.image_type or "image/jpeg"
+        if image_base64:
+            image_base64, image_type = validate_image_base64(image_base64, image_type)
+
         kb_content = load_knowledge_base()
 
-        response = await call_claude(request.session_id, request.query, chat_history, kb_content, image_base64=request.image_base64, image_type=request.image_type or "image/jpeg")
+        response = await call_claude(request.session_id, request.query, chat_history, kb_content, image_base64=image_base64, image_type=image_type)
 
         if request.query != "__greeting__":
             db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query or "[Bild gesendet]"))
