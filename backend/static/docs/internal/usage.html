@@ -7,50 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-<style>
-  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); --blue:#58a6ff; }
-  * { box-sizing:border-box; }
-  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-  .page { min-height:100vh; display:grid; grid-template-rows:auto minmax(0,1fr); }
-  .toolbar { background:var(--panel); border-bottom:1px solid var(--line); padding:20px 24px; }
-  h1 { margin:0 0 6px; font-size:24px; letter-spacing:-0.04em; }
-  .subline { margin:0 0 18px; color:var(--muted); font-size:13px; line-height:1.5; }
-  .controls { display:flex; flex-wrap:wrap; align-items:end; gap:14px; }
-  .quick { display:flex; flex-wrap:wrap; gap:8px; }
-  button { border:1px solid var(--line); border-radius:10px; background:#111827; color:var(--text); font:inherit; font-size:13px; padding:8px 10px; cursor:pointer; }
-  button:hover { border-color:#334155; background:#111c31; }
-  button.active { background:var(--accent-soft); border-color:var(--accent); color:#fde68a; }
-  .range-form { display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
-  label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
-  input[type="date"] { color-scheme:dark; border:1px solid var(--line); border-radius:10px; background:#020617; color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
-  .status { color:var(--muted); font-size:13px; margin:16px 0 0; }
-  .content { min-width:0; min-height:0; padding:24px; overflow:auto; }
-  .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
-  .metric-card { background:#080d19; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:0 14px 40px rgba(0,0,0,.16); }
-  .metric-card .k { color:var(--muted); font-size:12px; margin-bottom:6px; }
-  .metric-card .v { font-size:23px; font-weight:750; letter-spacing:-.03em; }
-  .metric-card .s { color:#64748b; font-size:12px; margin-top:4px; line-height:1.35; }
-  .chart-card { height:calc(100vh - 390px); min-height:460px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
-  .chart-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:12px; }
-  .chart-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
-  .chart-head h2 { margin:0 0 4px; font-size:20px; letter-spacing:-0.03em; }
-  .chart-head p { margin:0; color:var(--muted); font-size:13px; }
-  .chart-wrap { position:relative; height:calc(100% - 58px); min-height:420px; }
-  .detail-panel { margin-top:16px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.16); }
-  .detail-panel h2 { margin:0 0 12px; font-size:18px; letter-spacing:-0.03em; }
-  .detail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-  .detail-item { background:#020617; border:1px solid var(--line); border-radius:12px; padding:12px; }
-  .detail-item .k { color:var(--muted); font-size:12px; margin-bottom:5px; }
-  .detail-item .v { font-size:18px; font-weight:700; }
-  .detail-note { margin:12px 0 0; color:var(--muted); font-size:13px; line-height:1.55; }
-  .is-hidden { display:none !important; }
-  @media (max-width:980px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  @media (max-width:760px) {
-    .toolbar, .content { padding:16px; }
-    .metrics, .detail-grid { grid-template-columns:1fr; }
-    .chart-card { height:calc(100vh - 260px); }
-  }
-</style>
+<link rel="stylesheet" href="../docs-theme.css" />
 </head>
 <body>
 <div class="page">
@@ -110,7 +67,7 @@
 
 <script>
 (() => {
-  const ACCENT = '#e3b341';
+  const ACCENT = '#B8500F';
   const DISPLAY_TIME_ZONE = 'Europe/Berlin';
   const status = document.getElementById('status');
   const title = document.getElementById('chart-title');
@@ -229,8 +186,8 @@
         const x = scales.x;
         if (!x || !weekendFlags.some(Boolean)) return;
         ctx.save();
-        ctx.fillStyle = 'rgba(148,163,184,.08)';
-        ctx.strokeStyle = 'rgba(148,163,184,.10)';
+        ctx.fillStyle = 'rgba(145,139,125,.10)';
+        ctx.strokeStyle = 'rgba(145,139,125,.16)';
         ctx.lineWidth = 1;
         let startIndex = null;
         const drawBand = (fromIndex, toIndex) => {
@@ -243,11 +200,11 @@
           ctx.fillRect(left, chartArea.top, Math.max(0, right - left), chartArea.bottom - chartArea.top);
           ctx.strokeRect(left, chartArea.top, Math.max(0, right - left), chartArea.bottom - chartArea.top);
           if (right - left > 54) {
-            ctx.fillStyle = 'rgba(203,213,225,.72)';
-            ctx.font = '11px Inter, system-ui, sans-serif';
+            ctx.fillStyle = '#6f5e49';
+            ctx.font = '600 11px Inter, system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Wochenende', left + (right - left) / 2, chartArea.top + 18);
-            ctx.fillStyle = 'rgba(148,163,184,.08)';
+            ctx.fillStyle = 'rgba(145,139,125,.10)';
           }
         };
         weekendFlags.forEach((isWeekend, index) => {
@@ -271,15 +228,15 @@
         if (yPos < chartArea.top || yPos > chartArea.bottom) return;
         ctx.save();
         ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = 'rgba(203,213,225,.55)';
+        ctx.strokeStyle = 'rgba(111,94,73,.48)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(chartArea.left, yPos);
         ctx.lineTo(chartArea.right, yPos);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(203,213,225,.88)';
-        ctx.font = '11px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#6f5e49';
+        ctx.font = '600 11px Inter, system-ui, sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText(`Ø ${avgPerHour.toFixed(1).replace('.', ',')}/h`, chartArea.right - 6, yPos - 6);
         ctx.restore();
@@ -295,9 +252,9 @@
             label: 'Nutzer-Anfragen',
             data: userCounts,
             borderColor: ACCENT,
-            backgroundColor: 'rgba(227,179,65,.16)',
+            backgroundColor: 'rgba(184,80,15,.14)',
             pointBackgroundColor: ACCENT,
-            pointBorderColor: '#020617',
+            pointBorderColor: '#fffaf0',
             pointRadius: 2.5,
             pointHoverRadius: 5,
             borderWidth: 2.4,
@@ -312,15 +269,15 @@
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: 'index' },
         scales: {
-          x: { ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(148,163,184,.12)' } },
-          y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(148,163,184,.12)' } }
+          x: { ticks: { color: '#6f5e49', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(111,94,73,.20)' } },
+          y: { beginAtZero: true, ticks: { color: '#6f5e49', precision: 0 }, grid: { color: 'rgba(111,94,73,.20)' } }
         },
         plugins: {
-          legend: { labels: { color: '#e5e7eb' } },
-          tooltip: { backgroundColor: '#0f172a', borderColor: ACCENT, borderWidth: 1 },
+          legend: { labels: { color: '#1a1814' } },
+          tooltip: { backgroundColor: '#fffaf0', titleColor: '#1a1814', bodyColor: '#4f4638', borderColor: ACCENT, borderWidth: 1 },
           zoom: {
             pan: { enabled: true, mode: 'x' },
-            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true, borderColor: ACCENT, backgroundColor: 'rgba(227,179,65,.12)' }, mode: 'x' }
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true, borderColor: ACCENT, backgroundColor: 'rgba(184,80,15,.12)' }, mode: 'x' }
           }
         }
       }
