@@ -51,6 +51,12 @@ def app_time_to_utc_naive(value: datetime) -> datetime:
         value = value.replace(tzinfo=APP_TIMEZONE)
     return value.astimezone(timezone.utc).replace(tzinfo=None)
 
+
+def json_timestamp(value: datetime) -> str:
+    """Serialize DB timestamps for API responses in the app timezone."""
+    # DB writes stay naive UTC via datetime.utcnow(); JSON responses always expose app time here.
+    return utc_naive_to_app_time(value).isoformat()
+
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -533,12 +539,12 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
             return SYSTEM_PROMPT_LEAK_FALLBACK
-        LLM_HEALTH.update({"ok": True, "last_success": datetime.utcnow().isoformat(), "last_error": None})
+        LLM_HEALTH.update({"ok": True, "last_success": json_timestamp(datetime.utcnow()), "last_error": None})
         return text
     except Exception as e:
         logger.error("Claude API error", exc_info=True)
         record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, error_type=e.__class__.__name__)
-        LLM_HEALTH.update({"ok": False, "last_error": datetime.utcnow().isoformat()})
+        LLM_HEALTH.update({"ok": False, "last_error": json_timestamp(datetime.utcnow())})
         return TECHNICAL_ERROR_FALLBACK
 
 
@@ -662,7 +668,7 @@ async def chat_endpoint(request: ChatRequest):
         db.commit()
 
         if request.query == "__greeting__" and not request.image_base64:
-            return ChatResponse(response=DEFAULT_GREETING, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
+            return ChatResponse(response=DEFAULT_GREETING, session_id=request.session_id, timestamp=json_timestamp(datetime.utcnow()))
 
         history = db.query(ChatMessage).filter(ChatMessage.session_id == request.session_id).order_by(ChatMessage.created_at).all()
         chat_history = [{"role": msg.role, "content": msg.content} for msg in history if msg.content and msg.content.strip()]
@@ -673,7 +679,7 @@ async def chat_endpoint(request: ChatRequest):
             db.add(ChatMessage(session_id=request.session_id, role="user", content=request.query))
             db.add(ChatMessage(session_id=request.session_id, role="assistant", content=response))
             db.commit()
-            return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
+            return ChatResponse(response=response, session_id=request.session_id, timestamp=json_timestamp(datetime.utcnow()))
 
         image_base64 = request.image_base64
         image_type = request.image_type or "image/jpeg"
@@ -690,7 +696,7 @@ async def chat_endpoint(request: ChatRequest):
             db.add(assistant_message)
             db.commit()
 
-        return ChatResponse(response=response, session_id=request.session_id, timestamp=datetime.utcnow().isoformat())
+        return ChatResponse(response=response, session_id=request.session_id, timestamp=json_timestamp(datetime.utcnow()))
     except HTTPException:
         raise
     except Exception:
@@ -704,7 +710,7 @@ async def chat_endpoint(request: ChatRequest):
 async def wiki_endpoint():
     try:
         content = load_knowledge_base()
-        return {"content": content, "format": "markdown", "timestamp": datetime.utcnow().isoformat()}
+        return {"content": content, "format": "markdown", "timestamp": json_timestamp(datetime.utcnow())}
     except Exception:
         logger.error("Wiki endpoint error", exc_info=True)
         raise HTTPException(status_code=500)
@@ -769,8 +775,8 @@ async def reports_range(start: str, end: str):
     if end_date < start_date:
         raise HTTPException(status_code=400, detail="end must be on or after start")
 
-    range_start = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
-    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999)
+    range_start = app_time_to_utc_naive(datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0, tzinfo=APP_TIMEZONE))
+    range_end = app_time_to_utc_naive(datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999, tzinfo=APP_TIMEZONE))
 
     db = SessionLocal()
     try:
@@ -795,8 +801,8 @@ async def reports_range(start: str, end: str):
             flags_by_session.setdefault(flag.session_id, []).append({
                 "id": flag.id,
                 "tag": flag.tag,
-                "created_at": flag.created_at.isoformat(),
-                "date": flag.created_at.date().isoformat(),
+                "created_at": json_timestamp(flag.created_at),
+                "date": utc_naive_to_app_time(flag.created_at).date().isoformat(),
             })
 
         messages_by_session: dict[str, list[dict]] = {session_id: [] for session_id in session_ids}
@@ -805,7 +811,7 @@ async def reports_range(start: str, end: str):
                 "id": message.id,
                 "role": message.role,
                 "content": message.content,
-                "created_at": message.created_at.isoformat(),
+                "created_at": json_timestamp(message.created_at),
             })
 
         sessions = []
@@ -824,7 +830,7 @@ async def reports_range(start: str, end: str):
                     "user_id": record.user_id if record else None,
                     "course_id": record.course_id if record else None,
                     "course_name": record.course_name if record else None,
-                    "created_at": record.created_at.isoformat() if record else None,
+                    "created_at": json_timestamp(record.created_at) if record else None,
                 },
             })
 
@@ -1002,13 +1008,13 @@ async def flag_chat_session(request: ChatFlagRequest):
             ChatFlag.tag == tag,
         ).first()
         if existing:
-            return {"ok": True, "flag_id": existing.id, "session_id": request.session_id, "tag": existing.tag, "created_at": existing.created_at.isoformat(), "already_flagged": True}
+            return {"ok": True, "flag_id": existing.id, "session_id": request.session_id, "tag": existing.tag, "created_at": json_timestamp(existing.created_at), "already_flagged": True}
 
         flag = ChatFlag(session_id=request.session_id, message_id=None, tag=tag)
         db.add(flag)
         db.commit()
         db.refresh(flag)
-        return {"ok": True, "flag_id": flag.id, "session_id": request.session_id, "tag": tag, "created_at": flag.created_at.isoformat(), "already_flagged": False}
+        return {"ok": True, "flag_id": flag.id, "session_id": request.session_id, "tag": tag, "created_at": json_timestamp(flag.created_at), "already_flagged": False}
     finally:
         db.close()
 
@@ -1020,7 +1026,7 @@ async def session_endpoint(session_id: str):
         session = db.query(SessionRecord).filter(SessionRecord.id == session_id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-        return {"session_id": session.id, "user_id": session.user_id, "user_name": session.user_name, "course_id": session.course_id, "course_name": session.course_name, "user_role": session.user_role, "created_at": session.created_at.isoformat(), "last_accessed": session.last_accessed.isoformat()}
+        return {"session_id": session.id, "user_id": session.user_id, "user_name": session.user_name, "course_id": session.course_id, "course_name": session.course_name, "user_role": session.user_role, "created_at": json_timestamp(session.created_at), "last_accessed": json_timestamp(session.last_accessed)}
     finally:
         db.close()
 
@@ -1030,7 +1036,7 @@ async def health_check():
     llm_ok = bool(LLM_HEALTH["ok"])
     return {
         "status": "healthy" if llm_ok else "unhealthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": json_timestamp(datetime.utcnow()),
         "db": "connected",
         "llm": "connected" if llm_ok else "error",
         "last_llm_success": LLM_HEALTH["last_success"],
@@ -1059,9 +1065,9 @@ async def create_dev_session(request: Request):
 async def get_daily_logs(date: Optional[str] = None):
     db = SessionLocal()
     try:
-        target = datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.utcnow().date()
-        day_start = datetime(target.year, target.month, target.day, 0, 0, 0)
-        day_end = datetime(target.year, target.month, target.day, 23, 59, 59)
+        target = datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.now(APP_TIMEZONE).date()
+        day_start = app_time_to_utc_naive(datetime(target.year, target.month, target.day, 0, 0, 0, tzinfo=APP_TIMEZONE))
+        day_end = app_time_to_utc_naive(datetime(target.year, target.month, target.day, 23, 59, 59, 999999, tzinfo=APP_TIMEZONE))
         messages = db.query(ChatMessage).filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end).order_by(ChatMessage.created_at).all()
         flags = db.query(ChatFlag).filter(
             ChatFlag.created_at >= day_start,
@@ -1070,13 +1076,13 @@ async def get_daily_logs(date: Optional[str] = None):
         ).order_by(ChatFlag.created_at).all()
         flags_by_session: dict[str, list[dict]] = {}
         for f in flags:
-            payload = {"id": f.id, "tag": f.tag, "created_at": f.created_at.isoformat()}
+            payload = {"id": f.id, "tag": f.tag, "created_at": json_timestamp(f.created_at)}
             flags_by_session.setdefault(f.session_id, []).append(payload)
         sessions: dict = {}
         for m in messages:
             if m.session_id not in sessions:
                 sessions[m.session_id] = {"flags": flags_by_session.get(m.session_id, []), "messages": []}
-            sessions[m.session_id]["messages"].append({"id": m.id, "role": m.role, "content": m.content, "created_at": m.created_at.isoformat()})
+            sessions[m.session_id]["messages"].append({"id": m.id, "role": m.role, "content": m.content, "created_at": json_timestamp(m.created_at)})
         for session_id, session_flags in flags_by_session.items():
             sessions.setdefault(session_id, {"flags": session_flags, "messages": []})
         return {"date": target.isoformat(), "total_messages": len(messages), "total_flags": len(flags), "total_sessions": len(sessions), "sessions": sessions}
