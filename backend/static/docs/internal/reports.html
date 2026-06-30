@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Tagesberichte</title>
+<style>
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; --accent-soft:#172554; --flag:#e3b341; --blue:#58a6ff; --user-bg:#0d2137; --user-border:#1f4a73; --bot-bg:#1c2128; --bot-border:#30363d; --danger:#f97316; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  a { color:inherit; }
+  .page { min-height:100vh; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .toolbar { background:var(--panel); border-bottom:1px solid var(--line); padding:20px 24px; }
+  .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  h1 { margin:0 0 6px; font-size:24px; letter-spacing:-0.04em; }
+  .subline { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+  .controls { display:flex; flex-wrap:wrap; align-items:end; gap:14px; }
+  .quick { display:flex; flex-wrap:wrap; gap:8px; }
+  button { border:1px solid var(--line); border-radius:10px; background:#111827; color:var(--text); font:inherit; font-size:13px; padding:8px 10px; cursor:pointer; text-decoration:none; }
+  button:hover { border-color:#334155; background:#111c31; }
+  button.active { background:var(--accent-soft); border-color:var(--accent); color:#dbeafe; }
+  .range-form { display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
+  label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
+  input[type="date"] { color-scheme:dark; border:1px solid var(--line); border-radius:10px; background:#020617; color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
+  .status { color:var(--muted); font-size:13px; margin:16px 0 0; }
+  .flag-days-wrap { margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .flag-days-label { color:var(--muted); font-size:12px; }
+  .day-strip { display:flex; flex-wrap:wrap; gap:8px; }
+  .day-chip { border-color:rgba(227,179,65,.85); color:#fde68a; }
+  .day-chip.active { background:var(--accent-soft); border-color:var(--accent); color:#dbeafe; }
+  .content { min-width:0; min-height:0; background:var(--bg); overflow:auto; }
+  .empty-state { height:100%; min-height:360px; display:grid; place-items:center; padding:32px; }
+  .empty-card { max-width:680px; width:100%; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
+  .empty-card h2 { margin:0 0 8px; font-size:22px; letter-spacing:-0.04em; }
+  .empty-card p { margin:0; color:var(--muted); font-size:14px; line-height:1.6; }
+  .report { padding:32px; width:100%; max-width:none; margin:0; }
+  .report h2 { margin:0 0 6px; font-size:26px; letter-spacing:-0.04em; }
+  .report-meta { color:var(--muted); font-size:13px; margin:0 0 18px; }
+  .chat-layout { display:flex; height:calc(100vh - 330px); min-height:560px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0d1117; }
+  .chat-sidebar { width:320px; flex-shrink:0; border-right:1px solid var(--line); overflow-y:auto; background:#0b1220; }
+  .day-label { position:sticky; top:0; z-index:1; padding:8px 14px; background:#111827; border-bottom:1px solid var(--line); color:#bfdbfe; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .si { width:100%; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:12px 14px; background:transparent; display:flex; gap:8px; text-align:left; color:var(--text); cursor:pointer; }
+  .si:hover { background:rgba(255,255,255,.04); }
+  .si.active { background:rgba(88,166,255,.1); border-left:3px solid var(--blue); padding-left:11px; }
+  .si-num { color:var(--muted); font-size:12px; font-weight:600; width:24px; flex-shrink:0; }
+  .si-body { flex:1; min-width:0; }
+  .si-flag { display:block; font-size:12px; font-weight:600; color:var(--flag); }
+  .si-msgs { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+  .si-preview { display:block; font-size:12px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chat-main { flex:1; min-width:0; overflow:hidden; }
+  .panel { height:100%; overflow-y:auto; padding:18px; display:none; flex-direction:column; gap:12px; scroll-padding:18px; }
+  .panel.active { display:flex; }
+  .msg { border-radius:10px; max-width:min(920px, 88%); overflow:visible; }
+  .msg-user { background:var(--user-bg); border:1px solid var(--user-border); align-self:flex-end; }
+  .msg-assistant { background:var(--bot-bg); border:1px solid var(--bot-border); align-self:flex-start; }
+  .msg-meta { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); white-space:normal; }
+  .msg-body { padding:10px 14px; font-size:14px; line-height:1.6; overflow-wrap:anywhere; word-break:normal; }
+  .msg-body strong { color:#fff; }
+  .msg-body a { color:var(--blue); }
+  .is-hidden { display:none !important; }
+  @media (max-width:760px) {
+    .toolbar, .report { padding:16px; }
+    .title-row { display:block; }
+    .chat-layout { display:block; height:auto; }
+    .chat-sidebar { width:100%; max-height:280px; border-right:0; border-bottom:1px solid var(--line); }
+    .panel { min-height:520px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="toolbar">
+    <div class="title-row">
+      <div>
+        <h1>Tagesberichte</h1>
+        <p class="subline">Alle Ansichten rendern live aus der Datenbank über <code>/api/reports/range</code>. Keine statischen <code>bericht_*.html</code>-Dateien mehr. Endlich weniger Dateileichen.</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="quick" aria-label="Schnellauswahl" id="quick-actions">
+        <button type="button" data-quick="today">Heute</button>
+        <button type="button" data-quick="yesterday">Gestern</button>
+        <button type="button" data-quick="week">Diese Woche</button>
+        <button type="button" data-quick="month">Dieser Monat</button>
+      </div>
+
+      <form class="range-form" id="range-form">
+        <label>Start <input type="date" id="start-date" /></label>
+        <label>Ende <input type="date" id="end-date" /></label>
+        <button type="submit">Zeitraum laden</button>
+      </form>
+    </div>
+
+    <p class="status" id="status">Wähle einen Zeitraum.</p>
+    <div class="flag-days-wrap" id="flag-days-wrap">
+      <span class="flag-days-label">Tage mit Flags:</span>
+      <div class="day-strip" id="day-strip" aria-label="Tage mit Flags im aktuellen Monat"></div>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-card">
+        <h2>Wähle einen Zeitraum</h2>
+        <p>Nutze Heute, Gestern, Diese Woche, Dieser Monat oder einen eigenen Datumsbereich. Ein einzelner Tag ist einfach Start = Ende.</p>
+      </div>
+    </div>
+    <section class="report is-hidden" id="report" aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const status = document.getElementById('status');
+  const emptyState = document.getElementById('empty-state');
+  const report = document.getElementById('report');
+  const quickButtons = Array.from(document.querySelectorAll('[data-quick]'));
+  const form = document.getElementById('range-form');
+  const startInput = document.getElementById('start-date');
+  const endInput = document.getElementById('end-date');
+  const dayStrip = document.getElementById('day-strip');
+
+  const FLAG_LABELS = { auffaelligkeit: 'Auffälligkeit' };
+  const pad = (value) => String(value).padStart(2, '0');
+  const toDateString = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const labelForDate = (dateString) => {
+    const [year, month, day] = String(dateString || '').split('-');
+    return year && month && day ? `${day}.${month}.${year}` : String(dateString || 'unbekannt');
+  };
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+
+  function startOfWeek(date) {
+    const copy = new Date(date);
+    const day = copy.getDay() || 7;
+    copy.setDate(copy.getDate() - day + 1);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  function startOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  function endOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  }
+
+  function renderRichText(value) {
+    let html = escapeHtml(value);
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return html.replace(/\n/g, '<br>');
+  }
+
+  function setMode(mode) {
+    emptyState.classList.toggle('is-hidden', mode !== 'empty');
+    report.classList.toggle('is-hidden', mode !== 'report');
+  }
+
+  function setQuickActive(kind) {
+    quickButtons.forEach((button) => button.classList.toggle('active', button.dataset.quick === kind));
+  }
+
+  function showPanel(id) {
+    report.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active', panel.id === id));
+    report.querySelectorAll('.si').forEach((item) => item.classList.toggle('active', item.dataset.panel === id));
+  }
+
+  function renderMessage(message) {
+    const role = message.role || '';
+    const label = role === 'user' ? '🎓 Student' : '🐾 Wiesel';
+    const cls = role === 'user' ? 'msg-user' : 'msg-assistant';
+    const ts = String(message.created_at || '').slice(0, 16).replace('T', ' ');
+    return `<div class="msg ${cls}"><div class="msg-meta">${label} · ${escapeHtml(ts)}</div><div class="msg-body">${renderRichText(message.content)}</div></div>`;
+  }
+
+  function renderReport(data) {
+    setMode('report');
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    const title = data.start === data.end ? `🐾 Wiesel Tagesbericht — ${labelForDate(data.start)}` : `🐾 Wiesel Bericht — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
+
+    if (!sessions.length) {
+      report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>Für diesen Zeitraum wurden keine Flags gefunden.</p></div>`;
+      status.textContent = `0 geflaggte Sessions für ${data.start} bis ${data.end}.`;
+      return;
+    }
+
+    let lastDate = '';
+    const nav = [];
+    const panels = [];
+    sessions.forEach((session, index) => {
+      const panelId = `s${index + 1}`;
+      const date = session.date || 'unbekannt';
+      const flag = (session.flags && session.flags[0]) || {};
+      const flagLabel = FLAG_LABELS[flag.tag] || flag.tag || 'Flag';
+      const flagTime = String(flag.created_at || '').slice(11, 16);
+      const firstUser = (session.messages || []).find((message) => message.role === 'user');
+      const previewRaw = firstUser ? firstUser.content || '' : '';
+      const preview = previewRaw.length > 60 ? `${previewRaw.slice(0, 60)}…` : previewRaw;
+
+      if (date !== lastDate) {
+        nav.push(`<div class="day-label">${escapeHtml(labelForDate(date))}</div>`);
+        lastDate = date;
+      }
+
+      nav.push(`<button type="button" class="si ${index === 0 ? 'active' : ''}" data-panel="${panelId}">
+        <span class="si-num">#${index + 1}</span>
+        <span class="si-body">
+          <span class="si-flag">⚠️ ${escapeHtml(flagLabel)} · ${escapeHtml(flagTime)} Uhr</span>
+          <span class="si-msgs">${Number(session.message_count || 0)} Nachrichten · ${escapeHtml(labelForDate(date))}</span>
+          <span class="si-preview">${escapeHtml(preview)}</span>
+        </span>
+      </button>`);
+
+      const messages = (session.messages || []).map(renderMessage).join('') || '<p class="report-meta">Keine Nachrichten für diese Session gefunden.</p>';
+      panels.push(`<div class="panel ${index === 0 ? 'active' : ''}" id="${panelId}">${messages}</div>`);
+    });
+
+    report.innerHTML = `
+      <h2>${escapeHtml(title)}</h2>
+      <p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)} · ${sessions.length} geflaggte Session(s), ${Number(data.total_flags || 0)} Flag(s)</p>
+      <div class="chat-layout">
+        <div class="chat-sidebar">${nav.join('')}</div>
+        <div class="chat-main">${panels.join('')}</div>
+      </div>`;
+
+    report.querySelectorAll('.si').forEach((item) => {
+      item.addEventListener('click', () => showPanel(item.dataset.panel));
+    });
+    status.textContent = `${sessions.length} geflaggte Session(s) für ${data.start} bis ${data.end}.`;
+  }
+
+  async function fetchRange(start, end) {
+    const response = await fetch(`/api/reports/range?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&t=${Date.now()}`, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  async function loadRange(start, end, quickKind = '') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      status.textContent = 'Ungültiges Datum. Erwartet wird YYYY-MM-DD.';
+      return;
+    }
+    if (end < start) {
+      status.textContent = 'Ende muss nach Start liegen. Auch Zeit kann linear sein, überraschend.';
+      return;
+    }
+
+    startInput.value = start;
+    endInput.value = end;
+    setQuickActive(quickKind);
+    setMode('report');
+    report.innerHTML = `<div class="empty-card"><h2>Lade Bericht…</h2><p>Zeitraum: ${escapeHtml(start)} bis ${escapeHtml(end)}</p></div>`;
+    status.textContent = `Lade ${start} bis ${end}…`;
+    history.replaceState(null, '', start === end ? `#${start}` : `#${start}..${end}`);
+
+    const data = await fetchRange(start, end);
+    renderReport(data);
+  }
+
+  function datesForQuick(kind) {
+    const now = new Date();
+    if (kind === 'today') {
+      const today = toDateString(now);
+      return [today, today];
+    }
+    if (kind === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const value = toDateString(yesterday);
+      return [value, value];
+    }
+    if (kind === 'week') {
+      return [toDateString(startOfWeek(now)), toDateString(now)];
+    }
+    if (kind === 'month') {
+      return [toDateString(startOfMonth(now)), toDateString(now)];
+    }
+    return ['', ''];
+  }
+
+  async function selectQuick(kind) {
+    const [start, end] = datesForQuick(kind);
+    if (!start || !end) return;
+    await loadRange(start, end, kind);
+  }
+
+  async function renderMonthChips() {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const data = await fetchRange(toDateString(monthStart), toDateString(monthEnd));
+    const counts = new Map();
+    (data.sessions || []).forEach((session) => {
+      if (!session.date) return;
+      counts.set(session.date, (counts.get(session.date) || 0) + 1);
+    });
+
+    dayStrip.innerHTML = '';
+    const flaggedDates = Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b));
+    if (!flaggedDates.length) {
+      const note = document.createElement('span');
+      note.className = 'flag-days-label';
+      note.textContent = 'Keine im aktuellen Monat.';
+      dayStrip.appendChild(note);
+      return;
+    }
+
+    flaggedDates.forEach(([dateString, count]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'day-chip';
+      button.textContent = `${labelForDate(dateString)} · ${count}`;
+      button.title = `${count} geflaggte Session(s)`;
+      button.addEventListener('click', () => loadRange(dateString, dateString));
+      dayStrip.appendChild(button);
+    });
+  }
+
+  document.getElementById('quick-actions').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-quick]');
+    if (!button) return;
+    event.preventDefault();
+    selectQuick(button.dataset.quick).catch((error) => {
+      status.textContent = `Zeitraum konnte nicht geladen werden: ${error.message}`;
+    });
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    setQuickActive('');
+    loadRange(startInput.value, endInput.value).catch((error) => {
+      status.textContent = `Zeitraum konnte nicht geladen werden: ${error.message}`;
+    });
+  });
+
+  function restoreFromHash() {
+    const hashValue = decodeURIComponent(location.hash.replace(/^#/, ''));
+    const rangeMatch = hashValue.match(/^(\d{4}-\d{2}-\d{2})(?:\.\.(\d{4}-\d{2}-\d{2}))?$/);
+    if (hashValue === 'week') {
+      selectQuick('week').catch((error) => { status.textContent = `Wochenansicht konnte nicht geladen werden: ${error.message}`; });
+      return;
+    }
+    if (rangeMatch) {
+      loadRange(rangeMatch[1], rangeMatch[2] || rangeMatch[1]).catch((error) => { status.textContent = `Bericht konnte nicht geladen werden: ${error.message}`; });
+    }
+  }
+
+  const today = new Date();
+  startInput.value = toDateString(today);
+  endInput.value = toDateString(today);
+  renderMonthChips().catch((error) => {
+    dayStrip.innerHTML = '';
+    status.textContent = `Monatsmarkierungen konnten nicht geladen werden: ${error.message}`;
+  }).finally(restoreFromHash);
+})();
+</script>
+</body>
+</html>

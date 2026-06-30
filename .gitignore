@@ -72,6 +72,7 @@ knowledge_base/planspiel/
 # Generated reports / local analytics
 reports/
 backend/reports/
+backend/analytics/
 *.db
 *.db-shm
 *.db-wal

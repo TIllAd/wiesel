@@ -693,11 +693,11 @@ async def wiki_endpoint():
         raise HTTPException(status_code=500)
 
 
-DEFAULT_ANALYTICS_DIR = Path.home() / "hermes" / "analytics"
+DEFAULT_ANALYTICS_DIR = Path(__file__).parent / "analytics"
 
 
 def analytics_dirs() -> list[Path]:
-    """Daily analytics exports live in ~/hermes/analytics; an env override may add another source."""
+    """Daily analytics exports live in backend/analytics; an env override may add another source."""
     dirs: list[Path] = [DEFAULT_ANALYTICS_DIR]
     configured = os.getenv("WIESEL_ANALYTICS_DIR")
     if configured:
@@ -738,6 +738,89 @@ async def analytics_file(filename: str):
     except json.JSONDecodeError:
         logger.error("Invalid analytics JSON file: %s", path, exc_info=True)
         raise HTTPException(status_code=500, detail="Invalid analytics JSON")
+
+
+@app.get("/api/reports/range")
+async def reports_range(start: str, end: str):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", start):
+        raise HTTPException(status_code=400, detail="Invalid start format; expected YYYY-MM-DD")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", end):
+        raise HTTPException(status_code=400, detail="Invalid end format; expected YYYY-MM-DD")
+
+    start_date = datetime.strptime(start, "%Y-%m-%d").date()
+    end_date = datetime.strptime(end, "%Y-%m-%d").date()
+    if end_date < start_date:
+        raise HTTPException(status_code=400, detail="end must be on or after start")
+
+    range_start = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
+    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999)
+
+    db = SessionLocal()
+    try:
+        flags = db.query(ChatFlag).filter(
+            ChatFlag.created_at >= range_start,
+            ChatFlag.created_at <= range_end,
+            ChatFlag.message_id.is_(None),
+        ).order_by(ChatFlag.created_at).all()
+
+        session_ids = sorted({flag.session_id for flag in flags})
+        if not session_ids:
+            return {"start": start_date.isoformat(), "end": end_date.isoformat(), "total_flags": 0, "total_sessions": 0, "sessions": []}
+
+        messages = db.query(ChatMessage).filter(
+            ChatMessage.session_id.in_(session_ids)
+        ).order_by(ChatMessage.created_at).all()
+        records = db.query(SessionRecord).filter(SessionRecord.id.in_(session_ids)).all()
+        records_by_id = {record.id: record for record in records}
+
+        flags_by_session: dict[str, list[dict]] = {}
+        for flag in flags:
+            flags_by_session.setdefault(flag.session_id, []).append({
+                "id": flag.id,
+                "tag": flag.tag,
+                "created_at": flag.created_at.isoformat(),
+                "date": flag.created_at.date().isoformat(),
+            })
+
+        messages_by_session: dict[str, list[dict]] = {session_id: [] for session_id in session_ids}
+        for message in messages:
+            messages_by_session.setdefault(message.session_id, []).append({
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "created_at": message.created_at.isoformat(),
+            })
+
+        sessions = []
+        for session_id in session_ids:
+            session_flags = flags_by_session.get(session_id, [])
+            first_flag = session_flags[0] if session_flags else {}
+            record = records_by_id.get(session_id)
+            session_messages = messages_by_session.get(session_id, [])
+            sessions.append({
+                "session_id": session_id,
+                "date": first_flag.get("date"),
+                "flags": session_flags,
+                "messages": session_messages,
+                "message_count": len(session_messages),
+                "session": {
+                    "user_id": record.user_id if record else None,
+                    "course_id": record.course_id if record else None,
+                    "course_name": record.course_name if record else None,
+                    "created_at": record.created_at.isoformat() if record else None,
+                },
+            })
+
+        sessions.sort(key=lambda item: (item.get("date") or "", item["flags"][0]["created_at"] if item.get("flags") else ""))
+        return {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat(),
+            "total_flags": len(flags),
+            "total_sessions": len(sessions),
+            "sessions": sessions,
+        }
+    finally:
+        db.close()
 
 
 @app.post("/api/chat/flag")
