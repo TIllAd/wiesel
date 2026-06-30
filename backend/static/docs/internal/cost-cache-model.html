@@ -6,14 +6,16 @@
 <title>Wiesel Kostenmodell</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; }
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-  .wrap { max-width:1120px; margin:0 auto; padding:36px 28px 56px; }
-  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.03em; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  .page { min-height:100vh; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .toolbar { background:var(--panel); border-bottom:1px solid var(--line); padding:20px 24px; }
+  .content { min-width:0; min-height:0; padding:24px; overflow:auto; }
+  h1 { margin:0 0 6px; font-size:24px; letter-spacing:-0.04em; }
   h2 { margin:0 0 10px; font-size:17px; font-weight:600; }
-  .lead { color:var(--muted); margin:0 0 10px; font-size:14px; max-width:860px; line-height:1.6; }
-  .explainer { background:#0c1a2e; border:1px solid #1e3a5f; border-radius:14px; padding:18px 22px; margin:0 0 28px; max-width:860px; }
+  .lead { color:var(--muted); margin:0; font-size:13px; line-height:1.5; }
+  .explainer { background:#0c1a2e; border:1px solid #1e3a5f; border-radius:14px; padding:18px 22px; margin:0 0 18px; }
   .explainer p { margin:0 0 8px; font-size:14px; line-height:1.65; color:#93c5fd; }
   .explainer p:last-child { margin:0; }
   .explainer strong { color:#bfdbfe; }
@@ -53,15 +55,18 @@
   .formula { color:#64748b; background:#020617; border:1px solid var(--line); padding:12px; border-radius:10px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:11px; overflow:auto; margin-top:12px; }
   .loading { color:#475569; font-size:14px; padding:40px 0; text-align:center; }
   @media (max-width:860px) { .grid { grid-template-columns:1fr 1fr; } .metrics-cur { grid-template-columns:1fr 1fr; } .grid2 { grid-template-columns:1fr; } }
+  @media (max-width:760px) { .toolbar, .content { padding:16px; } }
   @media (max-width:560px) { .grid { grid-template-columns:1fr; } .metrics-cur { grid-template-columns:1fr; } }
 </style>
-<script src="/nav.js" defer></script>
 </head>
 <body>
-<div class="wrap">
-  <h1>Wiesel — Betriebskosten</h1>
-  <p class="lead" id="periode-label">Lade Daten…</p>
+<div class="page">
+  <header class="toolbar">
+    <h1>Betriebskosten</h1>
+    <p class="lead" id="periode-label">Lade Daten…</p>
+  </header>
 
+  <main class="content">
   <div class="explainer">
     <p><strong>Wie entstehen die Kosten?</strong> Wiesel lädt beim ersten Anfrage alle Wissensinhalte (Studienordnung, FAQs, Adressen) einmalig in den Arbeitsspeicher des KI-Modells. Dieser Schritt kostet einmalig mehr — danach nutzt jedes weitere Anfrage denselben Kontext zu einem Bruchteil des Preises.</p>
     <p>Das bedeutet: Je mehr Anfragen auf einen Kaltstart folgen, desto günstiger wird jedes einzelne. Der Schieberegler unten zeigt, wie stark dieser Effekt ist.</p>
@@ -138,6 +143,7 @@
     <p class="note" id="note-text"></p>
     <div class="formula" id="formula-text"></div>
   </div>
+  </main>
 </div>
 
 <script>
