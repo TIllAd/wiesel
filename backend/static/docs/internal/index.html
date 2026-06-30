@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wiesel Docs Intern</title>
 <style>
-  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; }
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); }
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
   a { color:inherit; }
@@ -17,7 +17,7 @@
   .doc-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
   .doc-link { display:block; width:100%; border:1px solid transparent; border-radius:10px; padding:9px 10px; background:transparent; color:var(--text); font:inherit; font-size:13px; text-align:left; text-decoration:none; cursor:pointer; }
   .doc-link:hover { background:#111c31; border-color:#263449; }
-  .doc-link.active { background:#172554; border-color:var(--accent); color:#dbeafe; }
+  .doc-link.active { background:var(--accent-soft); border-color:var(--accent); color:#fde68a; }
   .placeholder { margin:0; color:#64748b; font-size:12px; line-height:1.5; }
   .content { min-width:0; min-height:100vh; }
   .empty-state { min-height:100vh; display:grid; place-items:center; padding:32px; }
@@ -51,6 +51,7 @@
       <ul class="doc-list">
         <li><a class="doc-link" href="cost-cache-model.html" data-doc="cost-cache-model.html">Betriebskosten</a></li>
         <li><a class="doc-link" href="reports.html" data-doc="reports.html">Tagesberichte</a></li>
+        <li><a class="doc-link" href="usage.html" data-doc="usage.html">Nutzungszeiten</a></li>
       </ul>
     </section>
   </aside>

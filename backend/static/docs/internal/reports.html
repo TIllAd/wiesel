@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wiesel Tagesberichte</title>
 <style>
-  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; --accent-soft:#172554; --flag:#e3b341; --blue:#58a6ff; --user-bg:#0d2137; --user-border:#1f4a73; --bot-bg:#1c2128; --bot-border:#30363d; --danger:#f97316; }
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); --flag:#e3b341; --blue:#58a6ff; --user-bg:#0d2137; --user-border:#1f4a73; --bot-bg:#1c2128; --bot-border:#30363d; --danger:#f97316; }
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
   a { color:inherit; }
@@ -18,7 +18,7 @@
   .quick { display:flex; flex-wrap:wrap; gap:8px; }
   button { border:1px solid var(--line); border-radius:10px; background:#111827; color:var(--text); font:inherit; font-size:13px; padding:8px 10px; cursor:pointer; text-decoration:none; }
   button:hover { border-color:#334155; background:#111c31; }
-  button.active { background:var(--accent-soft); border-color:var(--accent); color:#dbeafe; }
+  button.active { background:var(--accent-soft); border-color:var(--accent); color:#fde68a; }
   .range-form { display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
   label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
   input[type="date"] { color-scheme:dark; border:1px solid var(--line); border-radius:10px; background:#020617; color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
@@ -27,7 +27,7 @@
   .flag-days-label { color:var(--muted); font-size:12px; }
   .day-strip { display:flex; flex-wrap:wrap; gap:8px; }
   .day-chip { border-color:rgba(227,179,65,.85); color:#fde68a; }
-  .day-chip.active { background:var(--accent-soft); border-color:var(--accent); color:#dbeafe; }
+  .day-chip.active { background:var(--accent-soft); border-color:var(--accent); color:#fde68a; }
   .content { min-width:0; min-height:0; background:var(--bg); overflow:auto; }
   .empty-state { height:100%; min-height:360px; display:grid; place-items:center; padding:32px; }
   .empty-card { max-width:680px; width:100%; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
@@ -41,7 +41,7 @@
   .day-label { position:sticky; top:0; z-index:1; padding:8px 14px; background:#111827; border-bottom:1px solid var(--line); color:#bfdbfe; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .si { width:100%; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:12px 14px; background:transparent; display:flex; gap:8px; text-align:left; color:var(--text); cursor:pointer; }
   .si:hover { background:rgba(255,255,255,.04); }
-  .si.active { background:rgba(88,166,255,.1); border-left:3px solid var(--blue); padding-left:11px; }
+  .si.active { background:var(--accent-soft); border-left:3px solid var(--accent); padding-left:11px; }
   .si-num { color:var(--muted); font-size:12px; font-weight:600; width:24px; flex-shrink:0; }
   .si-body { flex:1; min-width:0; }
   .si-flag { display:block; font-size:12px; font-weight:600; color:var(--flag); }
@@ -162,6 +162,12 @@
     quickButtons.forEach((button) => button.classList.toggle('active', button.dataset.quick === kind));
   }
 
+  function setDayActive(start, end) {
+    dayStrip.querySelectorAll('.day-chip').forEach((button) => {
+      button.classList.toggle('active', start === end && button.dataset.date === start);
+    });
+  }
+
   function showPanel(id) {
     report.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active', panel.id === id));
     report.querySelectorAll('.si').forEach((item) => item.classList.toggle('active', item.dataset.panel === id));
@@ -250,6 +256,7 @@
     startInput.value = start;
     endInput.value = end;
     setQuickActive(quickKind);
+    setDayActive(start, end);
     setMode('report');
     report.innerHTML = `<div class="empty-card"><h2>Lade Bericht…</h2><p>Zeitraum: ${escapeHtml(start)} bis ${escapeHtml(end)}</p></div>`;
     status.textContent = `Lade ${start} bis ${end}…`;
@@ -311,6 +318,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'day-chip';
+      button.dataset.date = dateString;
       button.textContent = `${labelForDate(dateString)} · ${count}`;
       button.title = `${count} geflaggte Session(s)`;
       button.addEventListener('click', () => loadRange(dateString, dateString));
