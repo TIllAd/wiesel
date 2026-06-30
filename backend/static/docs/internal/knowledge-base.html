@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Wissensbasis</title>
+<link rel="stylesheet" href="../docs-theme.css" />
+<style>
+  .kb-layout { display:grid; grid-template-columns:1fr 380px; gap:20px; padding:24px; align-items:start; }
+  @media (max-width:900px) { .kb-layout { grid-template-columns:1fr; } }
+
+  /* KB overview */
+  .kb-section { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); }
+  .kb-section + .kb-section { margin-top:14px; }
+  .kb-section-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; cursor:pointer; user-select:none; }
+  .kb-section-header:hover { background:var(--panel-2); }
+  .kb-section-title { margin:0; font-family:var(--serif); font-size:18px; font-weight:400; letter-spacing:-.01em; }
+  .kb-section-right { display:flex; align-items:center; gap:10px; }
+  .kb-count { font-size:12px; color:var(--muted); }
+  .kb-chevron { color:var(--muted); font-size:13px; transition:transform .2s ease; }
+  .kb-section.open .kb-chevron { transform:rotate(180deg); }
+  .kb-body { padding:0 22px 18px; display:none; }
+  .kb-section.open .kb-body { display:block; }
+  .kb-body-note { color:var(--muted); font-size:12px; margin:0 0 10px; }
+  .kb-articles { display:grid; gap:7px; }
+  .kb-article { display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--panel-3); border:1px solid var(--line); border-radius:9px; font-size:13px; cursor:pointer; transition:border-color .15s, background .15s; }
+  .kb-article:hover { background:var(--panel-2); border-color:var(--accent); }
+  .kb-article.active { background:var(--accent-soft); border-color:var(--accent); }
+  .kb-article-name { flex:1; color:var(--text); font-weight:500; }
+  .kb-article-sub { color:var(--muted); font-size:12px; margin-top:1px; }
+  .tag { display:inline-block; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; }
+  .tag-auto { background:rgba(59,109,17,.12); color:var(--success); border:1px solid rgba(59,109,17,.2); }
+  .tag-json { background:var(--accent-soft); color:var(--accent-2); border:1px solid rgba(184,80,15,.2); }
+  .tag-static { background:var(--panel-2); color:var(--muted); border:1px solid var(--line); }
+
+  /* Gap tracker */
+  .gap-panel { position:sticky; top:20px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; box-shadow:var(--shadow); }
+  .gap-panel h2 { margin:0 0 5px; font-family:var(--serif); font-size:21px; font-weight:400; letter-spacing:-.01em; }
+  .gap-panel .sub { color:var(--muted); font-size:13px; margin:0 0 18px; line-height:1.5; }
+  .gap-form { display:grid; gap:10px; margin-bottom:18px; }
+  .gap-form label { display:grid; gap:4px; font-size:11px; color:var(--muted); }
+  .gap-form input, .gap-form select, .gap-form textarea {
+    border:1px solid var(--line); border-radius:8px; background:var(--panel-3);
+    color:var(--text); font:inherit; font-size:13px; padding:8px 10px; width:100%;
+  }
+  .gap-form textarea { resize:vertical; min-height:64px; }
+  .gap-form input:focus, .gap-form select:focus, .gap-form textarea:focus {
+    outline:none; border-color:var(--accent);
+  }
+  .btn-add { width:100%; background:var(--accent); border:none; border-radius:9px; color:#fff; font:inherit; font-size:13px; font-weight:600; padding:10px; cursor:pointer; }
+  .btn-add:hover { background:var(--accent-2); }
+
+  .gap-list { display:grid; gap:8px; }
+  .gap-empty { color:var(--muted); font-size:13px; text-align:center; padding:22px 0; }
+  .gap-item { background:var(--panel-3); border:1px solid var(--line); border-radius:10px; padding:11px 13px; position:relative; }
+  .gap-item-top { display:flex; align-items:flex-start; gap:8px; }
+  .gap-item-topic { font-size:13px; font-weight:600; flex:1; line-height:1.4; }
+  .gap-item-delete { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:0 2px; line-height:1; }
+  .gap-item-delete:hover { color:var(--accent); border:none; background:none; }
+  .gap-item-meta { display:flex; align-items:center; gap:7px; margin-top:5px; flex-wrap:wrap; }
+  .gap-item-notes { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.5; }
+  .gap-item-date { color:var(--muted); font-size:11px; }
+  .tag-miss { background:rgba(184,80,15,.12); color:#8f3f0c; border:1px solid rgba(184,80,15,.25); }
+  .tag-wrong { background:rgba(124,77,31,.12); color:#5c3510; border:1px solid rgba(124,77,31,.25); }
+  .tag-refuse { background:rgba(111,94,73,.12); color:var(--muted-2); border:1px solid rgba(111,94,73,.25); }
+  .tag-other { background:var(--panel-2); color:var(--muted-2); border:1px solid var(--line); }
+
+  /* Drawer */
+  .drawer-overlay { position:fixed; inset:0; background:rgba(26,24,20,.35); z-index:100; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .drawer-overlay.open { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(680px,96vw); background:var(--panel); border-left:1px solid var(--line); box-shadow:-8px 0 40px rgba(67,48,26,.12); z-index:101; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1); }
+  .drawer.open { transform:translateX(0); }
+  .drawer-header { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); flex-shrink:0; }
+  .drawer-title { flex:1; margin:0; font-family:var(--serif); font-size:17px; font-weight:400; letter-spacing:-.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .drawer-path { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .drawer-close { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font:inherit; font-size:18px; line-height:1; padding:3px 9px; cursor:pointer; flex-shrink:0; }
+  .drawer-close:hover { border-color:var(--accent); color:var(--accent); background:none; }
+  .drawer-body { flex:1; overflow:auto; padding:22px 24px; }
+  .drawer-loading { color:var(--muted); font-size:14px; padding:32px 0; text-align:center; }
+  .drawer-error { color:var(--accent); font-size:13px; background:var(--accent-soft); border:1px solid rgba(184,80,15,.2); border-radius:9px; padding:12px 14px; }
+
+  /* Markdown rendering */
+  .md h1,.md h2,.md h3,.md h4 { font-family:var(--serif); font-weight:400; letter-spacing:-.01em; margin:1.4em 0 .5em; }
+  .md h1 { font-size:22px; } .md h2 { font-size:18px; } .md h3 { font-size:15px; color:var(--muted-2); }
+  .md p { margin:.6em 0 .9em; font-size:14px; line-height:1.7; }
+  .md ul,.md ol { padding-left:1.5em; margin:.5em 0; font-size:14px; line-height:1.65; }
+  .md li { margin:.25em 0; }
+  .md code { font-family:var(--mono); font-size:12px; background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  .md pre { background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:14px 16px; overflow:auto; margin:.8em 0; }
+  .md pre code { background:none; border:none; padding:0; font-size:12px; }
+  .md a { color:var(--accent); text-decoration:underline; }
+  .md strong { font-weight:700; }
+  .md em { font-style:italic; }
+  .md blockquote { border-left:3px solid var(--accent); margin:0; padding:.4em 1em; color:var(--muted-2); font-style:italic; background:var(--accent-soft); border-radius:0 6px 6px 0; }
+  .md hr { border:none; border-top:1px solid var(--line); margin:1.2em 0; }
+  .md table { border-collapse:collapse; width:100%; font-size:13px; margin:.8em 0; }
+  .md th,.md td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
+  .md th { background:var(--panel-2); font-weight:600; }
+  .md pre.json-block { font-size:12px; }
+
+  .section-divider { border:none; border-top:1px solid var(--line); margin:16px 0; }
+  .gap-count-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .gap-count-label { font-size:12px; color:var(--muted); }
+  .btn-clear { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font:inherit; font-size:11px; padding:3px 9px; cursor:pointer; }
+  .btn-clear:hover { border-color:var(--accent); color:var(--accent); background:none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="toolbar">
+    <div class="title-row">
+      <div>
+        <h1>Wissensbasis</h1>
+        <p class="subline">Was Wiesel kennt — und was noch fehlt oder falsch läuft.</p>
+      </div>
+    </div>
+    <p class="status" id="status">Lädt…</p>
+  </header>
+
+  <!-- File drawer -->
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Dateiinhalt">
+    <div class="drawer-header">
+      <div style="flex:1;min-width:0">
+        <div class="drawer-title" id="drawer-title">–</div>
+        <div class="drawer-path" id="drawer-path"></div>
+      </div>
+      <button type="button" class="drawer-close" id="drawer-close">×</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </div>
+
+  <div class="kb-layout">
+    <!-- Left: KB overview -->
+    <div id="kb-overview"></div>
+
+    <!-- Right: Gap tracker -->
+    <div class="gap-panel">
+      <h2>Lücken melden</h2>
+      <p class="sub">Thema eintragen, das Wiesel nicht kennt, falsch beantwortet oder ablehnt.</p>
+
+      <form class="gap-form" id="gap-form">
+        <label>
+          Thema / Frage
+          <input type="text" id="gap-topic" placeholder="z.B. Wie beantrage ich Urlaubssemester?" required />
+        </label>
+        <label>
+          Art des Problems
+          <select id="gap-type">
+            <option value="miss">Weiß nichts dazu</option>
+            <option value="wrong">Antwortet, aber falsch / ungenau</option>
+            <option value="refuse">Lehnt Antwort ab</option>
+            <option value="other">Anderes</option>
+          </select>
+        </label>
+        <label>
+          Notiz (optional)
+          <textarea id="gap-notes" placeholder="Was genau war falsch? Welche Antwort kam?"></textarea>
+        </label>
+        <button type="submit" class="btn-add">Lücke eintragen</button>
+      </form>
+
+      <hr class="section-divider" />
+
+      <div class="gap-count-row">
+        <span class="gap-count-label" id="gap-count-label">Keine Einträge</span>
+        <button type="button" class="btn-clear" id="btn-clear-all">Alle löschen</button>
+      </div>
+      <div class="gap-list" id="gap-list">
+        <p class="gap-empty">Noch keine Lücken gemeldet.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ── KB data ─────────────────────────────────── */
+  const KB = [
+    {
+      folder: 'Studienstart',
+      icon: '🎓',
+      articles: [
+        { name: 'Studienstart WiSo', file: 'studienstart/studienstart-wiso.md' },
+        { name: 'Einführungsveranstaltungen', file: 'studienstart/einfuehrungsveranstaltungen.md' },
+        { name: 'Semestertermine FAU', file: 'studienstart/semestertermine-fau.md' },
+        { name: 'Termine & Fristen WiSo', file: 'studienstart/termine-fristen-wiso.md' },
+        { name: 'Gut zu wissen', file: 'studienstart/gut-zu-wissen.md' },
+        { name: 'Infothek A–Z', file: 'studienstart/infothek-a-z.md' },
+        { name: 'Anfahrt & Lageplan', file: 'studienstart/anfahrt-lageplan.md' },
+        { name: 'Deutschlandticket', file: 'studienstart/deutschlandticket.md' },
+      ]
+    },
+    {
+      folder: 'Anlaufstellen',
+      icon: '🏛️',
+      articles: [
+        { name: 'Einrichtungen WiSo', file: 'anlaufstellen/einrichtungen-wiso.md' },
+        { name: 'Fachstudienberatung', file: 'anlaufstellen/fachstudienberatung.md' },
+        { name: 'FSI Beratung', file: 'anlaufstellen/fsi-beratung.md' },
+        { name: 'FSI Uni-Leben', file: 'anlaufstellen/fsi-unileben.md' },
+        { name: 'FSI WiSo', file: 'anlaufstellen/fsi-wiso.md' },
+        { name: 'Mentoring', file: 'anlaufstellen/mentoring.md' },
+        { name: 'Prüfungsamt', file: 'anlaufstellen/pruefungsamt.md' },
+        { name: 'Studierendenwerk', file: 'anlaufstellen/studierendenwerk.md' },
+        { name: 'Zentrale Studienberatung', file: 'anlaufstellen/zentrale-studienberatung.md' },
+      ]
+    },
+    {
+      folder: 'Plattformen',
+      icon: '💻',
+      articles: [
+        { name: 'campo', file: 'plattformen/campo.md' },
+        { name: 'StudOn', file: 'plattformen/studon.md' },
+        { name: 'FAUmail', file: 'plattformen/faumail.md' },
+        { name: 'IDM / Account', file: 'plattformen/idm.md' },
+        { name: 'Eduroam', file: 'plattformen/eduroam.md' },
+        { name: 'Microsoft Office', file: 'plattformen/microsoft-office.md' },
+        { name: 'FAU App', file: 'plattformen/fau-app.md' },
+        { name: 'Studienportale', file: 'plattformen/studienportale.md' },
+      ]
+    },
+    {
+      folder: 'Prüfungen',
+      icon: '📋',
+      articles: [
+        { name: 'Prüfungsübersicht', file: 'pruefungen/pruefungen-uebersicht.md' },
+        { name: 'GOP', file: 'pruefungen/gop.md' },
+        { name: 'Prüfungsrücktritt', file: 'pruefungen/pruefungsruecktritt.md' },
+        { name: 'Krankmeldung', file: 'pruefungen/krankmeldung.md' },
+        { name: 'Prüfungsamt FAU', file: 'pruefungen/pruefungsamt-fau.md' },
+        { name: 'campo Bescheinigungen', file: 'pruefungen/campo-bescheinigungen.md' },
+      ]
+    },
+    {
+      folder: 'Studienorganisation',
+      icon: '📅',
+      articles: [
+        { name: 'campo (Kurswahl)', file: 'studienorganisation/campo.md' },
+        { name: 'Modulhandbücher', file: 'studienorganisation/modulhandbuecher.md' },
+        { name: 'Modulhandbuch PDF', file: 'studienorganisation/modulhandbuch-pdf.md' },
+        { name: 'Prüfungsordnungen', file: 'studienorganisation/pruefungsordnungen.md' },
+        { name: 'Schwerpunktwahl', file: 'studienorganisation/schwerpunktwahl.md' },
+        { name: 'Auslandssemester', file: 'studienorganisation/auslandssemester.md' },
+        { name: 'International Office', file: 'studienorganisation/international-office.md' },
+      ]
+    },
+    {
+      folder: 'Uni-Leben',
+      icon: '🎪',
+      articles: [
+        { name: 'BAföG', file: 'uni-leben/bafoeg.md' },
+        { name: 'Stipendien', file: 'uni-leben/stipendien.md' },
+        { name: 'Psychologische Beratung', file: 'uni-leben/psychologische-beratung.md' },
+        { name: 'Career Service', file: 'uni-leben/career-service.md' },
+        { name: 'Hochschulsport', file: 'uni-leben/hochschulsport.md' },
+        { name: 'Lernräume', file: 'uni-leben/lernraeume.md' },
+        { name: 'Nützliche Apps', file: 'uni-leben/nuetzliche-apps.md' },
+      ]
+    },
+    {
+      folder: 'Planspiel',
+      icon: '🎯',
+      articles: [
+        { name: 'BizzTrainer', file: 'planspiel/bizztrainer.md' },
+        { name: 'Einführungsveranstaltung', file: 'planspiel/einfuehrungsveranstaltung.md' },
+        { name: 'Spielanleitung', file: 'planspiel/spielanleitung.md' },
+      ]
+    },
+    {
+      folder: 'Allgemein',
+      icon: '📁',
+      articles: [
+        { name: 'BAföG Bedarfssätze', file: 'bafoeg-bedarfssaetze.md' },
+        { name: 'Bibliothek', file: 'bib_info.md' },
+        { name: 'Orte & Navigation', file: 'orte_navigation.md' },
+        { name: 'Wissensbasis Übersicht', file: 'wissen-basis.md' },
+      ]
+    },
+    {
+      folder: 'Automatisch aktualisiert',
+      icon: '🔄',
+      note: 'Diese Dateien werden regelmäßig per Scraper befüllt.',
+      articles: [
+        { name: 'Mensa diese Woche', file: 'mensa-woche.md', tag: 'auto' },
+        { name: 'ÖPNV heute', file: 'oepnv-heute.md', tag: 'auto' },
+        { name: 'Wetter heute', file: 'wetter-heute.md', tag: 'auto' },
+        { name: 'FAU Aktuell', file: 'fau-aktuell.md', tag: 'auto' },
+        { name: 'Kategorien', file: 'categories.json', tag: 'json' },
+        { name: 'FAQs', file: 'faqs.json', tag: 'json' },
+      ]
+    },
+  ];
+
+  /* ── Render KB overview ──────────────────────── */
+  const OPEN_KEY = 'wiesel_kb_open_v1';
+
+  function loadOpenState() {
+    try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+
+  function saveOpenState(openSet) {
+    localStorage.setItem(OPEN_KEY, JSON.stringify([...openSet]));
+  }
+
+  function renderKB() {
+    const container = document.getElementById('kb-overview');
+    const openSet = loadOpenState();
+    let totalArticles = 0;
+
+    const html = KB.map((group, idx) => {
+      totalArticles += group.articles.length;
+      const isOpen = openSet.has(idx);
+
+      const articles = group.articles.map(a => {
+        const tagHtml = a.tag === 'auto'
+          ? '<span class="tag tag-auto">Auto</span>'
+          : a.tag === 'json'
+          ? '<span class="tag tag-json">JSON</span>'
+          : '<span class="tag tag-static">MD</span>';
+        return `<div class="kb-article" data-file="${escHtml(a.file)}" data-name="${escHtml(a.name)}" role="button" tabindex="0">
+          <div style="flex:1">
+            <div class="kb-article-name">${escHtml(a.name)}</div>
+            <div class="kb-article-sub">${escHtml(a.file)}</div>
+          </div>
+          ${tagHtml}
+        </div>`;
+      }).join('');
+
+      const noteHtml = group.note
+        ? `<p class="kb-body-note">${escHtml(group.note)}</p>`
+        : '';
+
+      return `<div class="kb-section${isOpen ? ' open' : ''}" data-idx="${idx}">
+        <div class="kb-section-header" role="button" aria-expanded="${isOpen}">
+          <h2 class="kb-section-title">${group.icon} ${escHtml(group.folder)}</h2>
+          <div class="kb-section-right">
+            <span class="kb-count">${group.articles.length} Artikel</span>
+            <span class="kb-chevron">▾</span>
+          </div>
+        </div>
+        <div class="kb-body">
+          ${noteHtml}
+          <div class="kb-articles">${articles}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.kb-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.closest('.kb-section');
+        const idx = parseInt(section.dataset.idx, 10);
+        const isNowOpen = !section.classList.contains('open');
+        section.classList.toggle('open', isNowOpen);
+        header.setAttribute('aria-expanded', isNowOpen);
+        const openSet = loadOpenState();
+        if (isNowOpen) openSet.add(idx); else openSet.delete(idx);
+        saveOpenState(openSet);
+      });
+    });
+
+    document.getElementById('status').textContent =
+      `${totalArticles} Artikel in ${KB.length} Kategorien · knowledge_base/`;
+  }
+
+  /* ── Gap tracker ─────────────────────────────── */
+  const STORAGE_KEY = 'wiesel_gaps_v1';
+  const TYPE_META = {
+    miss:   { label: 'Weiß nichts', cls: 'tag-miss' },
+    wrong:  { label: 'Falsch / ungenau', cls: 'tag-wrong' },
+    refuse: { label: 'Lehnt ab', cls: 'tag-refuse' },
+    other:  { label: 'Anderes', cls: 'tag-other' },
+  };
+
+  function loadGaps() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function saveGaps(gaps) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gaps));
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+  }
+
+  function renderGaps() {
+    const gaps = loadGaps();
+    const list = document.getElementById('gap-list');
+    const label = document.getElementById('gap-count-label');
+
+    label.textContent = gaps.length === 0
+      ? 'Keine Einträge'
+      : `${gaps.length} Lücke${gaps.length !== 1 ? 'n' : ''} gemeldet`;
+
+    if (!gaps.length) {
+      list.innerHTML = '<p class="gap-empty">Noch keine Lücken gemeldet.</p>';
+      return;
+    }
+
+    list.innerHTML = gaps.slice().reverse().map((g, ri) => {
+      const i = gaps.length - 1 - ri; // real index for deletion
+      const meta = TYPE_META[g.type] || TYPE_META.other;
+      const notesHtml = g.notes
+        ? `<div class="gap-item-notes">${escHtml(g.notes)}</div>`
+        : '';
+      return `<div class="gap-item" data-index="${i}">
+        <div class="gap-item-top">
+          <div class="gap-item-topic">${escHtml(g.topic)}</div>
+          <button type="button" class="gap-item-delete" title="Löschen" data-delete="${i}">×</button>
+        </div>
+        <div class="gap-item-meta">
+          <span class="tag ${meta.cls}">${meta.label}</span>
+          <span class="gap-item-date">${formatDate(g.created_at)}</span>
+        </div>
+        ${notesHtml}
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.delete, 10);
+        const gaps = loadGaps();
+        gaps.splice(idx, 1);
+        saveGaps(gaps);
+        renderGaps();
+      });
+    });
+  }
+
+  document.getElementById('gap-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const topic = document.getElementById('gap-topic').value.trim();
+    const type  = document.getElementById('gap-type').value;
+    const notes = document.getElementById('gap-notes').value.trim();
+    if (!topic) return;
+    const gaps = loadGaps();
+    gaps.push({ topic, type, notes, created_at: new Date().toISOString() });
+    saveGaps(gaps);
+    document.getElementById('gap-topic').value = '';
+    document.getElementById('gap-notes').value = '';
+    renderGaps();
+  });
+
+  document.getElementById('btn-clear-all').addEventListener('click', () => {
+    if (!confirm('Alle Lücken löschen?')) return;
+    saveGaps([]);
+    renderGaps();
+  });
+
+  /* ── Drawer ──────────────────────────────────── */
+  const drawer        = document.getElementById('drawer');
+  const drawerOverlay = document.getElementById('drawer-overlay');
+  const drawerTitle   = document.getElementById('drawer-title');
+  const drawerPath    = document.getElementById('drawer-path');
+  const drawerBody    = document.getElementById('drawer-body');
+  let activeArticleEl = null;
+
+  function openDrawer(name, file) {
+    drawerTitle.textContent = name;
+    drawerPath.textContent  = `knowledge_base/${file}`;
+    drawerBody.innerHTML    = '<p class="drawer-loading">Lade…</p>';
+    drawer.classList.add('open');
+    drawerOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    fetch(`/api/wiki/file?path=${encodeURIComponent(file)}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(data => {
+        drawerBody.innerHTML = `<div class="md">${data.format === 'json'
+          ? `<pre class="json-block">${escHtml(JSON.stringify(JSON.parse(data.content), null, 2))}</pre>`
+          : renderMarkdown(data.content)
+        }</div>`;
+      })
+      .catch(err => {
+        drawerBody.innerHTML = `<div class="drawer-error">Fehler beim Laden: ${escHtml(err.message)}</div>`;
+      });
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+    if (activeArticleEl) { activeArticleEl.classList.remove('active'); activeArticleEl = null; }
+  }
+
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  drawerOverlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+  /* ── Simple Markdown renderer ────────────────── */
+  function renderMarkdown(md) {
+    let html = escHtml(md);
+
+    // Code blocks (before inline code)
+    html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
+      `<pre><code>${code.trimEnd()}</code></pre>`);
+
+    // Headings
+    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.+)$/gm,  '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm,   '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm,    '<h1>$1</h1>');
+
+    // HR
+    html = html.replace(/^---$/gm, '<hr>');
+
+    // Blockquote
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Inline: bold, italic, code, links
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g,     '<em>$1</em>');
+    html = html.replace(/`([^`]+)`/g,       '<code>$1</code>');
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Lists
+    html = html.replace(/((?:^[-*] .+\n?)+)/gm, (block) => {
+      const items = block.trim().split('\n')
+        .map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('');
+      return `<ul>${items}</ul>`;
+    });
+    html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
+      const items = block.trim().split('\n')
+        .map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
+      return `<ol>${items}</ol>`;
+    });
+
+    // Paragraphs: double newline → <p>
+    html = html.split(/\n{2,}/).map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (/^<(h[1-4]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
+      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+
+    return html;
+  }
+
+  /* ── Utils ───────────────────────────────────── */
+  function escHtml(v) {
+    return String(v ?? '').replace(/[&<>'"]/g, c =>
+      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+  }
+
+  /* ── Wire up article clicks (called after renderKB) ── */
+  function wireArticleClicks() {
+    document.querySelectorAll('.kb-article[data-file]').forEach(el => {
+      const open = () => {
+        if (activeArticleEl) activeArticleEl.classList.remove('active');
+        activeArticleEl = el;
+        el.classList.add('active');
+        openDrawer(el.dataset.name, el.dataset.file);
+      };
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+  }
+
+  /* ── Init ────────────────────────────────────── */
+  renderKB();
+  wireArticleClicks();
+  renderGaps();
+})();
+</script>
+</body>
+</html>
