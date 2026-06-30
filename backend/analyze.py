@@ -38,7 +38,7 @@ SMTP_PASS     = os.getenv("SMTP_PASS", "")
 REPO_ROOT     = Path(__file__).parent.parent
 REPORTS_DIR   = REPO_ROOT / "reports"
 DB_PATH       = Path(os.getenv("WIESEL_DB_PATH", str(Path(__file__).parent / "wiesel.db")))
-HTML_TEMPLATE = Path(__file__).parent / "static" / "cost-cache-model.html"
+HTML_TEMPLATE = Path(__file__).parent / "static" / "docs" / "internal" / "cost-cache-model.html"
 
 
 # ── LLM Usage from SQLite ────────────────────────────────────────────────────
@@ -431,7 +431,7 @@ def email_summary(r):
 
     github_url = f"https://github.com/TIllAd/wiesel/blob/main/reports/{r['date']}.md"
     dashboard_base = os.getenv("WIESEL_DASHBOARD_BASE", API_BASE).rstrip("/")
-    docs_url   = f"{dashboard_base}/static/cost-cache-model.html"
+    docs_url   = f"{dashboard_base}/internal/cost-cache-model.html"
 
     return (
         f"╔══════════════════════════════════════════╗\n"
@@ -478,8 +478,8 @@ if __name__ == "__main__":
         print(f"⚠ Git push fehlgeschlagen: {e}")
 
     # analytics_latest.json für schnellen Erstaufruf; historische Tagesdateien liegen in WIESEL_ANALYTICS_DIR.
-    static_dir = Path(__file__).parent / "static"
-    docs_json = static_dir / "analytics_latest.json"
+    docs_internal_dir = Path(__file__).parent / "static" / "docs" / "internal"
+    docs_json = docs_internal_dir / "analytics_latest.json"
     try:
         payload = {
             "exported_at": datetime.now().isoformat(),
@@ -488,7 +488,7 @@ if __name__ == "__main__":
             "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"], "cache_write_requests": result["llm_usage"]["cache_write_requests"]},
             "sessions": [],
         }
-        static_dir.mkdir(parents=True, exist_ok=True)
+        docs_internal_dir.mkdir(parents=True, exist_ok=True)
         with open(docs_json, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         print(f"✅ analytics_latest.json aktualisiert")

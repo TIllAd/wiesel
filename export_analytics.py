@@ -207,17 +207,17 @@ def export():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     if UPDATE_DOCS:
-        # ── analytics_latest.json in backend/static/ für schnellen Erstaufruf ──
+        # ── analytics_latest.json in backend/static/docs/internal/ für schnellen Erstaufruf ──
         # Historische Tagesdateien bleiben ausschließlich in OUTPUT_DIR/WIESEL_ANALYTICS_DIR.
-        static_dir = Path(__file__).parent / "backend" / "static"
-        static_dir.mkdir(parents=True, exist_ok=True)
-        docs_json = static_dir / "analytics_latest.json"
+        docs_internal_dir = Path(__file__).parent / "backend" / "static" / "docs" / "internal"
+        docs_internal_dir.mkdir(parents=True, exist_ok=True)
+        docs_json = docs_internal_dir / "analytics_latest.json"
         with open(docs_json, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
         print(f"  analytics_latest.json → {docs_json}")
 
     # ── HTML Report generieren ──
-    html_template = Path(__file__).parent / "backend" / "static" / "cost-cache-model.html"
+    html_template = Path(__file__).parent / "backend" / "static" / "docs" / "internal" / "cost-cache-model.html"
     if html_template.exists():
         html = html_template.read_text(encoding="utf-8")
         html = html.replace(

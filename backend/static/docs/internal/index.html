@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Docs Intern</title>
+<style>
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  a { color:inherit; }
+  .app { min-height:100vh; display:grid; grid-template-columns:180px minmax(0,1fr); }
+  .sidebar { position:sticky; top:0; height:100vh; overflow:auto; background:var(--panel); border-right:1px solid var(--line); padding:20px 14px; }
+  .brand { margin:0 0 22px; font-size:18px; font-weight:700; letter-spacing:-0.03em; }
+  .section { margin:0 0 24px; }
+  .section-title { margin:0 0 8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .doc-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+  .doc-link { display:block; width:100%; border:1px solid transparent; border-radius:10px; padding:9px 10px; background:transparent; color:var(--text); font:inherit; font-size:13px; text-align:left; text-decoration:none; cursor:pointer; }
+  .doc-link:hover { background:#111c31; border-color:#263449; }
+  .doc-link.active { background:#172554; border-color:var(--accent); color:#dbeafe; }
+  .placeholder { margin:0; color:#64748b; font-size:12px; line-height:1.5; }
+  .content { min-width:0; min-height:100vh; }
+  .empty-state { min-height:100vh; display:grid; place-items:center; padding:32px; }
+  .empty-card { max-width:560px; width:100%; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
+  .empty-card h1 { margin:0 0 8px; font-size:24px; letter-spacing:-0.04em; }
+  .empty-card p { margin:0; color:var(--muted); font-size:14px; line-height:1.65; }
+  iframe { display:block; width:100%; height:100vh; border:0; background:var(--bg); }
+  .is-hidden { display:none; }
+  @media (max-width:720px) {
+    .app { grid-template-columns:1fr; }
+    .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line); }
+    .content, .empty-state, iframe { min-height:calc(100vh - 220px); height:calc(100vh - 220px); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Interne Dokumentnavigation">
+    <p class="brand">Wiesel Docs</p>
+
+    <section class="section" aria-labelledby="public-docs">
+      <h2 class="section-title" id="public-docs">Öffentlich</h2>
+      <ul class="doc-list">
+        <li><a class="doc-link" href="/#public/nutzungsverhalten.html">Nutzungsverhalten</a></li>
+      </ul>
+      <p class="placeholder">Weitere öffentliche Docs folgen.</p>
+    </section>
+
+    <section class="section" aria-labelledby="internal-docs">
+      <h2 class="section-title" id="internal-docs">Intern</h2>
+      <ul class="doc-list">
+        <li><a class="doc-link" href="cost-cache-model.html" data-doc="cost-cache-model.html">Betriebskosten</a></li>
+      </ul>
+    </section>
+  </aside>
+
+  <main class="content">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-card">
+        <h1>Wähle eine interne Doc-Seite</h1>
+        <p>Du bist im geschützten Bereich. Die Dokumente werden hier im iframe geladen, ohne Cloudflare-Login in eine Glasbox zu sperren. Fortschritt durch Unterlassen.</p>
+      </div>
+    </div>
+    <iframe class="is-hidden" id="doc-frame" title="Wiesel internes Dokument"></iframe>
+  </main>
+</div>
+
+<script>
+(() => {
+  const frame = document.getElementById('doc-frame');
+  const emptyState = document.getElementById('empty-state');
+  const links = Array.from(document.querySelectorAll('[data-doc]'));
+  const docs = new Set(links.map((link) => link.dataset.doc));
+
+  function normalizeHash() {
+    const raw = decodeURIComponent(location.hash.replace(/^#/, '')).replace(/^\/+/, '');
+    return docs.has(raw) ? raw : '';
+  }
+
+  function setActive(doc) {
+    links.forEach((link) => link.classList.toggle('active', link.dataset.doc === doc));
+  }
+
+  function showDoc(doc) {
+    setActive(doc);
+
+    if (!doc) {
+      frame.classList.add('is-hidden');
+      frame.removeAttribute('src');
+      emptyState.classList.remove('is-hidden');
+      return;
+    }
+
+    emptyState.classList.add('is-hidden');
+    frame.classList.remove('is-hidden');
+    frame.src = doc;
+  }
+
+  function route() {
+    showDoc(normalizeHash());
+  }
+
+  links.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      const doc = link.dataset.doc;
+      if (location.hash === '#' + doc) {
+        showDoc(doc);
+        return;
+      }
+      location.hash = doc;
+    });
+  });
+
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
