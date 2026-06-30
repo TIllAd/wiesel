@@ -2,6 +2,7 @@
 window.STRINGS = {
   de: {
     noSession: '⚠️ Kein Session-Token. Dein Verlauf wird nicht gespeichert.',
+    sessionRequired: 'Kein aktiver Chat. Öffne Wiesel bitte über StudOn oder starte einen frischen Test-Chat.',
     pageTitle: 'Wiesel – Dein Studienbegleiter',
     wieselAlt: 'Wiesel',
     hname: '<em>WiSo</em> Wiesel',
@@ -63,6 +64,7 @@ window.STRINGS = {
   },
   en: {
     noSession: '⚠️ No session token. Your history will not be saved.',
+    sessionRequired: 'No active chat session. Please open Wiesel through StudOn or start a fresh test chat.',
     pageTitle: 'Wiesel – Your study companion',
     wieselAlt: 'Wiesel',
     hname: '<em>WiSo</em> Wiesel',

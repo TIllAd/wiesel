@@ -556,29 +556,45 @@
   async function send() {
     const text = queryEl.value.trim();
     if (!text && !pendingImageBase64) return;
+    if (sendBtn.disabled) return;
     if (text.length > MAX_QUERY_CHARS) {
       addMessage('error', '⚠️ ' + T.tooLong);
       return;
     }
-    const sid = sessionId || 'anon-' + Math.random().toString(36).slice(2);
+    if (!sessionId) {
+      addMessage('error', '⚠️ ' + T.sessionRequired);
+      sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+      return;
+    }
+
+    const sid = sessionId;
+    let readTimer = null;
     if (pendingImageBase64) window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
     addMessage('user', text);
     queryEl.value = ''; queryEl.style.height = 'auto'; sendBtn.disabled = true;
     const hint = document.getElementById('char-limit-hint');
     if (hint) hint.style.display = 'none';
     addTyping();
-    const readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = T.readImage; }, 1400);
+    readTimer = setTimeout(() => { const txt = document.getElementById('typing-txt'); if (txt) txt.textContent = T.readImage; }, 1400);
     try {
       const body = {query: text || T.defaultImageQuestion, session_id: sid};
       if (pendingImageBase64) { body.image_base64 = pendingImageBase64; body.image_type = pendingImageType; }
       if (token) body.token = token;
       const res = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-      clearTimeout(readTimer); removeTyping(); removeImage();
-      if (!res.ok) { addMessage('error', '⚠️ ' + T.genericError); return; }
+      if (!res.ok) {
+        addMessage('error', '⚠️ ' + (res.status === 401 ? T.sessionRequired : T.genericError));
+        return;
+      }
       const data = await res.json();
       addMessage('bot', data.response, detectAvatarState(data.response));
-    } catch { clearTimeout(readTimer); removeTyping(); addMessage('error', '⚠️ ' + T.genericError); }
-    sendBtn.disabled = false;
+    } catch {
+      addMessage('error', '⚠️ ' + T.genericError);
+    } finally {
+      if (readTimer) clearTimeout(readTimer);
+      removeTyping();
+      removeImage();
+      sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+    }
   }
 
   function blobToDataUrl(blob) {
