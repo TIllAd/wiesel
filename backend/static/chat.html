@@ -472,7 +472,9 @@
     const newBtn = document.getElementById('flag-toast-new');
     if (!toast || !closeBtn || !newBtn) return;
     closeBtn.addEventListener('click', () => toast.classList.remove('show'));
-    newBtn.addEventListener('click', () => { window.location.href = '/'; });
+    newBtn.addEventListener('click', () => {
+    window.location.href = isDebugSession ? '/chat?debug=true' : '/chat' + location.search;
+    });
   }
 
   function showFlagToast() {
