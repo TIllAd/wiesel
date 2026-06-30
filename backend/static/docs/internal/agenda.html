@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Agenda</title>
+<link rel="stylesheet" href="../docs-theme.css" />
+<style>
+  .kanban-layout { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:22px; align-items:start; }
+  @media(max-width:800px){ .kanban-layout{ grid-template-columns:1fr; } }
+
+  .col { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); min-height:300px; display:flex; flex-direction:column; }
+  .col-head { padding:14px 16px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px; }
+  .col-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .dot-neu   { background:#7c8fa6; }
+  .dot-aktiv { background:#B8500F; }
+  .dot-done  { background:#3B6D11; }
+  .col-title { font-family:var(--serif); font-size:16px; font-weight:400; margin:0; flex:1; }
+  .col-count { font-size:12px; color:var(--muted); }
+  .col-add   { background:none; border:none; color:var(--accent); font:inherit; font-size:19px; line-height:1; cursor:pointer; padding:0 2px; }
+  .col-add:hover{ color:var(--accent-2); background:none; border:none; }
+
+  .card-list { padding:10px; display:flex; flex-direction:column; gap:8px; flex:1; min-height:60px; }
+  .card-list.drag-over { background:var(--accent-soft); border-radius:8px; }
+
+  .card { background:var(--panel-3); border:1px solid var(--line); border-radius:10px; padding:12px 13px; cursor:grab; position:relative; transition:border-color .15s, box-shadow .15s; }
+  .card:hover { border-color:var(--accent); }
+  .card.dragging { opacity:.45; cursor:grabbing; }
+  .card.drag-placeholder { border:2px dashed var(--accent); background:var(--accent-soft); min-height:48px; border-radius:10px; }
+
+  .card-top { display:flex; align-items:flex-start; gap:8px; }
+  .card-prio { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+  .prio-high   { background:#B8500F; }
+  .prio-normal { background:#7c8fa6; }
+  .prio-low    { background:#b5b0a6; }
+  .card-title  { flex:1; font-size:13px; font-weight:600; line-height:1.4; color:var(--text); }
+  .card-del    { background:none; border:none; color:var(--muted); font-size:15px; line-height:1; cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s; }
+  .card:hover .card-del { opacity:1; }
+  .card-del:hover { color:var(--accent); background:none; border:none; }
+
+  .card-notes { font-size:12px; color:var(--muted); line-height:1.5; margin:6px 0 0 16px; white-space:pre-wrap; }
+  .card-footer { display:flex; align-items:center; gap:7px; margin-top:8px; }
+  .deadline-badge { font-size:10px; font-weight:700; border-radius:5px; padding:2px 7px; letter-spacing:.03em; }
+  .badge-ok      { background:rgba(59,109,17,.12); color:#2a5009; border:1px solid rgba(59,109,17,.25); }
+  .badge-soon    { background:rgba(184,80,15,.13); color:#7a3200; border:1px solid rgba(184,80,15,.3); }
+  .badge-today   { background:rgba(184,80,15,.22); color:#5c2000; border:1px solid rgba(184,80,15,.45); font-weight:800; }
+  .badge-overdue { background:rgba(160,40,40,.13); color:#7a1a1a; border:1px solid rgba(160,40,40,.3); }
+  .card-date  { font-size:11px; color:var(--muted); margin-left:auto; }
+
+  /* Inline editor */
+  .card-editor { display:none; margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+  .card.editing .card-editor { display:block; }
+  .card.editing { cursor:default; border-color:var(--accent); background:var(--panel); }
+  .card.editing .card-title { cursor:text; }
+  .ed-row { display:flex; gap:7px; margin-bottom:7px; }
+  .ed-input, .ed-select, .ed-textarea { border:1px solid var(--line); border-radius:7px; background:var(--panel-3); color:var(--text); font:inherit; font-size:12px; padding:6px 9px; width:100%; }
+  .ed-input:focus,.ed-select:focus,.ed-textarea:focus { outline:none; border-color:var(--accent); }
+  .ed-textarea { resize:vertical; min-height:56px; }
+  .ed-actions { display:flex; gap:7px; margin-top:8px; }
+  .btn-save { background:var(--accent); border:none; border-radius:7px; color:#fff; font:inherit; font-size:12px; padding:6px 14px; cursor:pointer; }
+  .btn-save:hover { background:var(--accent-2); }
+  .btn-cancel { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font:inherit; font-size:12px; padding:6px 10px; cursor:pointer; }
+  .btn-cancel:hover { border-color:var(--accent); color:var(--text); background:none; }
+
+  /* New card form */
+  .new-card-form { margin:0 10px 10px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; display:none; }
+  .new-card-form.open { display:block; }
+  .new-title-input { border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--text); font:inherit; font-size:13px; padding:7px 10px; width:100%; margin-bottom:7px; }
+  .new-title-input:focus { outline:none; border-color:var(--accent); }
+  .new-row { display:flex; gap:7px; margin-bottom:7px; }
+  .new-select { border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--text); font:inherit; font-size:12px; padding:6px 8px; flex:1; }
+  .new-select:focus { outline:none; border-color:var(--accent); }
+  .new-date { border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--text); font:inherit; font-size:12px; padding:6px 8px; flex:1; color-scheme:light; }
+  .new-date:focus { outline:none; border-color:var(--accent); }
+  .new-notes { border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--text); font:inherit; font-size:12px; padding:6px 9px; width:100%; resize:vertical; min-height:52px; margin-bottom:7px; }
+  .new-notes:focus { outline:none; border-color:var(--accent); }
+  .new-actions { display:flex; gap:7px; }
+
+  .empty-col { color:var(--muted); font-size:13px; text-align:center; padding:20px 10px; }
+
+  .status-bar { padding:10px 22px; color:var(--muted); font-size:12px; border-top:1px solid var(--line); background:var(--panel); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="toolbar">
+    <div class="title-row">
+      <div>
+        <h1>Agenda</h1>
+        <p class="subline">Laufende Themen, Aufgaben und Hinweise für das Wiesel-Team.</p>
+      </div>
+    </div>
+    <p class="status" id="status">Lädt…</p>
+  </header>
+
+  <div class="kanban-layout" id="board">
+    <div class="col" id="col-neu"      data-status="neu">
+      <div class="col-head">
+        <span class="col-dot dot-neu"></span>
+        <h2 class="col-title">Neu</h2>
+        <span class="col-count" id="cnt-neu">0</span>
+        <button type="button" class="col-add" data-col="neu" title="Karte hinzufügen">+</button>
+      </div>
+      <form class="new-card-form" id="form-neu" data-col="neu"></form>
+      <div class="card-list" id="list-neu" data-status="neu"></div>
+    </div>
+
+    <div class="col" id="col-aktiv"    data-status="aktiv">
+      <div class="col-head">
+        <span class="col-dot dot-aktiv"></span>
+        <h2 class="col-title">Aktiv</h2>
+        <span class="col-count" id="cnt-aktiv">0</span>
+        <button type="button" class="col-add" data-col="aktiv" title="Karte hinzufügen">+</button>
+      </div>
+      <form class="new-card-form" id="form-aktiv" data-col="aktiv"></form>
+      <div class="card-list" id="list-aktiv" data-status="aktiv"></div>
+    </div>
+
+    <div class="col" id="col-erledigt" data-status="erledigt">
+      <div class="col-head">
+        <span class="col-dot dot-done"></span>
+        <h2 class="col-title">Erledigt</h2>
+        <span class="col-count" id="cnt-erledigt">0</span>
+        <button type="button" class="col-add" data-col="erledigt" title="Karte hinzufügen">+</button>
+      </div>
+      <form class="new-card-form" id="form-erledigt" data-col="erledigt"></form>
+      <div class="card-list" id="list-erledigt" data-status="erledigt"></div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="bottom-status"></div>
+</div>
+
+<script>
+(() => {
+  const statusEl = document.getElementById('status');
+  const bottomEl = document.getElementById('bottom-status');
+  let allItems = [];
+  let dragId = null;
+
+  /* ── API helpers ──────────────────────────────── */
+  async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' }, cache: 'no-store' };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: `HTTP ${r.status}` }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    if (r.status === 204) return null;
+    return r.json();
+  }
+
+  /* ── Helpers ──────────────────────────────────── */
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g,
+    c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.`;
+  }
+
+  function deadlineBadge(dl) {
+    if (!dl) return '';
+    const days = Math.ceil((new Date(dl) - new Date()) / 86400000);
+    const [y, m, d] = dl.split('-');
+    const dateStr = `${d}.${m}.${y}`;
+    let cls, label;
+    if (days < 0)       { cls = 'badge-overdue'; label = `Überfällig · ${dateStr}`; }
+    else if (days === 0){ cls = 'badge-today';   label = `Heute · ${dateStr}`; }
+    else if (days <= 3) { cls = 'badge-soon';    label = `${days}T · ${dateStr}`; }
+    else                { cls = 'badge-ok';      label = `${days}T · ${dateStr}`; }
+    return `<span class="deadline-badge ${cls}">📅 ${label}</span>`;
+  }
+
+  /* ── Render ───────────────────────────────────── */
+  function renderBoard(items) {
+    allItems = items;
+    ['neu','aktiv','erledigt'].forEach(status => {
+      const list = document.getElementById(`list-${status}`);
+      const cnt  = document.getElementById(`cnt-${status}`);
+      const col  = items.filter(i => i.status === status);
+      cnt.textContent = col.length;
+      list.innerHTML = col.length ? '' : `<p class="empty-col">Keine Einträge</p>`;
+      col.forEach(item => list.appendChild(buildCard(item)));
+    });
+    bottomEl.textContent = `${items.length} Einträge gesamt · zuletzt geladen ${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} Uhr`;
+  }
+
+  function buildCard(item) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.dataset.id = item.id;
+    div.draggable = true;
+
+    div.innerHTML = `
+      <div class="card-top">
+        <span class="card-prio prio-${esc(item.priority)}"></span>
+        <span class="card-title">${esc(item.title)}</span>
+        <button type="button" class="card-del" title="Löschen">×</button>
+      </div>
+      ${item.notes ? `<div class="card-notes">${esc(item.notes)}</div>` : ''}
+      <div class="card-footer">
+        ${deadlineBadge(item.deadline)}
+        <span class="card-date" style="margin-left:auto">${fmtDate(item.created_at)}</span>
+      </div>
+      <div class="card-editor">
+        <div class="ed-row">
+          <input class="ed-input" type="text" value="${esc(item.title)}" placeholder="Titel" style="flex:1" />
+        </div>
+        <div class="ed-row">
+          <select class="ed-select" name="priority">
+            <option value="low"    ${item.priority==='low'    ?'selected':''}>↓ Niedrig</option>
+            <option value="normal" ${item.priority==='normal' ?'selected':''}>– Normal</option>
+            <option value="high"   ${item.priority==='high'   ?'selected':''}>↑ Hoch</option>
+          </select>
+          <input class="ed-select" type="date" name="deadline" value="${esc(item.deadline||'')}" style="color-scheme:light" />
+        </div>
+        <textarea class="ed-textarea" placeholder="Notizen (optional)">${esc(item.notes)}</textarea>
+        <div class="ed-actions">
+          <button type="button" class="btn-save">Speichern</button>
+          <button type="button" class="btn-cancel">Abbrechen</button>
+        </div>
+      </div>`;
+
+    /* click title → edit */
+    div.querySelector('.card-title').addEventListener('click', () => toggleEdit(div, item));
+
+    /* delete */
+    div.querySelector('.card-del').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`"${item.title}" löschen?`)) return;
+      await api('DELETE', `/api/agenda/${item.id}`).catch(err => {
+        statusEl.textContent = `Fehler: ${err.message}`; });
+      await reload();
+    });
+
+    /* save */
+    div.querySelector('.btn-save').addEventListener('click', async () => {
+      const title    = div.querySelector('.ed-input').value.trim();
+      const priority = div.querySelector('[name=priority]').value;
+      const deadline = div.querySelector('[name=deadline]').value || null;
+      const notes    = div.querySelector('.ed-textarea').value.trim();
+      if (!title) return;
+      await api('PATCH', `/api/agenda/${item.id}`, { title, priority, deadline, notes })
+        .catch(err => { statusEl.textContent = `Fehler: ${err.message}`; });
+      await reload();
+    });
+
+    /* cancel */
+    div.querySelector('.btn-cancel').addEventListener('click', () => {
+      div.classList.remove('editing');
+    });
+
+    /* drag */
+    div.addEventListener('dragstart', e => {
+      dragId = item.id;
+      div.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    div.addEventListener('dragend', () => {
+      dragId = null;
+      div.classList.remove('dragging');
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    return div;
+  }
+
+  function toggleEdit(div, item) {
+    const isEditing = div.classList.contains('editing');
+    document.querySelectorAll('.card.editing').forEach(c => c.classList.remove('editing'));
+    if (!isEditing) div.classList.add('editing');
+  }
+
+  /* ── Drag & Drop on columns ───────────────────── */
+  document.querySelectorAll('.card-list').forEach(list => {
+    list.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.classList.add('drag-over');
+    });
+    list.addEventListener('dragleave', e => {
+      if (!list.contains(e.relatedTarget)) list.classList.remove('drag-over');
+    });
+    list.addEventListener('drop', async e => {
+      e.preventDefault();
+      list.classList.remove('drag-over');
+      if (dragId == null) return;
+      const newStatus = list.dataset.status;
+      const item = allItems.find(i => i.id === dragId);
+      if (!item || item.status === newStatus) return;
+      await api('PATCH', `/api/agenda/${dragId}`, { status: newStatus })
+        .catch(err => { statusEl.textContent = `Fehler: ${err.message}`; });
+      await reload();
+    });
+  });
+
+  /* ── New card forms ───────────────────────────── */
+  function buildNewForm(col) {
+    return `
+      <input class="new-title-input" type="text" placeholder="Titel…" required />
+      <div class="new-row">
+        <select class="new-select" name="priority">
+          <option value="normal">– Normal</option>
+          <option value="high">↑ Hoch</option>
+          <option value="low">↓ Niedrig</option>
+        </select>
+        <input class="new-date" type="date" name="deadline" title="Deadline (optional)" />
+      </div>
+      <textarea class="new-notes" placeholder="Notizen (optional)"></textarea>
+      <div class="new-actions">
+        <button type="submit" class="btn-save">Hinzufügen</button>
+        <button type="button" class="btn-cancel">Abbrechen</button>
+      </div>`;
+  }
+
+  document.querySelectorAll('.col-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.col;
+      const form = document.getElementById(`form-${col}`);
+      if (form.classList.contains('open')) { form.classList.remove('open'); return; }
+      document.querySelectorAll('.new-card-form.open').forEach(f => f.classList.remove('open'));
+      form.innerHTML = buildNewForm(col);
+      form.classList.add('open');
+      form.querySelector('.new-title-input').focus();
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const title    = form.querySelector('.new-title-input').value.trim();
+        const priority = form.querySelector('[name=priority]').value;
+        const deadline = form.querySelector('[name=deadline]').value || null;
+        const notes    = form.querySelector('.new-notes').value.trim();
+        if (!title) return;
+        await api('POST', '/api/agenda', { title, notes, status: col, priority, deadline })
+          .catch(err => { statusEl.textContent = `Fehler: ${err.message}`; });
+        form.classList.remove('open');
+        await reload();
+      }, { once: true });
+
+      form.querySelector('.btn-cancel').addEventListener('click', () => {
+        form.classList.remove('open');
+      });
+    });
+  });
+
+  /* ── Load ─────────────────────────────────────── */
+  async function reload() {
+    try {
+      const data = await api('GET', '/api/agenda');
+      renderBoard(data.items || []);
+      statusEl.textContent = `${(data.items||[]).length} Einträge · /api/agenda`;
+    } catch (err) {
+      statusEl.textContent = `Fehler beim Laden: ${err.message}`;
+    }
+  }
+
+  reload();
+  setInterval(reload, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) reload(); });
+})();
+</script>
+</body>
+</html>

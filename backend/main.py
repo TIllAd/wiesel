@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -264,6 +264,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+from backend.routers import agenda as agenda_router
+agenda_router.init(Base, get_db, json_timestamp, engine)
+app.include_router(agenda_router.router)
 
 
 def create_jwt_token(session_id: str) -> str:
