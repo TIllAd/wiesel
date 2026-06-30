@@ -120,6 +120,7 @@
   const startInput = document.getElementById('start-date');
   const endInput = document.getElementById('end-date');
   const dayStrip = document.getElementById('day-strip');
+  let currentRange = null;
 
   const FLAG_LABELS = { auffaelligkeit: 'Auffälligkeit' };
   const pad = (value) => String(value).padStart(2, '0');
@@ -128,6 +129,7 @@
     const [year, month, day] = String(dateString || '').split('-');
     return year && month && day ? `${day}.${month}.${year}` : String(dateString || 'unbekannt');
   };
+  const refreshLabel = () => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
 
   function startOfWeek(date) {
@@ -188,7 +190,7 @@
 
     if (!sessions.length) {
       report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>Für diesen Zeitraum wurden keine Flags gefunden.</p></div>`;
-      status.textContent = `0 geflaggte Sessions für ${data.start} bis ${data.end}.`;
+      status.textContent = `0 geflaggte Sessions für ${data.start} bis ${data.end}. Aktualisiert ${refreshLabel()} Uhr.`;
       return;
     }
 
@@ -234,7 +236,7 @@
     report.querySelectorAll('.si').forEach((item) => {
       item.addEventListener('click', () => showPanel(item.dataset.panel));
     });
-    status.textContent = `${sessions.length} geflaggte Session(s) für ${data.start} bis ${data.end}.`;
+    status.textContent = `${sessions.length} geflaggte Session(s) für ${data.start} bis ${data.end}. Aktualisiert ${refreshLabel()} Uhr.`;
   }
 
   async function fetchRange(start, end) {
@@ -255,6 +257,7 @@
 
     startInput.value = start;
     endInput.value = end;
+    currentRange = { start, end, quickKind };
     setQuickActive(quickKind);
     setDayActive(start, end);
     setMode('report');
@@ -264,6 +267,21 @@
 
     const data = await fetchRange(start, end);
     renderReport(data);
+    await renderMonthChips();
+    setDayActive(start, end);
+  }
+
+  function refreshCurrentView() {
+    if (!currentRange) {
+      renderMonthChips().catch((error) => {
+        dayStrip.innerHTML = '';
+        status.textContent = `Monatsmarkierungen konnten nicht geladen werden: ${error.message}`;
+      });
+      return;
+    }
+    loadRange(currentRange.start, currentRange.end, currentRange.quickKind).catch((error) => {
+      status.textContent = `Ansicht konnte nicht aktualisiert werden: ${error.message}`;
+    });
   }
 
   function datesForQuick(kind) {
@@ -343,6 +361,12 @@
     });
   });
 
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshCurrentView();
+  });
+  window.addEventListener('focus', refreshCurrentView);
+  window.setInterval(refreshCurrentView, 60000);
+
   function restoreFromHash() {
     const hashValue = decodeURIComponent(location.hash.replace(/^#/, ''));
     const rangeMatch = hashValue.match(/^(\d{4}-\d{2}-\d{2})(?:\.\.(\d{4}-\d{2}-\d{2}))?$/);
@@ -351,8 +375,13 @@
       return;
     }
     if (rangeMatch) {
-      loadRange(rangeMatch[1], rangeMatch[2] || rangeMatch[1]).catch((error) => { status.textContent = `Bericht konnte nicht geladen werden: ${error.message}`; });
+      const start = rangeMatch[1];
+      const end = rangeMatch[2] || rangeMatch[1];
+      const quickKind = start === end && start === toDateString(new Date()) ? 'today' : '';
+      loadRange(start, end, quickKind).catch((error) => { status.textContent = `Bericht konnte nicht geladen werden: ${error.message}`; });
+      return;
     }
+    selectQuick('today').catch((error) => { status.textContent = `Tagesansicht konnte nicht geladen werden: ${error.message}`; });
   }
 
   const today = new Date();
