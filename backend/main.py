@@ -13,9 +13,10 @@ import binascii
 from io import BytesIO
 from dotenv import load_dotenv
 load_dotenv()
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
@@ -33,6 +34,22 @@ import anthropic
 import jwt
 import hmac as hmac_lib
 from oauthlib.oauth1.rfc5849 import signature as oauth_signature
+
+APP_TIMEZONE = ZoneInfo("Europe/Berlin")
+
+
+def utc_naive_to_app_time(value: datetime) -> datetime:
+    """Convert DB timestamps stored as naive UTC to timezone-aware Europe/Berlin time."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(APP_TIMEZONE)
+
+
+def app_time_to_utc_naive(value: datetime) -> datetime:
+    """Convert timezone-aware/local app time to naive UTC for existing DB columns."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=APP_TIMEZONE)
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -824,7 +841,7 @@ async def reports_range(start: str, end: str):
 
 
 @app.get("/api/usage/timeseries")
-async def usage_timeseries(start: str, end: str, granularity: str = "hour"):
+async def usage_timeseries(start: str, end: str, granularity: str = "hour", since: Optional[str] = None):
     if granularity != "hour":
         raise HTTPException(status_code=400, detail="Invalid granularity; only hour is supported")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", start):
@@ -837,36 +854,130 @@ async def usage_timeseries(start: str, end: str, granularity: str = "hour"):
     if end_date < start_date:
         raise HTTPException(status_code=400, detail="end must be on or after start")
 
-    range_start = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
-    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999)
+    range_start = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0, tzinfo=APP_TIMEZONE)
+    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999, tzinfo=APP_TIMEZONE)
+    now_app = datetime.now(APP_TIMEZONE)
+    if end_date >= now_app.date():
+        range_end = min(range_end, now_app)
+
+    effective_start = range_start
+    if since:
+        try:
+            parsed_since = datetime.fromisoformat(since)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid since format; expected ISO local datetime")
+        if parsed_since.tzinfo is None:
+            parsed_since = parsed_since.replace(tzinfo=APP_TIMEZONE)
+        else:
+            parsed_since = parsed_since.astimezone(APP_TIMEZONE)
+        if parsed_since > range_end:
+            raise HTTPException(status_code=400, detail="since must be before end")
+        effective_start = max(range_start, parsed_since)
+
+    effective_start_utc = app_time_to_utc_naive(effective_start)
+    range_end_utc = app_time_to_utc_naive(range_end)
 
     buckets: dict[datetime, int] = {}
-    cursor = range_start.replace(minute=0, second=0, microsecond=0)
+    cursor = effective_start.replace(minute=0, second=0, microsecond=0)
     while cursor <= range_end:
         buckets[cursor] = 0
         cursor += timedelta(hours=1)
 
     db = SessionLocal()
     try:
-        messages = db.query(ChatMessage.created_at).filter(
-            ChatMessage.created_at >= range_start,
-            ChatMessage.created_at <= range_end,
-        ).all()
-        for (created_at,) in messages:
+        bucket_stats = {
+            bucket: {
+                "count": 0,
+                "user_messages": 0,
+                "assistant_messages": 0,
+                "active_sessions": set(),
+                "session_starts": 0,
+            }
+            for bucket in buckets
+        }
+
+        messages = db.query(ChatMessage.created_at, ChatMessage.role, ChatMessage.session_id).filter(
+            ChatMessage.created_at >= effective_start_utc,
+            ChatMessage.created_at <= range_end_utc,
+        ).order_by(ChatMessage.created_at.asc()).all()
+        for created_at, role, session_id in messages:
             if not created_at:
                 continue
-            bucket = created_at.replace(minute=0, second=0, microsecond=0)
-            buckets[bucket] = buckets.get(bucket, 0) + 1
+            created_at_app = utc_naive_to_app_time(created_at)
+            bucket = created_at_app.replace(minute=0, second=0, microsecond=0)
+            stat = bucket_stats.setdefault(bucket, {
+                "count": 0,
+                "user_messages": 0,
+                "assistant_messages": 0,
+                "active_sessions": set(),
+                "session_starts": 0,
+            })
+            stat["count"] += 1
+            if role == "user":
+                stat["user_messages"] += 1
+            elif role == "assistant":
+                stat["assistant_messages"] += 1
+            if session_id:
+                stat["active_sessions"].add(session_id)
 
-        points = [
-            {"timestamp": bucket.isoformat(), "count": count}
-            for bucket, count in sorted(buckets.items())
+        session_rows = db.query(SessionRecord.created_at).filter(
+            SessionRecord.created_at >= effective_start_utc,
+            SessionRecord.created_at <= range_end_utc,
+        ).all()
+        for (created_at,) in session_rows:
+            if not created_at:
+                continue
+            created_at_app = utc_naive_to_app_time(created_at)
+            bucket = created_at_app.replace(minute=0, second=0, microsecond=0)
+            stat = bucket_stats.setdefault(bucket, {
+                "count": 0,
+                "user_messages": 0,
+                "assistant_messages": 0,
+                "active_sessions": set(),
+                "session_starts": 0,
+            })
+            stat["session_starts"] += 1
+
+        points = []
+        for bucket, stat in sorted(bucket_stats.items()):
+            points.append({
+                "timestamp": bucket.isoformat(),
+                "count": stat["count"],
+                "user_messages": stat["user_messages"],
+                "assistant_messages": stat["assistant_messages"],
+                "active_sessions": len(stat["active_sessions"]),
+                "session_starts": stat["session_starts"],
+            })
+
+        total_messages = sum(point["count"] for point in points)
+        total_user_messages = sum(point["user_messages"] for point in points)
+        total_assistant_messages = sum(point["assistant_messages"] for point in points)
+        total_session_starts = sum(point["session_starts"] for point in points)
+        active_session_ids = {session_id for _, _, session_id in messages if session_id}
+        user_message_times = [created_at for created_at, role, _ in messages if created_at and role == "user"]
+        gaps = [
+            (user_message_times[i] - user_message_times[i - 1]).total_seconds()
+            for i in range(1, len(user_message_times))
+            if 0 < (user_message_times[i] - user_message_times[i - 1]).total_seconds() < 6 * 3600
         ]
+        peak = max(points, key=lambda point: point["user_messages"], default=None)
+        days_count = max(1, (range_end - effective_start).total_seconds() / 86400)
         return {
             "start": start_date.isoformat(),
             "end": end_date.isoformat(),
+            "timezone": str(APP_TIMEZONE),
             "granularity": granularity,
-            "total_messages": sum(point["count"] for point in points),
+            "total_messages": total_messages,
+            "total_user_messages": total_user_messages,
+            "total_assistant_messages": total_assistant_messages,
+            "total_sessions": len(active_session_ids),
+            "new_sessions": total_session_starts,
+            "avg_messages_per_session": round(total_messages / len(active_session_ids), 2) if active_session_ids else 0,
+            "avg_user_messages_per_session": round(total_user_messages / len(active_session_ids), 2) if active_session_ids else 0,
+            "avg_messages_per_day": round(total_user_messages / days_count, 2),
+            "avg_gap_seconds": round(sum(gaps) / len(gaps), 2) if gaps else None,
+            "peak_hour": peak["timestamp"] if peak and peak["user_messages"] else None,
+            "peak_hour_messages": peak["user_messages"] if peak else 0,
             "points": points,
         }
     finally:

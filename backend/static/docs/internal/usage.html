@@ -25,14 +25,29 @@
   input[type="date"] { color-scheme:dark; border:1px solid var(--line); border-radius:10px; background:#020617; color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
   .status { color:var(--muted); font-size:13px; margin:16px 0 0; }
   .content { min-width:0; min-height:0; padding:24px; overflow:auto; }
-  .chart-card { height:calc(100vh - 210px); min-height:520px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
+  .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .metric-card { background:#080d19; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:0 14px 40px rgba(0,0,0,.16); }
+  .metric-card .k { color:var(--muted); font-size:12px; margin-bottom:6px; }
+  .metric-card .v { font-size:23px; font-weight:750; letter-spacing:-.03em; }
+  .metric-card .s { color:#64748b; font-size:12px; margin-top:4px; line-height:1.35; }
+  .chart-card { height:calc(100vh - 390px); min-height:460px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
   .chart-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:12px; }
+  .chart-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
   .chart-head h2 { margin:0 0 4px; font-size:20px; letter-spacing:-0.03em; }
   .chart-head p { margin:0; color:var(--muted); font-size:13px; }
   .chart-wrap { position:relative; height:calc(100% - 58px); min-height:420px; }
+  .detail-panel { margin-top:16px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.16); }
+  .detail-panel h2 { margin:0 0 12px; font-size:18px; letter-spacing:-0.03em; }
+  .detail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .detail-item { background:#020617; border:1px solid var(--line); border-radius:12px; padding:12px; }
+  .detail-item .k { color:var(--muted); font-size:12px; margin-bottom:5px; }
+  .detail-item .v { font-size:18px; font-weight:700; }
+  .detail-note { margin:12px 0 0; color:var(--muted); font-size:13px; line-height:1.55; }
   .is-hidden { display:none !important; }
+  @media (max-width:980px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:760px) {
     .toolbar, .content { padding:16px; }
+    .metrics, .detail-grid { grid-template-columns:1fr; }
     .chart-card { height:calc(100vh - 260px); }
   }
 </style>
@@ -41,7 +56,7 @@
 <div class="page">
   <header class="toolbar">
     <h1>Nutzungszeiten</h1>
-    <p class="subline">Nachrichten pro Stunde aus <code>chat_messages.created_at</code>. Pan/Zoom ist aktiv; Doppelklick setzt den Zoom zurück.</p>
+    <p class="subline">Nutzer-Nachrichten pro Stunde aus <code>chat_messages.created_at</code>, angezeigt in Europe/Berlin. Pan/Zoom ist aktiv; Doppelklick setzt den Zoom zurück.</p>
     <div class="controls">
       <div class="quick" aria-label="Schnellauswahl" id="quick-actions">
         <button type="button" data-quick="24h">24h</button>
@@ -59,15 +74,36 @@
   </header>
 
   <main class="content">
+    <section class="metrics" aria-label="Nutzungskennzahlen">
+      <div class="metric-card"><div class="k">Nutzer-Anfragen im Zeitraum</div><div class="v" id="m-total">–</div><div class="s" id="m-total-sub">–</div></div>
+      <div class="metric-card"><div class="k">Sessions</div><div class="v" id="m-sessions">–</div><div class="s" id="m-sessions-sub">–</div></div>
+      <div class="metric-card"><div class="k">Ø Nutzer-Anfragen / Session</div><div class="v" id="m-per-session">–</div><div class="s" id="m-per-session-sub">–</div></div>
+      <div class="metric-card"><div class="k">Ø Abstand zwischen Nutzer-Anfragen</div><div class="v" id="m-gap">–</div><div class="s" id="m-gap-sub">–</div></div>
+    </section>
     <section class="chart-card">
       <div class="chart-head">
         <div>
           <h2 id="chart-title">Nachrichten pro Stunde</h2>
           <p id="chart-meta">–</p>
         </div>
-        <button type="button" id="reset-zoom">Zoom zurücksetzen</button>
+        <div class="chart-actions">
+          <button type="button" id="refresh-chart">Jetzt aktualisieren</button>
+          <button type="button" id="reset-zoom">Zoom zurücksetzen</button>
+        </div>
       </div>
       <div class="chart-wrap"><canvas id="usage-chart"></canvas></div>
+    </section>
+    <section class="detail-panel" aria-label="Weitere Nutzungskennzahlen">
+      <h2>Weitere Kennzahlen</h2>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Wiesel-Antworten</div><div class="v" id="d-assistant">–</div></div>
+        <div class="detail-item"><div class="k">Neue Sessions</div><div class="v" id="d-new-sessions">–</div></div>
+        <div class="detail-item"><div class="k">Ø Nutzer-Anfragen / Session</div><div class="v" id="d-user-per-session">–</div></div>
+        <div class="detail-item"><div class="k">Ø Nutzer-Anfragen / Tag</div><div class="v" id="d-per-day">–</div></div>
+        <div class="detail-item"><div class="k">Peak-Stunde Nutzer</div><div class="v" id="d-peak">–</div></div>
+        <div class="detail-item"><div class="k">Ø Abstand zwischen Nutzer-Anfragen</div><div class="v" id="d-gap">–</div></div>
+      </div>
+      <p class="detail-note" id="detail-note">Die Grafik fokussiert bewusst auf Nutzer-Nachrichten. Alles andere steht hier, weil Dashboards keine Weihnachtsbäume sein müssen.</p>
     </section>
   </main>
 </div>
@@ -75,6 +111,7 @@
 <script>
 (() => {
   const ACCENT = '#e3b341';
+  const DISPLAY_TIME_ZONE = 'Europe/Berlin';
   const status = document.getElementById('status');
   const title = document.getElementById('chart-title');
   const meta = document.getElementById('chart-meta');
@@ -84,12 +121,25 @@
   const quickButtons = Array.from(document.querySelectorAll('[data-quick]'));
   const pad = (value) => String(value).padStart(2, '0');
   const toDateString = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const toLocalDateTimeString = (date) => `${toDateString(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   const labelForDate = (dateString) => {
     const [year, month, day] = String(dateString || '').split('-');
     return year && month && day ? `${day}.${month}.${year}` : String(dateString || 'unbekannt');
   };
+  const formatDuration = (seconds) => {
+    const value = Number(seconds || 0);
+    if (!value || !Number.isFinite(value)) return '–';
+    if (value < 60) return `${Math.round(value)} s`;
+    if (value < 3600) return `${Math.round(value / 60)} min`;
+    return `${(value / 3600).toFixed(1).replace('.', ',')} h`;
+  };
+  const formatHourLabel = (iso) => iso ? formatHour(iso) : '–';
 
   let chart;
+  let activeQuick = '24h';
+  let activeStart = '';
+  let activeEnd = '';
+  let activeLowerBoundMs = null;
 
   function setQuickActive(kind) {
     quickButtons.forEach((button) => button.classList.toggle('active', button.dataset.quick === kind));
@@ -105,8 +155,10 @@
     return [toDateString(start), toDateString(end), kind === '24h' ? now.getTime() - 24 * 60 * 60 * 1000 : null];
   }
 
-  async function fetchUsage(start, end) {
-    const url = `/api/usage/timeseries?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&granularity=hour&t=${Date.now()}`;
+  async function fetchUsage(start, end, lowerBoundMs = null) {
+    const params = new URLSearchParams({ start, end, granularity: 'hour', t: String(Date.now()) });
+    if (lowerBoundMs) params.set('since', toLocalDateTimeString(new Date(lowerBoundMs)));
+    const url = `/api/usage/timeseries?${params.toString()}`;
     const response = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
@@ -114,7 +166,20 @@
 
   function formatHour(iso) {
     const date = new Date(iso);
-    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${pad(date.getHours())}:00`;
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('de-DE', {
+      timeZone: DISPLAY_TIME_ZONE,
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+    }).formatToParts(date).map((part) => [part.type, part.value]));
+    return `${parts.day}.${parts.month} ${parts.hour}:00`;
+  }
+
+  function isWeekendInBerlin(iso) {
+    if (!iso) return false;
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: DISPLAY_TIME_ZONE, weekday: 'short' }).format(new Date(iso));
+    return weekday === 'Sat' || weekday === 'Sun';
   }
 
   function renderChart(data, start, end, lowerBoundMs = null) {
@@ -124,30 +189,124 @@
     }
     const labels = points.map((point) => formatHour(point.timestamp));
     const counts = points.map((point) => Number(point.count || 0));
+    const userCounts = points.map((point) => Number(point.user_messages || 0));
+    const sessionStarts = points.map((point) => Number(point.session_starts || 0));
+    const weekendFlags = points.map((point) => isWeekendInBerlin(point.timestamp));
     const total = counts.reduce((sum, value) => sum + value, 0);
+    const userTotal = userCounts.reduce((sum, value) => sum + value, 0);
+    const assistantTotal = points.reduce((sum, point) => sum + Number(point.assistant_messages || 0), 0);
+    const newSessions = sessionStarts.reduce((sum, value) => sum + value, 0);
+    const sessionTotal = Number(data.total_sessions || 0);
+    const daysInView = lowerBoundMs ? 1 : Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
+    const avgUserMessagesPerSession = sessionTotal ? userTotal / sessionTotal : 0;
+    const peakUserPoint = points.reduce((peak, point) => Number(point.user_messages || 0) > Number(peak?.user_messages || 0) ? point : peak, null);
+    const peakUserCount = Number(peakUserPoint?.user_messages || 0);
 
-    title.textContent = 'Nachrichten pro Stunde';
-    meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · ${total} Nachricht(en) · ${points.length} Stunden-Buckets`;
-    status.textContent = `${total} Nachricht(en) geladen.`;
+    title.textContent = 'Nutzer-Nachrichten pro Stunde';
+    meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · Zeitzone: ${data.timezone || DISPLAY_TIME_ZONE} · Peak Nutzer: ${formatHourLabel(peakUserPoint?.timestamp)} (${peakUserCount})`;
+    status.textContent = `${userTotal} Nutzer-Anfrage(n), ${sessionTotal} Session(s) geladen.`;
+    document.getElementById('m-total').textContent = userTotal;
+    document.getElementById('m-total-sub').textContent = `${assistantTotal} Wiesel-Antworten · Ø ${(userTotal / daysInView).toFixed(1).replace('.', ',')} Nutzer-Anfragen / Tag`;
+    document.getElementById('m-sessions').textContent = sessionTotal;
+    document.getElementById('m-sessions-sub').textContent = `${newSessions} neu gestartet im Zeitraum`;
+    document.getElementById('m-per-session').textContent = avgUserMessagesPerSession.toFixed(1).replace('.', ',');
+    document.getElementById('m-per-session-sub').textContent = `${total} technische Nachrichten inkl. Wiesel-Antworten`;
+    document.getElementById('m-gap').textContent = formatDuration(data.avg_gap_seconds);
+    document.getElementById('m-gap-sub').textContent = 'Gemessen zwischen Nutzer-Anfragen; Abstände < 6h';
+    document.getElementById('d-assistant').textContent = assistantTotal;
+    document.getElementById('d-new-sessions').textContent = newSessions;
+    document.getElementById('d-user-per-session').textContent = avgUserMessagesPerSession.toFixed(1).replace('.', ',');
+    document.getElementById('d-per-day').textContent = (userTotal / daysInView).toFixed(1).replace('.', ',');
+    document.getElementById('d-peak').textContent = `${formatHourLabel(peakUserPoint?.timestamp)} · ${peakUserCount} Nutzer`;
+    document.getElementById('d-gap').textContent = formatDuration(data.avg_gap_seconds);
+    document.getElementById('detail-note').textContent = `${userTotal} Nutzer-Anfragen sind der Hauptindikator für Nachfrage. ${assistantTotal} Wiesel-Antworten und ${total} technische Nachrichten stehen nur als Kontext darunter.`;
+
+    const avgPerHour = points.length ? userTotal / points.length : 0;
+    const weekendBandPlugin = {
+      id: 'wieselWeekendBands',
+      beforeDatasetsDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        const x = scales.x;
+        if (!x || !weekendFlags.some(Boolean)) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(148,163,184,.08)';
+        ctx.strokeStyle = 'rgba(148,163,184,.10)';
+        ctx.lineWidth = 1;
+        let startIndex = null;
+        const drawBand = (fromIndex, toIndex) => {
+          const left = fromIndex === 0
+            ? chartArea.left
+            : (x.getPixelForValue(fromIndex - 1) + x.getPixelForValue(fromIndex)) / 2;
+          const right = toIndex >= labels.length - 1
+            ? chartArea.right
+            : (x.getPixelForValue(toIndex) + x.getPixelForValue(toIndex + 1)) / 2;
+          ctx.fillRect(left, chartArea.top, Math.max(0, right - left), chartArea.bottom - chartArea.top);
+          ctx.strokeRect(left, chartArea.top, Math.max(0, right - left), chartArea.bottom - chartArea.top);
+          if (right - left > 54) {
+            ctx.fillStyle = 'rgba(203,213,225,.72)';
+            ctx.font = '11px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Wochenende', left + (right - left) / 2, chartArea.top + 18);
+            ctx.fillStyle = 'rgba(148,163,184,.08)';
+          }
+        };
+        weekendFlags.forEach((isWeekend, index) => {
+          if (isWeekend && startIndex === null) startIndex = index;
+          if ((!isWeekend || index === weekendFlags.length - 1) && startIndex !== null) {
+            drawBand(startIndex, isWeekend && index === weekendFlags.length - 1 ? index : index - 1);
+            startIndex = null;
+          }
+        });
+        ctx.restore();
+      }
+    };
+    const averageLinePlugin = {
+      id: 'wieselAverageLine',
+      afterDatasetsDraw(chart) {
+        if (!avgPerHour) return;
+        const { ctx, chartArea, scales } = chart;
+        const y = scales.y;
+        if (!y) return;
+        const yPos = y.getPixelForValue(avgPerHour);
+        if (yPos < chartArea.top || yPos > chartArea.bottom) return;
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(203,213,225,.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, yPos);
+        ctx.lineTo(chartArea.right, yPos);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(203,213,225,.88)';
+        ctx.font = '11px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Ø ${avgPerHour.toFixed(1).replace('.', ',')}/h`, chartArea.right - 6, yPos - 6);
+        ctx.restore();
+      }
+    };
 
     const config = {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          label: 'Nachrichten pro Stunde',
-          data: counts,
-          borderColor: ACCENT,
-          backgroundColor: 'rgba(227,179,65,.16)',
-          pointBackgroundColor: ACCENT,
-          pointBorderColor: '#020617',
-          pointRadius: 2.5,
-          pointHoverRadius: 5,
-          borderWidth: 2,
-          tension: 0.25,
-          fill: true,
-        }]
+        datasets: [
+          {
+            label: 'Nutzer-Anfragen',
+            data: userCounts,
+            borderColor: ACCENT,
+            backgroundColor: 'rgba(227,179,65,.16)',
+            pointBackgroundColor: ACCENT,
+            pointBorderColor: '#020617',
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            borderWidth: 2.4,
+            tension: 0.25,
+            fill: true,
+          }
+        ]
       },
+      plugins: [weekendBandPlugin, averageLinePlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -171,7 +330,8 @@
     chart = new Chart(document.getElementById('usage-chart'), config);
   }
 
-  async function loadRange(start, end, quickKind = '', lowerBoundMs = null) {
+  async function loadRange(start, end, quickKind = '', lowerBoundMs = null, options = {}) {
+    const silent = Boolean(options.silent);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
       status.textContent = 'Ungültiges Datum. Erwartet wird YYYY-MM-DD.';
       return;
@@ -180,13 +340,25 @@
       status.textContent = 'Ende muss nach Start liegen. Zeitpfeil, schon mal gehört.';
       return;
     }
+    activeQuick = quickKind || 'custom';
+    activeStart = start;
+    activeEnd = end;
+    activeLowerBoundMs = lowerBoundMs;
     startInput.value = start;
     endInput.value = end;
     setQuickActive(quickKind);
-    status.textContent = `Lade ${start} bis ${end}…`;
-    const data = await fetchUsage(start, end);
+    if (!silent) status.textContent = `Lade ${start} bis ${end}…`;
+    const data = await fetchUsage(start, end, lowerBoundMs);
     renderChart(data, start, end, lowerBoundMs);
-    history.replaceState(null, '', quickKind ? `#${quickKind}` : `#${start}..${end}`);
+    if (!silent) history.replaceState(null, '', quickKind ? `#${quickKind}` : `#${start}..${end}`);
+  }
+
+  function refreshActiveRange(options = {}) {
+    if (activeQuick && activeQuick !== 'custom') {
+      const [start, end, lowerBoundMs] = rangeForQuick(activeQuick);
+      return loadRange(start, end, activeQuick, lowerBoundMs, options);
+    }
+    return loadRange(activeStart || startInput.value, activeEnd || endInput.value, 'custom', activeLowerBoundMs, options);
   }
 
   document.getElementById('quick-actions').addEventListener('click', (event) => {
@@ -209,7 +381,14 @@
   });
 
   document.getElementById('reset-zoom').addEventListener('click', () => chart?.resetZoom());
+  document.getElementById('refresh-chart').addEventListener('click', () => {
+    refreshActiveRange().catch((error) => { status.textContent = `Nutzungsdaten konnten nicht geladen werden: ${error.message}`; });
+  });
   document.getElementById('usage-chart').addEventListener('dblclick', () => chart?.resetZoom());
+  setInterval(() => {
+    if (document.hidden) return;
+    refreshActiveRange({ silent: true }).catch((error) => { status.textContent = `Auto-Refresh fehlgeschlagen: ${error.message}`; });
+  }, 30000);
 
   const today = new Date();
   startInput.value = toDateString(today);
