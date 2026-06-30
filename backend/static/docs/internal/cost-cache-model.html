@@ -104,9 +104,9 @@
         <div class="s" id="cur-saving-sub">Worst Case = jede Anfrage startet neu, kein Kontext gespeichert</div>
       </div>
       <div class="mc">
-        <div class="k">Ø Zeit zwischen Anfragen</div>
-        <div class="v" id="cur-gap" style="color:#eda100;">–</div>
-        <div class="s" id="cur-gap-sub">Cache-Fenster: 5 Minuten</div>
+        <div class="k">Kaltstarts heute / Monat</div>
+        <div class="v" id="cur-coldstarts" style="color:#eda100;">–</div>
+        <div class="s" id="cur-coldstarts-sub">Cache-Writes aus LLM-Usage</div>
       </div>
     </div>
 
@@ -133,7 +133,7 @@
       <tr><td>Günstigstes Szenario (Ø)</td><td id="t-best">–</td><td>100 Anfragen pro Kaltstart; Kontext bleibt lange aktiv</td></tr>
       <tr><td>Ungünstigstes Szenario (Ø)</td><td id="t-worst2">–</td><td>Kein Anfrage nutzt den geladenen Kontext eines anderen</td></tr>
       <tr><td>Anfragen pro Monat (Hochrechnung)</td><td id="t-month">–</td><td>Basierend auf gemessenen LLM-Requests im Berichtszeitraum</td></tr>
-      <tr><td>Ø Zeit zwischen Anfragen</td><td id="t-gap">–</td><td>Wie knapp das 5-Minuten-Cache-Fenster im Betrieb genutzt oder verfehlt wird</td></tr>
+      <tr><td>Kaltstarts</td><td id="t-coldstarts">–</td><td>Cache-Writes heute und im aggregierten Monatsstand</td></tr>
     </table>
     <p class="note" id="note-text"></p>
     <div class="formula" id="formula-text"></div>
@@ -545,17 +545,11 @@ function populate() {
     lastMonthSub.style.color = '#64748b';
   }
 
-  const avgGap = averageGapSeconds(MONTHLY_DATA.length ? MONTHLY_DATA : [DATA]);
-  document.getElementById('cur-gap').textContent = fmtDuration(avgGap);
-  if (avgGap !== null) {
-    const withinCache = avgGap <= 300;
-    document.getElementById('cur-gap-sub').textContent = withinCache
-      ? 'Im 5-Minuten-Cache-Fenster · günstig'
-      : 'Außerhalb des 5-Minuten-Fensters · meist Kaltstart';
-  } else {
-    document.getElementById('cur-gap-sub').textContent = 'Nicht genug Daten';
-  }
-  document.getElementById('t-gap').textContent = fmtDuration(avgGap);
+  const todayColdstarts = usageValueFrom(todayData, 'cache_write_requests');
+  const monthColdstarts = usageValue('cache_write_requests');
+  document.getElementById('cur-coldstarts').textContent = `${todayColdstarts} / ${monthColdstarts}`;
+  document.getElementById('cur-coldstarts-sub').textContent = `${todayRequests} Anfrage${todayRequests === 1 ? '' : 'n'} heute · ${Math.round(pm.nachrichten_seit_monatsanfang)} im Monat`;
+  document.getElementById('t-coldstarts').textContent = `${todayColdstarts} heute · ${monthColdstarts} im Monat`;
 
   document.getElementById('t-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
   document.getElementById('t-worst').textContent = fmtCt(km.worst_case_ct);
