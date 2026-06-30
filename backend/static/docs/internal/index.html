@@ -4,46 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wiesel Docs Intern</title>
-<style>
-  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#2563eb; --accent-soft:rgba(37,99,235,.16); }
-  * { box-sizing:border-box; }
-  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-  a { color:inherit; text-decoration:none; }
-  .app { min-height:100vh; display:grid; grid-template-columns:180px minmax(0,1fr); }
-  .sidebar { position:sticky; top:0; height:100vh; overflow:auto; background:var(--panel); border-right:1px solid var(--line); padding:20px 14px; }
-  .brand { display:block; margin:0 0 22px; color:var(--text); font-size:18px; font-weight:700; letter-spacing:-0.03em; text-decoration:none; }
-  .section { margin:0 0 24px; }
-  .section-title { margin:0 0 8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-  .doc-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
-  .doc-link { display:block; width:100%; border:1px solid transparent; border-radius:10px; padding:9px 10px; background:transparent; color:var(--text); font:inherit; font-size:13px; text-align:left; text-decoration:none; cursor:pointer; }
-  .doc-link:hover { background:#111c31; border-color:#263449; }
-  .doc-link.active { background:#172554; border-color:var(--accent); color:#dbeafe; }
-  .placeholder { margin:0; color:#64748b; font-size:12px; line-height:1.5; }
-  .content { min-width:0; min-height:100vh; }
-  .empty-state { min-height:100vh; display:grid; place-items:center; padding:32px; }
-  .doc-hub { max-width:860px; width:100%; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
-  .doc-hub h1 { margin:0 0 8px; font-size:24px; letter-spacing:-0.04em; }
-  .hub-copy { margin:0 0 22px; color:var(--muted); font-size:14px; line-height:1.65; }
-  .doc-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-  .doc-card { display:flex; min-height:150px; flex-direction:column; justify-content:space-between; gap:18px; padding:16px; background:#0b1220; border:1px solid var(--line); border-radius:14px; color:var(--text); text-decoration:none; transition:transform .16s ease, border-color .16s ease, background .16s ease; }
-  .doc-card:hover, .doc-card.active { transform:translateY(-2px); background:#111c31; border-color:var(--accent); }
-  .card-kicker { color:#bfdbfe; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-  .doc-card h2 { margin:0 0 8px; font-size:17px; letter-spacing:-0.04em; }
-  .doc-card p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
-  .card-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; color:#bfdbfe; font-size:12px; }
-  .card-arrow { color:#bfdbfe; font-size:18px; line-height:1; }
-  iframe { display:block; width:100%; height:100vh; border:0; background:var(--bg); }
-  .is-hidden { display:none; }
-  @media (max-width:920px) {
-    .doc-grid { grid-template-columns:1fr; }
-  }
-  @media (max-width:720px) {
-    .app { grid-template-columns:1fr; }
-    .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line); }
-    .content, .empty-state, iframe { min-height:calc(100vh - 220px); height:auto; }
-    .empty-state { padding:24px 16px; }
-  }
-</style>
+<link rel="stylesheet" href="../docs-theme.css" />
 </head>
 <body>
 <div class="app">
