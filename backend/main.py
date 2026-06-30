@@ -823,6 +823,56 @@ async def reports_range(start: str, end: str):
         db.close()
 
 
+@app.get("/api/usage/timeseries")
+async def usage_timeseries(start: str, end: str, granularity: str = "hour"):
+    if granularity != "hour":
+        raise HTTPException(status_code=400, detail="Invalid granularity; only hour is supported")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", start):
+        raise HTTPException(status_code=400, detail="Invalid start format; expected YYYY-MM-DD")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", end):
+        raise HTTPException(status_code=400, detail="Invalid end format; expected YYYY-MM-DD")
+
+    start_date = datetime.strptime(start, "%Y-%m-%d").date()
+    end_date = datetime.strptime(end, "%Y-%m-%d").date()
+    if end_date < start_date:
+        raise HTTPException(status_code=400, detail="end must be on or after start")
+
+    range_start = datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0)
+    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, 999999)
+
+    buckets: dict[datetime, int] = {}
+    cursor = range_start.replace(minute=0, second=0, microsecond=0)
+    while cursor <= range_end:
+        buckets[cursor] = 0
+        cursor += timedelta(hours=1)
+
+    db = SessionLocal()
+    try:
+        messages = db.query(ChatMessage.created_at).filter(
+            ChatMessage.created_at >= range_start,
+            ChatMessage.created_at <= range_end,
+        ).all()
+        for (created_at,) in messages:
+            if not created_at:
+                continue
+            bucket = created_at.replace(minute=0, second=0, microsecond=0)
+            buckets[bucket] = buckets.get(bucket, 0) + 1
+
+        points = [
+            {"timestamp": bucket.isoformat(), "count": count}
+            for bucket, count in sorted(buckets.items())
+        ]
+        return {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat(),
+            "granularity": granularity,
+            "total_messages": sum(point["count"] for point in points),
+            "points": points,
+        }
+    finally:
+        db.close()
+
+
 @app.post("/api/chat/flag")
 async def flag_chat_session(request: ChatFlagRequest):
     tag = request.tag.strip().lower() if request.tag else "auffaelligkeit"
@@ -900,7 +950,7 @@ async def get_daily_logs(date: Optional[str] = None):
     try:
         target = datetime.strptime(date, "%Y-%m-%d").date() if date else datetime.utcnow().date()
         day_start = datetime(target.year, target.month, target.day, 0, 0, 0)
-        day_end   = datetime(target.year, target.month, target.day, 23, 59, 59)
+        day_end = datetime(target.year, target.month, target.day, 23, 59, 59)
         messages = db.query(ChatMessage).filter(ChatMessage.created_at >= day_start, ChatMessage.created_at <= day_end).order_by(ChatMessage.created_at).all()
         flags = db.query(ChatFlag).filter(
             ChatFlag.created_at >= day_start,
