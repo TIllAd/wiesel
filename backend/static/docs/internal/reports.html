@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wiesel Tagesberichte</title>
+<title>Wiesel Auffälligkeiten</title>
 <style>
   :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); --flag:#e3b341; --blue:#58a6ff; --user-bg:#0d2137; --user-border:#1f4a73; --bot-bg:#1c2128; --bot-border:#30363d; --danger:#f97316; }
   * { box-sizing:border-box; }
@@ -72,8 +72,8 @@
   <header class="toolbar">
     <div class="title-row">
       <div>
-        <h1>Tagesberichte</h1>
-        <p class="subline">Alle Ansichten rendern live aus der Datenbank über <code>/api/reports/range</code>. Keine statischen <code>bericht_*.html</code>-Dateien mehr. Endlich weniger Dateileichen.</p>
+        <h1>Auffälligkeiten</h1>
+        <p class="subline">Diese Ansicht zeigt nur geflaggte Sessions und rendert live aus der Datenbank über <code>/api/reports/range</code>. Der vollständige Tagesreport liegt als Markdown in GitHub unter <code>reports/YYYY-MM-DD.md</code>.</p>
       </div>
     </div>
 
@@ -184,7 +184,7 @@
   function renderReport(data) {
     setMode('report');
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-    const title = data.start === data.end ? `🐾 Wiesel Tagesbericht — ${labelForDate(data.start)}` : `🐾 Wiesel Bericht — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
+    const title = data.start === data.end ? `🚩 Wiesel Auffälligkeiten — ${labelForDate(data.start)}` : `🚩 Wiesel Auffälligkeiten — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
 
     if (!sessions.length) {
       report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>Für diesen Zeitraum wurden keine Flags gefunden.</p></div>`;
