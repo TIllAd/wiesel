@@ -43,10 +43,12 @@
   .wnode:hover{stroke:var(--wmuted)}
   .wnode.sel{stroke:var(--waccent);stroke-width:1.5;fill:var(--white)}
   .wnode.hub{stroke:var(--line);stroke-width:1.5;fill:var(--white)}
+  .wnode.hub.sel{stroke:var(--waccent);stroke-width:1.5;fill:var(--white)}
   .wtitle{font-size:13px;fill:var(--ink) !important;font-weight:600;pointer-events:none;text-shadow:none;-webkit-text-stroke:0;filter:none;stroke:none;letter-spacing:normal}
   .wsub{font-size:11px;fill:#5b5648 !important;font-weight:400;pointer-events:none;text-shadow:none;-webkit-text-stroke:0;filter:none;stroke:none;letter-spacing:normal}
   .wedge{stroke:var(--wline);stroke-width:1.5;fill:none}
   .wedge.on{stroke:var(--waccent);stroke-width:2}
+  #hb-dot{fill:var(--waccent);opacity:0;transition:cx .55s ease,cy .55s ease,opacity .15s ease}
 
   .wplay {
     border:1px solid var(--waccent); background:var(--waccent); color:#fffaf0;
@@ -104,6 +106,7 @@
         <path class="wedge" id="hb-e1" d="M360 150 L480 100"/>
         <path class="wedge" id="hb-e2" d="M280 160 L160 200"/>
         <path class="wedge" id="hb-e3" d="M360 165 L480 200"/>
+        <circle id="hb-dot" cx="320" cy="140" r="6"/>
         <g class="wnode hub" id="hb-server"><rect x="270" y="115" width="100" height="50" rx="8"/>
           <text x="320" y="136" text-anchor="middle" class="wtitle">Server</text>
           <text x="320" y="152" text-anchor="middle" class="wsub">Vermittler</text></g>
@@ -185,29 +188,63 @@
     document.getElementById('hb-' + key).addEventListener('click', () => selectHub(key, false));
   });
 
+  const centers = {
+    server: { x:320, y:140 },
+    chat:   { x:320, y:64 },
+    claude: { x:550, y:98 },
+    kb:     { x:90,  y:198 },
+    db:     { x:550, y:198 }
+  };
+  const dot = document.getElementById('hb-dot');
+  dot.setAttribute('cx', centers.chat.x);
+  dot.setAttribute('cy', centers.chat.y);
+
+  function clearHighlights() {
+    nodeIds.forEach((k) => document.getElementById('hb-' + k).classList.remove('sel'));
+    Object.values(edgeMap).forEach((id) => document.getElementById(id).classList.remove('on'));
+  }
+
   document.getElementById('hb-play').addEventListener('click', () => {
     const btn = document.getElementById('hb-play');
     btn.disabled = true;
     descEl.hidden = true;
-    const steps = [
-      { key:'chat',   t:'Chat sendet die Anfrage an den Server.' },
-      { key:'kb',     t:'Server lädt Prompt und Wissensbasis.' },
-      { key:'claude', t:'Server schickt die fertige Anfrage an Claude.' },
-      { key:'db',     t:'Server speichert die Antwort intern in der Datenbank.' },
-      { key:'chat',   t:'Server gibt die Antwort an den Chat zurück.' }
+    clearHighlights();
+    dot.style.opacity = 0;
+    dot.setAttribute('cx', centers.chat.x);
+    dot.setAttribute('cy', centers.chat.y);
+    document.getElementById('hb-chat').classList.add('sel');
+
+    const route = [
+      { to:'chat',   edge:null,        t:'Chat sendet die Anfrage los.' },
+      { to:'server', edge:null,        t:'Server nimmt die Anfrage entgegen.' },
+      { to:'kb',     edge:'kb',        t:'Server lädt Prompt und Wissensbasis.' },
+      { to:'server', edge:'kb',        t:'Server stellt die Anfrage zusammen.' },
+      { to:'claude', edge:'claude',    t:'Server schickt die Anfrage an Claude.' },
+      { to:'server', edge:'claude',    t:'Server erhält die Antwort von Claude.' },
+      { to:'db',     edge:'db',        t:'Server speichert die Antwort intern.' },
+      { to:'server', edge:'db',        t:'Server ist bereit, zu antworten.' },
+      { to:'chat',   edge:null,        t:'Server gibt die Antwort an den Chat zurück.' }
     ];
-    steps.forEach((s, i) => {
+    const stepTime = 620;
+    let delay = 0;
+    route.forEach((step, i) => {
       setTimeout(() => {
-        selectHub(s.key, true);
-        capEl.innerHTML = '<b>' + (i + 1) + '/5</b> ' + s.t;
-      }, i * 850);
+        clearHighlights();
+        if (step.edge) document.getElementById(edgeMap[step.edge]).classList.add('on');
+        document.getElementById('hb-' + step.to).classList.add('sel');
+        dot.style.opacity = 1;
+        dot.setAttribute('cx', centers[step.to].x);
+        dot.setAttribute('cy', centers[step.to].y);
+        capEl.innerHTML = '<b>' + (i + 1) + '/' + route.length + '</b> ' + step.t;
+      }, delay);
+      delay += stepTime;
     });
     setTimeout(() => {
-      Object.values(edgeMap).forEach((id) => document.getElementById(id).classList.remove('on'));
-      nodeIds.forEach((k) => document.getElementById('hb-' + k).classList.remove('sel'));
+      clearHighlights();
+      dot.style.opacity = 0;
       capEl.textContent = 'Fertig. Der Server bleibt der einzige Vermittler.';
       btn.disabled = false;
-    }, steps.length * 850 + 300);
+    }, delay + 300);
   });
 
   const lines = [
