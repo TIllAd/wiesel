@@ -496,6 +496,7 @@ if __name__ == "__main__":
         print(f"⚠ analytics JSON fehlgeschlagen: {e}")
 
     html = build_combined_html(result, target)
+
     send_email(
         subject=f"[Wiesel] Tagesbericht {target}",
         body=email_summary(result),

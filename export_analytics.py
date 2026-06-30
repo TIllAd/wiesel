@@ -19,7 +19,7 @@ except ImportError:
 
 # ── Konfiguration ──────────────────────────────────────────────
 DB_PATH = Path(os.getenv("WIESEL_DB_PATH", r"C:\Users\tillt\wiesel\backend\wiesel.db"))
-OUTPUT_DIR = Path(os.getenv("WIESEL_ANALYTICS_DIR", r"C:\Users\tillt\hermes\analytics"))
+OUTPUT_DIR = Path(os.getenv("WIESEL_ANALYTICS_DIR", str(Path(__file__).parent / "backend" / "analytics")))
 TARGET_DATE = os.getenv("WIESEL_ANALYTICS_DATE")
 UPDATE_DOCS = os.getenv("WIESEL_ANALYTICS_UPDATE_DOCS", "1").lower() not in {"0", "false", "no"}
 
@@ -215,20 +215,6 @@ def export():
         with open(docs_json, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
         print(f"  analytics_latest.json → {docs_json}")
-
-    # ── HTML Report generieren ──
-    html_template = Path(__file__).parent / "backend" / "static" / "docs" / "internal" / "cost-cache-model.html"
-    if html_template.exists():
-        html = html_template.read_text(encoding="utf-8")
-        html = html.replace(
-            "__ANALYTICS_DATA__",
-            json.dumps(output, ensure_ascii=False)
-        )
-        html_out = OUTPUT_DIR / f"bericht_{target_day.isoformat()}.html"
-        html_out.write_text(html, encoding="utf-8")
-        print(f"  HTML-Bericht: {html_out}")
-    else:
-        print(f"  HTML-Vorlage nicht gefunden: {html_template}")
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Export fertig: {out_path}")
     print(f"  {len(sessions)} Sessions | {total_messages} Nachrichten | Tagesexport: {target_day.isoformat()}")

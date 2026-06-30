@@ -50,6 +50,7 @@
       <h2 class="section-title" id="internal-docs">Intern</h2>
       <ul class="doc-list">
         <li><a class="doc-link" href="cost-cache-model.html" data-doc="cost-cache-model.html">Betriebskosten</a></li>
+        <li><a class="doc-link" href="reports.html" data-doc="reports.html">Tagesberichte</a></li>
       </ul>
     </section>
   </aside>
@@ -93,7 +94,7 @@
 
     emptyState.classList.add('is-hidden');
     frame.classList.remove('is-hidden');
-    frame.src = doc;
+    frame.src = `${doc}?t=${Date.now()}`;
   }
 
   function route() {
