@@ -112,6 +112,11 @@ def export():
     sessions_rows = conn.execute("""
         SELECT * FROM sessions
         WHERE created_at >= ? AND created_at < ?
+          AND EXISTS (
+              SELECT 1
+              FROM chat_messages
+              WHERE chat_messages.session_id = sessions.id
+          )
         ORDER BY created_at ASC
     """, (day_start_iso, day_end_exclusive_iso)).fetchall()
 
@@ -202,14 +207,17 @@ def export():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     if UPDATE_DOCS:
-        # ── analytics_latest.json in docs/ für Webserver ──
-        docs_json = Path(__file__).parent / "docs" / "analytics_latest.json"
+        # ── analytics_latest.json in backend/static/ für schnellen Erstaufruf ──
+        # Historische Tagesdateien bleiben ausschließlich in OUTPUT_DIR/WIESEL_ANALYTICS_DIR.
+        static_dir = Path(__file__).parent / "backend" / "static"
+        static_dir.mkdir(parents=True, exist_ok=True)
+        docs_json = static_dir / "analytics_latest.json"
         with open(docs_json, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
         print(f"  analytics_latest.json → {docs_json}")
 
     # ── HTML Report generieren ──
-    html_template = Path(__file__).parent / "docs" / "cost-cache-model.html"
+    html_template = Path(__file__).parent / "backend" / "static" / "cost-cache-model.html"
     if html_template.exists():
         html = html_template.read_text(encoding="utf-8")
         html = html.replace(

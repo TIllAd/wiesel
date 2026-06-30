@@ -38,7 +38,7 @@ SMTP_PASS     = os.getenv("SMTP_PASS", "")
 REPO_ROOT     = Path(__file__).parent.parent
 REPORTS_DIR   = REPO_ROOT / "reports"
 DB_PATH       = Path(os.getenv("WIESEL_DB_PATH", str(Path(__file__).parent / "wiesel.db")))
-HTML_TEMPLATE = Path(__file__).parent.parent / "docs" / "cost-cache-model.html"
+HTML_TEMPLATE = Path(__file__).parent / "static" / "cost-cache-model.html"
 
 
 # ── LLM Usage from SQLite ────────────────────────────────────────────────────
@@ -141,7 +141,11 @@ def analyse(target_date):
     data = resp.json()
     llm_usage, llm_usage_by_session = load_llm_usage_for_day(target_date)
 
-    sessions  = data["sessions"]
+    sessions  = {
+        sid: sdata
+        for sid, sdata in data["sessions"].items()
+        if sdata.get("messages")
+    }
     all_msgs  = [m for sdata in sessions.values() for m in sdata["messages"]]
     user_msgs = [m for m in all_msgs if m["role"] == "user"]
     bot_msgs  = [m for m in all_msgs if m["role"] == "assistant"]
@@ -172,8 +176,8 @@ def analyse(target_date):
 
     return {
         "date":             target_date,
-        "total_messages":   data["total_messages"],
-        "total_sessions":   data["total_sessions"],
+        "total_messages":   len(all_msgs),
+        "total_sessions":   len(sessions),
         "user_messages":    len(user_msgs),
         "bot_messages":     len(bot_msgs),
         "avg_session_len":  avg_len,
@@ -426,7 +430,8 @@ def email_summary(r):
     )
 
     github_url = f"https://github.com/TIllAd/wiesel/blob/main/reports/{r['date']}.md"
-    docs_url   = "https://docs.chatbot-wiso.de/cost-cache-model.html"
+    dashboard_base = os.getenv("WIESEL_DASHBOARD_BASE", API_BASE).rstrip("/")
+    docs_url   = f"{dashboard_base}/static/cost-cache-model.html"
 
     return (
         f"╔══════════════════════════════════════════╗\n"
@@ -472,20 +477,23 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as e:
         print(f"⚠ Git push fehlgeschlagen: {e}")
 
-    # analytics_latest.json für Webserver
-    docs_json = Path(__file__).parent.parent / "docs" / "analytics_latest.json"
+    # analytics_latest.json für schnellen Erstaufruf; historische Tagesdateien liegen in WIESEL_ANALYTICS_DIR.
+    static_dir = Path(__file__).parent / "static"
+    docs_json = static_dir / "analytics_latest.json"
     try:
+        payload = {
+            "exported_at": datetime.now().isoformat(),
+            "periode": f"Tagesbericht {target}",
+            "statistik": {"sessions_gesamt": result["total_sessions"], "nachrichten_gesamt": result["total_messages"], "durchschnitt_pro_session": result["avg_session_len"]},
+            "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"], "cache_write_requests": result["llm_usage"]["cache_write_requests"]},
+            "sessions": [],
+        }
+        static_dir.mkdir(parents=True, exist_ok=True)
         with open(docs_json, "w", encoding="utf-8") as f:
-            json.dump({
-                "exported_at": datetime.now().isoformat(),
-                "periode": f"Tagesbericht {target}",
-                "statistik": {"sessions_gesamt": result["total_sessions"], "nachrichten_gesamt": result["total_messages"], "durchschnitt_pro_session": result["avg_session_len"]},
-                "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"], "cache_write_requests": result["llm_usage"]["cache_write_requests"]},
-                "sessions": [],
-            }, f, ensure_ascii=False, indent=2)
+            json.dump(payload, f, ensure_ascii=False, indent=2)
         print(f"✅ analytics_latest.json aktualisiert")
     except Exception as e:
-        print(f"⚠ analytics_latest.json fehlgeschlagen: {e}")
+        print(f"⚠ analytics JSON fehlgeschlagen: {e}")
 
     html = build_combined_html(result, target)
     send_email(

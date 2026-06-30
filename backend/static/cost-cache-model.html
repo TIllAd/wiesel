@@ -17,7 +17,8 @@
   .explainer p { margin:0 0 8px; font-size:14px; line-height:1.65; color:#93c5fd; }
   .explainer p:last-child { margin:0; }
   .explainer strong { color:#bfdbfe; }
-  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:22px 0; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:0 0 14px; }
   .card, .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
   .card { padding:16px; }
   .panel { padding:22px; margin-top:18px; }
@@ -41,7 +42,7 @@
   .slider-thumb:hover { box-shadow: 0 0 0 7px rgba(237,161,0,0.25); }
   .slider-thumb:active { box-shadow: 0 0 0 9px rgba(237,161,0,0.3); }
   input[type=range].hidden-range { position: absolute; left: 0; right: 0; width: 100%; opacity: 0; height: 36px; cursor: pointer; margin: 0; }
-  .metrics-cur { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:16px 0 0; }
+  .metrics-cur { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:16px 0 0; }
   .mc { background:#020617; border:1px solid var(--line); border-radius:12px; padding:14px; }
   .mc .k { margin-bottom:5px; }
   .mc .v { font-size:22px; }
@@ -51,7 +52,7 @@
   .note { color:var(--muted); font-size:13px; line-height:1.6; margin-top:16px; }
   .formula { color:#64748b; background:#020617; border:1px solid var(--line); padding:12px; border-radius:10px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:11px; overflow:auto; margin-top:12px; }
   .loading { color:#475569; font-size:14px; padding:40px 0; text-align:center; }
-  @media (max-width:860px) { .grid { grid-template-columns:1fr 1fr; } .metrics-cur { grid-template-columns:1fr 1fr; } }
+  @media (max-width:860px) { .grid { grid-template-columns:1fr 1fr; } .metrics-cur { grid-template-columns:1fr 1fr; } .grid2 { grid-template-columns:1fr; } }
   @media (max-width:560px) { .grid { grid-template-columns:1fr; } .metrics-cur { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -65,11 +66,15 @@
     <p>Das bedeutet: Je mehr Anfragen auf einen Kaltstart folgen, desto günstiger wird jedes einzelne. Der Schieberegler unten zeigt, wie stark dieser Effekt ist.</p>
   </div>
 
+  <div class="grid2">
+    <div class="card"><div class="k">Gesamtkosten (Berichtszeitraum)</div><div class="v" id="c-total-cost">–</div><div class="s" id="c-total-sub">–</div></div>
+    <div class="card"><div class="k">Ø Kosten pro Anfrage</div><div class="v" id="c-avg-cost">–</div><div class="s">aktuell gemessen</div></div>
+  </div>
+
   <div class="grid" id="top-cards">
-    <div class="card"><div class="k">Gemessen gesamt</div><div class="v" id="c-gesamt">–</div><div class="s" id="c-gesamt-sub">–</div></div>
-    <div class="card"><div class="k">Ø Kosten pro Anfrage</div><div class="v" id="c-schnitt">–</div><div class="s">aktuell gemessen</div></div>
-    <div class="card"><div class="k">Günstiges Folgeanfrage</div><div class="v" id="c-warm">–</div><div class="s">Kontext bereits geladen</div></div>
-    <div class="card"><div class="k">Teuerster Einzelfall</div><div class="v" id="c-worst">–</div><div class="s">Kaltstart, kein Folgeanfrage</div></div>
+    <div class="card"><div class="k">Heute</div><div class="v" id="c-today-cost">–</div><div class="s" id="c-today-sub">–</div></div>
+    <div class="card"><div class="k">Dieser Monat</div><div class="v" id="c-month-costs">–</div><div class="s" id="c-month-sub">–</div><div class="s" id="c-month-forecast" style="margin-top:2px;"></div></div>
+    <div class="card"><div class="k">Letzter Monat</div><div class="v" id="c-last-month-cost">–</div><div class="s" id="c-last-month-sub">–</div></div>
   </div>
 
   <div class="panel">
@@ -93,24 +98,14 @@
 
     <div class="metrics-cur">
       <div class="mc">
-        <div class="k">Szenario — Ø pro Anfrage</div>
-        <div class="v" id="cur-avg" style="color:#eda100;">–</div>
-        <div class="s" id="cur-sub">–</div>
-      </div>
-      <div class="mc">
-        <div class="k">Anfragen pro Monat (gemessen)</div>
-        <div class="v" id="cur-month-count" style="color:#93c5fd;">–</div>
-        <div class="s" id="cur-month-count-sub">hochgerechnet aus Berichtszeitraum</div>
-      </div>
-      <div class="mc">
-        <div class="k">Monatsprognose (dieser Monat)</div>
-        <div class="v" id="cur-month" style="color:#93c5fd;">–</div>
-        <div class="s" id="cur-month-sub">–</div>
-      </div>
-      <div class="mc">
         <div class="k">Ersparnis gegenüber Worst Case</div>
         <div class="v" id="cur-saving" style="color:#1baf7a;">–</div>
         <div class="s" id="cur-saving-sub">Worst Case = jede Anfrage startet neu, kein Kontext gespeichert</div>
+      </div>
+      <div class="mc">
+        <div class="k">Ø Zeit zwischen Anfragen</div>
+        <div class="v" id="cur-gap" style="color:#eda100;">–</div>
+        <div class="s" id="cur-gap-sub">Cache-Fenster: 5 Minuten</div>
       </div>
     </div>
 
@@ -137,6 +132,7 @@
       <tr><td>Günstigstes Szenario (Ø)</td><td id="t-best">–</td><td>100 Anfragen pro Kaltstart; Kontext bleibt lange aktiv</td></tr>
       <tr><td>Ungünstigstes Szenario (Ø)</td><td id="t-worst2">–</td><td>Kein Anfrage nutzt den geladenen Kontext eines anderen</td></tr>
       <tr><td>Anfragen pro Monat (Hochrechnung)</td><td id="t-month">–</td><td>Basierend auf gemessenen LLM-Requests im Berichtszeitraum</td></tr>
+      <tr><td>Ø Zeit zwischen Anfragen</td><td id="t-gap">–</td><td>Wie knapp das 5-Minuten-Cache-Fenster im Betrieb genutzt oder verfehlt wird</td></tr>
     </table>
     <p class="note" id="note-text"></p>
     <div class="formula" id="formula-text"></div>
@@ -145,6 +141,9 @@
 
 <script>
 let DATA = null;
+let LATEST_DATA = null;
+let MONTHLY_DATA = [];
+let PREVIOUS_MONTHLY_DATA = [];
 let chart = null;
 const xs = Array.from({length: 100}, (_, i) => i + 1);
 
@@ -154,6 +153,32 @@ function fmt(eur) {
 }
 function fmtCt(ct) { return Number(ct || 0).toFixed(2).replace('.', ',') + ' ct'; }
 
+function fmtDuration(seconds) {
+  if (!seconds || !isFinite(seconds) || seconds <= 0) return '–';
+  if (seconds < 60) return Math.round(seconds) + ' s';
+  if (seconds < 3600) return Math.round(seconds / 60) + ' min';
+  return (seconds / 3600).toFixed(1).replace('.', ',') + ' h';
+}
+
+const MONTH_NAMES_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function fmtDateShort(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return `${d}.${m}.`;
+}
+function fmtDateRange(startIso, endIso) {
+  if (!startIso || !endIso) return '';
+  const [sy, sm, sd] = startIso.split('-').map(Number);
+  const [ey, em, ed] = endIso.split('-').map(Number);
+  if (sy === ey && sm === em) {
+    return `${sd}. – ${ed}. ${MONTH_NAMES_DE[em - 1]} ${ey}`;
+  }
+  if (sy === ey) {
+    return `${sd}. ${MONTH_NAMES_DE[sm - 1]} – ${ed}. ${MONTH_NAMES_DE[em - 1]} ${ey}`;
+  }
+  return `${fmtDateShort(startIso)}${sy} – ${fmtDateShort(endIso)}${ey}`;
+}
+
 const PRICE_DEFAULTS = {
   input_usd_per_mtok: 1.00,
   output_usd_per_mtok: 5.00,
@@ -162,18 +187,134 @@ const PRICE_DEFAULTS = {
   usd_per_eur: 1.08
 };
 
-function usageValue(...keys) {
-  const usage = DATA.llm_usage || {};
+function usageValueFrom(data, ...keys) {
+  const usage = data?.llm_usage || {};
   for (const key of keys) {
     if (usage[key] !== undefined && usage[key] !== null) return Number(usage[key]) || 0;
   }
   return 0;
 }
 
-function reportDate() {
-  const source = DATA.periode || DATA.exported_at || new Date().toISOString();
+function usageValue(...keys) {
+  return usageValueFrom(DATA, ...keys);
+}
+
+function reportDate(data = DATA) {
+  const source = data?.periode || data?.exported_at || new Date().toISOString();
   const match = String(source).match(/\d{4}-\d{2}-\d{2}/);
   return match ? new Date(match[0] + 'T12:00:00') : new Date();
+}
+
+function dayKey(data) {
+  const source = data?.periode || data?.exported_at || '';
+  const match = String(source).match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : null;
+}
+
+function collectMessageTimestamps(days) {
+  const timestamps = [];
+  for (const day of days || []) {
+    for (const session of day.sessions || []) {
+      for (const entry of session.verlauf || []) {
+        const t = Date.parse(entry.zeitpunkt);
+        if (!isNaN(t)) timestamps.push(t);
+      }
+    }
+  }
+  return timestamps.sort((a, b) => a - b);
+}
+
+function averageGapSeconds(days) {
+  const timestamps = collectMessageTimestamps(days);
+  if (timestamps.length < 2) return null;
+  let totalGap = 0;
+  let count = 0;
+  for (let i = 1; i < timestamps.length; i++) {
+    const gap = (timestamps[i] - timestamps[i - 1]) / 1000;
+    if (gap > 0 && gap < 6 * 3600) {
+      totalGap += gap;
+      count += 1;
+    }
+  }
+  return count ? totalGap / count : null;
+}
+
+function aggregateAnalytics(days, fallback) {
+  const uniq = new Map();
+  for (const day of days || []) {
+    const key = dayKey(day);
+    if (key) uniq.set(key, day);
+  }
+  const list = Array.from(uniq.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, day]) => day);
+  if (!list.length) return fallback;
+
+  const numericUsageKeys = [
+    'requests_gesamt','requests_erfolgreich','requests_fehler','requests_total','requests_successful','requests_error',
+    'input_tokens','output_tokens','cache_creation_input_tokens','cache_read_input_tokens','cache_write_requests',
+    'tokens_gesamt','tokens_total','kosten_usd_geschaetzt','kosten_eur_geschaetzt','estimated_cost_usd','estimated_cost_eur'
+  ];
+  const llm_usage = {};
+  for (const key of numericUsageKeys) {
+    llm_usage[key] = list.reduce((sum, day) => sum + usageValueFrom(day, key), 0);
+  }
+  const models = new Set();
+  for (const day of list) {
+    for (const model of (day.llm_usage?.modelle || day.llm_usage?.models || [])) models.add(model);
+  }
+  llm_usage.modelle = Array.from(models).sort();
+  llm_usage.models = llm_usage.modelle;
+  llm_usage.kosten_eur_durchschnitt_erfolgreicher_request = llm_usage.requests_erfolgreich
+    ? llm_usage.kosten_eur_geschaetzt / llm_usage.requests_erfolgreich : 0;
+  llm_usage.avg_cost_eur_per_successful_request = llm_usage.requests_successful
+    ? llm_usage.estimated_cost_eur / llm_usage.requests_successful : llm_usage.kosten_eur_durchschnitt_erfolgreicher_request;
+
+  const sessions = list.reduce((sum, day) => sum + Number(day.statistik?.sessions_gesamt || day.total_sessions || 0), 0);
+  const messages = list.reduce((sum, day) => sum + Number(day.statistik?.nachrichten_gesamt || day.total_messages || 0), 0);
+  const first = dayKey(list[0]);
+  const last = dayKey(list[list.length - 1]);
+  return {
+    ...fallback,
+    exported_at: fallback?.exported_at || new Date().toISOString(),
+    periode: `Monatsstand ${first?.slice(0, 7) || ''}: ${first} bis ${last}`,
+    berichtszeitraum_start: first,
+    berichtszeitraum_ende: last,
+    statistik: {
+      sessions_gesamt: sessions,
+      nachrichten_gesamt: messages,
+      durchschnitt_pro_session: sessions ? Number((messages / sessions).toFixed(1)) : 0,
+    },
+    llm_usage,
+    sessions: list.flatMap(day => day.sessions || []),
+  };
+}
+
+function monthlyStats(daysArg = null) {
+  const hasExplicitDays = Array.isArray(daysArg);
+  const days = hasExplicitDays ? daysArg : (MONTHLY_DATA.length ? MONTHLY_DATA : (DATA ? [DATA] : []));
+  const knownDates = days.map(dayKey).filter(Boolean).sort();
+  const today = new Date();
+  const month = knownDates[knownDates.length - 1]?.slice(0, 7) || today.toISOString().slice(0, 7);
+  const [year, monthNo] = month.split('-').map(Number);
+  const daysInMonth = new Date(year, monthNo, 0).getDate();
+  const lastKnownDay = knownDates.length ? Number(knownDates[knownDates.length - 1].slice(8, 10)) : today.getDate();
+  const daysRemaining = Math.max(0, daysInMonth - lastKnownDay);
+  const daysKnown = Math.max(1, knownDates.length || 1);
+  const knownRequests = days.reduce((sum, day) => sum + usageValueFrom(day, 'requests_erfolgreich', 'requests_successful'), 0);
+  const knownCost = days.reduce((sum, day) => sum + usageValueFrom(day, 'kosten_eur_geschaetzt', 'estimated_cost_eur'), 0);
+  const avgRequestsPerDay = knownRequests / daysKnown;
+  const avgCostPerDay = knownCost / daysKnown;
+  return {
+    tage_erfasst: knownDates.length || (!hasExplicitDays && DATA ? 1 : 0),
+    tage_verbleibend: daysRemaining,
+    nachrichten_seit_monatsanfang: knownRequests,
+    anfragen_pro_tag: avgRequestsPerDay,
+    prognose_nachrichten_rest: avgRequestsPerDay * daysRemaining,
+    nachrichten_pro_monat: Math.round(knownRequests + avgRequestsPerDay * daysRemaining),
+    kosten_bisher_eur: knownCost,
+    kosten_pro_tag_eur: avgCostPerDay,
+    prognose_kosten_rest_eur: avgCostPerDay * daysRemaining,
+    prognose_kosten_gesamt_eur: knownCost + avgCostPerDay * daysRemaining,
+  };
 }
 
 function buildCostModel() {
@@ -200,15 +341,10 @@ function buildCostModel() {
   const costCt = n => Number((((cacheWriteUsd / Math.max(1, n)) + warmPerReqUsd) / usdEur * 100).toFixed(4));
   const avgCt = costEur > 0 ? Number((costEur / reqs * 100).toFixed(4)) : 0;
 
-  const d = reportDate();
-  const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  const daysElapsed = Math.max(1, d.getDate());
-  const daysRemaining = Math.max(0, daysInMonth - daysElapsed);
-  const measuredRequests = Math.max(0, usageValue('requests_erfolgreich', 'requests_successful'));
-  const requestsPerMonth = Math.round(measuredRequests / daysElapsed * daysInMonth);
+  const month = monthlyStats();
 
   return {
-    gemessen_eur: costEur,
+    gemessen_eur: month.kosten_bisher_eur || costEur,
     schnitt_ct_pro_request: avgCt,
     warm_request_ct: Number((warmPerReqUsd / usdEur * 100).toFixed(4)),
     worst_case_ct: costCt(1),
@@ -217,10 +353,15 @@ function buildCostModel() {
     preise: prices,
     costCt,
     projektion_monat_eur: {
-      nachrichten_pro_monat: requestsPerMonth,
-      nachrichten_seit_monatsanfang: measuredRequests,
-      tage_vergangen: daysElapsed,
-      tage_verbleibend: daysRemaining
+      nachrichten_pro_monat: month.nachrichten_pro_monat,
+      nachrichten_seit_monatsanfang: month.nachrichten_seit_monatsanfang,
+      anfragen_pro_tag: month.anfragen_pro_tag,
+      prognose_nachrichten_rest: month.prognose_nachrichten_rest,
+      kosten_bisher_eur: month.kosten_bisher_eur,
+      prognose_kosten_rest_eur: month.prognose_kosten_rest_eur,
+      prognose_kosten_gesamt_eur: month.prognose_kosten_gesamt_eur,
+      tage_erfasst: month.tage_erfasst,
+      tage_verbleibend: month.tage_verbleibend
     }
   };
 }
@@ -238,6 +379,7 @@ function buildChart() {
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
+  if (chart) chart.destroy();
   chart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -331,14 +473,8 @@ function updateSlider(n) {
   const worst1k = km.worst_case_ct * 10;
   const saving = (worst1k - total1k) / worst1k * 100;
   const savedEur = (worst1k - total1k) / 100;
-  const monthly = c * km.projektion_monat_eur.nachrichten_pro_monat / 100;
   const isSnapped = n === MEASURED_N;
 
-  document.getElementById('cur-avg').textContent = fmtCt(c);
-  document.getElementById('cur-sub').textContent = `bei ${n} Anfrage${n === 1 ? '' : 'n'} pro Kaltstart`;
-  document.getElementById('cur-month').textContent = fmt(monthly);
-  const msub = `Prognose: ${km.projektion_monat_eur.nachrichten_pro_monat} Anfragen/Monat`;
-  document.getElementById('cur-month-sub').textContent = msub;
   document.getElementById('cur-saving').textContent = Math.round(saving) + '%';
   document.getElementById('cur-saving-sub').textContent = `Worst Case = ${fmtCt(km.worst_case_ct)} · du sparst ${fmt(savedEur)} / 1.000 Anfragen`;
 
@@ -356,24 +492,69 @@ function updateSlider(n) {
 
 function populate() {
   const km = buildCostModel();
-  const st = DATA.statistik;
   MEASURED_N = Math.max(1, Math.min(100, Math.round(
     usageValue('requests_erfolgreich', 'requests_successful') /
     Math.max(usageValue('cache_write_requests'), 1)
   )));
 
+  const periodeText = DATA.berichtszeitraum_start && DATA.berichtszeitraum_ende
+    ? fmtDateRange(DATA.berichtszeitraum_start, DATA.berichtszeitraum_ende)
+    : DATA.periode;
   document.getElementById('periode-label').textContent =
-    `Berichtszeitraum: ${DATA.periode} · Exportiert: ${DATA.exported_at.slice(0,10)}`;
+    `Berichtszeitraum: ${periodeText} · Exportiert: ${DATA.exported_at.slice(0,10)}`;
 
-  document.getElementById('c-gesamt').textContent = fmt(km.gemessen_eur);
-  document.getElementById('c-gesamt-sub').textContent = `${st.sessions_gesamt} Sitzungen, ${st.nachrichten_gesamt} Nachrichten`;
-  document.getElementById('c-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
-  document.getElementById('c-warm').textContent = fmtCt(km.warm_request_ct);
-  document.getElementById('c-worst').textContent = fmtCt(km.worst_case_ct);
+  document.getElementById('c-total-cost').textContent = fmt(km.gemessen_eur);
+  const reqs = usageValue('requests_erfolgreich', 'requests_successful');
+  const start = DATA.berichtszeitraum_start;
+  const ende = DATA.berichtszeitraum_ende;
+  const tageGesamt = start && ende ? Math.round((new Date(ende) - new Date(start)) / 86400000) + 1 : null;
+  const zeitraumText = start && ende ? `${fmtDateRange(start, ende)} (${tageGesamt} Tag${tageGesamt === 1 ? '' : 'e'}) · ` : '';
+  document.getElementById('c-total-sub').textContent = `${zeitraumText}${DATA.statistik.sessions_gesamt} Sitzungen, ${reqs} Anfragen`;
+  document.getElementById('c-avg-cost').textContent = fmtCt(km.schnitt_ct_pro_request);
 
-  document.getElementById('cur-month-count').textContent = km.projektion_monat_eur.nachrichten_pro_monat;
+  const todayData = LATEST_DATA || DATA;
+  const todayCost = usageValueFrom(todayData, 'kosten_eur_geschaetzt', 'estimated_cost_eur');
+  const todayRequests = usageValueFrom(todayData, 'requests_erfolgreich', 'requests_successful');
   const pm = km.projektion_monat_eur;
-  document.getElementById('cur-month-count-sub').textContent = `${pm.nachrichten_seit_monatsanfang} bisher + ${pm.tage_verbleibend} Tage Prognose`;
+  const lastMonth = monthlyStats(PREVIOUS_MONTHLY_DATA);
+
+  document.getElementById('c-today-cost').textContent = fmt(todayCost);
+  document.getElementById('c-today-sub').textContent = `${todayRequests} Anfrage${todayRequests === 1 ? '' : 'n'} heute`;
+  document.getElementById('c-month-costs').textContent = fmt(pm.kosten_bisher_eur);
+  const forecastEl = document.getElementById('c-month-forecast');
+  forecastEl.textContent = pm.tage_verbleibend > 0
+    ? `→ Prognose Gesamtmonat: ${fmt(pm.prognose_kosten_gesamt_eur)}`
+    : 'Monat vollständig erfasst';
+  let monthReqText = `${pm.tage_erfasst} Tage bisher, ${Math.round(pm.nachrichten_seit_monatsanfang)} Anfragen (Prognose: ${pm.nachrichten_pro_monat})`;
+  if (lastMonth.tage_erfasst && lastMonth.nachrichten_seit_monatsanfang > 0) {
+    const reqDiffPct = ((pm.nachrichten_pro_monat - lastMonth.nachrichten_seit_monatsanfang) / lastMonth.nachrichten_seit_monatsanfang) * 100;
+    const sign = reqDiffPct >= 0 ? '+' : '';
+    monthReqText += ` · ${sign}${Math.round(reqDiffPct)}% ggü. Vormonat`;
+  }
+  document.getElementById('c-month-sub').textContent = monthReqText;
+  document.getElementById('c-last-month-cost').textContent = lastMonth.tage_erfasst ? fmt(lastMonth.kosten_bisher_eur) : '–';
+  const lastMonthSub = document.getElementById('c-last-month-sub');
+  if (lastMonth.tage_erfasst && pm.prognose_kosten_gesamt_eur > 0) {
+    const diffPct = ((lastMonth.kosten_bisher_eur - pm.prognose_kosten_gesamt_eur) / pm.prognose_kosten_gesamt_eur) * 100;
+    const cheaper = diffPct < 0;
+    lastMonthSub.textContent = `${Math.abs(diffPct).toFixed(1).replace('.', ',')}% ${cheaper ? 'günstiger' : 'teurer'} als dieser Monat`;
+    lastMonthSub.style.color = cheaper ? '#1baf7a' : '#e34948';
+  } else {
+    lastMonthSub.textContent = 'Keine Vormonatsdaten';
+    lastMonthSub.style.color = '#64748b';
+  }
+
+  const avgGap = averageGapSeconds(MONTHLY_DATA.length ? MONTHLY_DATA : [DATA]);
+  document.getElementById('cur-gap').textContent = fmtDuration(avgGap);
+  if (avgGap !== null) {
+    const withinCache = avgGap <= 300;
+    document.getElementById('cur-gap-sub').textContent = withinCache
+      ? 'Im 5-Minuten-Cache-Fenster · günstig'
+      : 'Außerhalb des 5-Minuten-Fensters · meist Kaltstart';
+  } else {
+    document.getElementById('cur-gap-sub').textContent = 'Nicht genug Daten';
+  }
+  document.getElementById('t-gap').textContent = fmtDuration(avgGap);
 
   document.getElementById('t-schnitt').textContent = fmtCt(km.schnitt_ct_pro_request);
   document.getElementById('t-worst').textContent = fmtCt(km.worst_case_ct);
@@ -409,11 +590,52 @@ document.getElementById('slider').addEventListener('input', e => {
   updateSlider(n);
 });
 
+async function fetchJson(path) {
+  const r = await fetch(path + (path.includes('?') ? '&' : '?') + 't=' + Date.now());
+  if (!r.ok) throw new Error(path + ' not found');
+  return r.json();
+}
+
+function monthKeyFromDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function previousMonthKey(date = new Date()) {
+  return monthKeyFromDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
+}
+
+async function monthFileNames(month = null) {
+  const targetMonth = month || monthKeyFromDate(new Date());
+  try {
+    const index = await fetchJson('/api/analytics/month-files?month=' + encodeURIComponent(targetMonth));
+    if (Array.isArray(index.files)) return index.files;
+  } catch {
+  }
+  const [yyyy, mm] = targetMonth.split('-').map(Number);
+  const today = new Date();
+  const isCurrentMonth = targetMonth === monthKeyFromDate(today);
+  const maxDay = isCurrentMonth ? today.getDate() : new Date(yyyy, mm, 0).getDate();
+  return Array.from({length: maxDay}, (_, i) =>
+    `analytics_${targetMonth}-${String(i + 1).padStart(2, '0')}.json`
+  );
+}
+
+async function loadMonthlyData(latest, month = null, fallbackToLatest = true) {
+  const names = await monthFileNames(month);
+  const results = await Promise.allSettled(
+    names.map(name => fetchJson('/api/analytics/file/' + encodeURIComponent(name)))
+  );
+  const days = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+  return days.length ? days : (fallbackToLatest ? [latest] : []);
+}
+
 async function loadData() {
   try {
-    const r = await fetch('analytics_latest.json?t=' + Date.now());
-    if (!r.ok) throw new Error('not found');
-    DATA = await r.json();
+    const latest = await fetchJson('analytics_latest.json');
+    LATEST_DATA = latest;
+    MONTHLY_DATA = await loadMonthlyData(latest);
+    PREVIOUS_MONTHLY_DATA = await loadMonthlyData(latest, previousMonthKey(), false);
+    DATA = aggregateAnalytics(MONTHLY_DATA, latest);
     populate();
   } catch {
     document.getElementById('chart-loading').textContent =

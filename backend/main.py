@@ -6,6 +6,7 @@ FastAPI app with LTI launch endpoint, chat API, and SQLite session management.
 import os
 import json
 import logging
+import re
 import uuid
 import base64
 import binascii
@@ -591,7 +592,6 @@ async def chat_page(request: Request, debug: str | None = None):
             db.close()
     return FileResponse(str(_static_dir / "chat.html"))
 
-
 @app.post("/lti/launch")
 async def lti_launch(request: Request):
     db = SessionLocal()
@@ -688,6 +688,40 @@ async def wiki_endpoint():
     except Exception:
         logger.error("Wiki endpoint error", exc_info=True)
         raise HTTPException(status_code=500)
+
+
+@app.get("/api/analytics/month-files")
+async def analytics_month_files(month: Optional[str] = None):
+    analytics_dir = Path(os.getenv("WIESEL_ANALYTICS_DIR", r"C:\Users\tillt\hermes\analytics"))
+    if month is None:
+        month = datetime.now().strftime("%Y-%m")
+    elif not re.fullmatch(r"\d{4}-\d{2}", month):
+        raise HTTPException(status_code=400, detail="Invalid month format; expected YYYY-MM")
+
+    prefix = f"analytics_{month}-"
+    files = sorted(
+        path.name for path in analytics_dir.glob(f"{prefix}*.json")
+        if path.is_file() and path.name != "analytics_latest.json"
+    )
+    return {"month": month, "files": files}
+
+
+@app.get("/api/analytics/file/{filename}")
+async def analytics_file(filename: str):
+    if not re.fullmatch(r"analytics_\d{4}-\d{2}-\d{2}\.json", filename):
+        raise HTTPException(status_code=400, detail="Invalid analytics filename")
+
+    analytics_dir = Path(os.getenv("WIESEL_ANALYTICS_DIR", r"C:\Users\tillt\hermes\analytics"))
+    path = analytics_dir / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Analytics file not found")
+
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        logger.error("Invalid analytics JSON file: %s", path, exc_info=True)
+        raise HTTPException(status_code=500, detail="Invalid analytics JSON")
+
 
 @app.post("/api/chat/flag")
 async def flag_chat_session(request: ChatFlagRequest):
