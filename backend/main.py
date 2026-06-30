@@ -716,6 +716,35 @@ async def wiki_endpoint():
         raise HTTPException(status_code=500)
 
 
+@app.get("/api/wiki/file")
+async def wiki_file_endpoint(path: str):
+    """Return the raw content of a single knowledge_base file by relative path."""
+    kb_dirs = [
+        Path(__file__).parent.parent / "knowledge_base",
+        Path("/knowledge_base"),
+        Path("/app/knowledge_base"),
+    ]
+    kb_dir = next((d for d in kb_dirs if d.is_dir()), None)
+    if not kb_dir:
+        raise HTTPException(status_code=503, detail="Knowledge base not found")
+
+    # Prevent directory traversal
+    try:
+        target = (kb_dir / path).resolve()
+        target.relative_to(kb_dir.resolve())
+    except (ValueError, Exception):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if target.suffix not in {".md", ".json"}:
+        raise HTTPException(status_code=400, detail="Only .md and .json files allowed")
+
+    content = target.read_text(encoding="utf-8")
+    return {"path": path, "content": content, "format": target.suffix.lstrip(".")}
+
+
 DEFAULT_ANALYTICS_DIR = Path(__file__).parent / "analytics"
 
 
