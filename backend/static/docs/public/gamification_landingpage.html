@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel · Bug Hunt O-Woche</title>
+<style>
+  :root {
+    --bg:#f4f1ea;
+    --paper:#fbf7ed;
+    --ink:#1a1814;
+    --muted:#8f897a;
+    --line:#d8d3c5;
+    --soft:#eee8da;
+    --accent:#dd6b12;
+    --accent-dark:#a94f0d;
+    --accent-soft:#fff0de;
+    --green:#6f9b56;
+    --blue:#89a7b9;
+    --red:#bc4e38;
+    --gold:#b8903f;
+    --silver:#9d9a92;
+    --bronze:#a86a3a;
+  }
+
+  * { box-sizing:border-box; }
+
+  body {
+    margin:0;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(221,107,18,.075), transparent 28%),
+      radial-gradient(circle at 90% 18%, rgba(111,155,86,.08), transparent 26%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+
+  body::before {
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:.22;
+    background-image:
+      linear-gradient(rgba(26,24,20,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,24,20,.025) 1px, transparent 1px);
+    background-size:34px 34px;
+  }
+
+  main {
+    max-width:1120px;
+    margin:0 auto;
+    padding:48px 24px 88px;
+  }
+
+  .topbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:24px;
+    margin-bottom:38px;
+  }
+
+  .eyebrow {
+    margin:0 0 10px;
+    color:var(--accent);
+    font:700 12px/1 "Helvetica Neue",Arial,sans-serif;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+  }
+
+  h1 {
+    margin:0;
+    font-size:58px;
+    line-height:.96;
+    letter-spacing:-.045em;
+    font-weight:400;
+  }
+
+  .lead {
+    margin:22px 0 0;
+    max-width:720px;
+    color:#26231e;
+    font-size:18px;
+    line-height:1.7;
+  }
+
+  .student-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 16px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:rgba(251,247,237,.75);
+    color:var(--ink);
+    font:13px/1 "Helvetica Neue",Arial,sans-serif;
+    white-space:nowrap;
+    box-shadow:0 10px 30px rgba(26,24,20,.04);
+  }
+
+  .student-pill::before {
+    content:"";
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 5px rgba(221,107,18,.12);
+  }
+
+  svg {
+    display:block;
+    width:100%;
+    height:auto;
+  }
+
+  svg text {
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+
+  .hero-grid {
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:24px;
+    align-items:stretch;
+  }
+
+  .panel,
+  .card,
+  .outcome,
+  .submit-box {
+    background:rgba(251,247,237,.72);
+    border:1px solid var(--line);
+    border-radius:9px;
+    box-shadow:0 16px 42px rgba(26,24,20,.045);
+  }
+
+  .panel {
+    padding:22px;
+  }
+
+  .hero-panel {
+    min-height:370px;
+    display:grid;
+    grid-template-rows:auto 1fr;
+  }
+
+  .hero-panel h2,
+  .panel h2,
+  .panel h3 {
+    margin:0;
+    font-weight:400;
+  }
+
+  .hero-panel h2 {
+    font-size:23px;
+    margin-bottom:16px;
+  }
+
+  .timer-card {
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr 1fr;
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    margin-top:14px;
+  }
+
+  .time-cell {
+    background:var(--paper);
+    padding:18px 10px;
+    text-align:center;
+  }
+
+  .time-cell strong {
+    display:block;
+    color:var(--accent);
+    font:700 34px/1 "Helvetica Neue",Arial,sans-serif;
+    letter-spacing:-.04em;
+  }
+
+  .time-cell span {
+    display:block;
+    margin-top:8px;
+    color:var(--muted);
+    font:700 11px/1 "Helvetica Neue",Arial,sans-serif;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .week-strip {
+    margin-top:24px;
+  }
+
+  .leaderboard {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-top:17px;
+  }
+
+  .rank {
+    display:grid;
+    grid-template-columns:44px 1fr auto;
+    align-items:center;
+    gap:12px;
+    padding:13px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:rgba(255,255,255,.28);
+  }
+
+  .medal {
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    color:#fff;
+    font:800 15px/1 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .rank:nth-child(1) .medal { background:var(--gold); }
+  .rank:nth-child(2) .medal { background:var(--silver); }
+  .rank:nth-child(3) .medal { background:var(--bronze); }
+  .rank:nth-child(n+4) .medal { background:#bdb6a8; }
+
+  .team strong {
+    display:block;
+    font-size:17px;
+    font-weight:400;
+  }
+
+  .team span {
+    display:block;
+    margin-top:3px;
+    color:var(--muted);
+    font:12px/1.3 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .points {
+    color:var(--accent);
+    font:800 16px/1 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .section {
+    margin-top:64px;
+  }
+
+  .section-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:end;
+    gap:24px;
+    margin-bottom:20px;
+  }
+
+  h2 {
+    margin:0;
+    font-size:26px;
+    line-height:1.15;
+    font-weight:400;
+    letter-spacing:-.015em;
+  }
+
+  .hint {
+    margin:0;
+    max-width:450px;
+    color:var(--muted);
+    font:13px/1.55 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .how-grid {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+  }
+
+  .card {
+    padding:22px;
+    min-height:190px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .card::after {
+    content:"";
+    position:absolute;
+    right:-45px;
+    top:-45px;
+    width:100px;
+    height:100px;
+    border:1px solid rgba(221,107,18,.18);
+    border-radius:50%;
+  }
+
+  .card .step {
+    display:inline-flex;
+    width:34px;
+    height:34px;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border:1px solid rgba(221,107,18,.25);
+    font:800 13px/1 "Helvetica Neue",Arial,sans-serif;
+    margin-bottom:14px;
+  }
+
+  .card h3 {
+    margin:0 0 10px;
+    font-size:18px;
+    line-height:1.22;
+    font-weight:400;
+  }
+
+  .card p {
+    margin:0;
+    color:#302c25;
+    font-size:14.5px;
+    line-height:1.6;
+  }
+
+  .scoreboard {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+
+  .score-list {
+    display:grid;
+    gap:10px;
+  }
+
+  .score-item {
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:center;
+    gap:16px;
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:rgba(255,255,255,.28);
+  }
+
+  .score-item strong {
+    display:block;
+    font-size:16px;
+    font-weight:400;
+  }
+
+  .score-item span {
+    display:block;
+    margin-top:4px;
+    color:var(--muted);
+    font:12px/1.35 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .score-points {
+    padding:8px 10px;
+    border-radius:999px;
+    color:var(--accent-dark);
+    background:var(--accent-soft);
+    border:1px solid rgba(221,107,18,.28);
+    font:800 13px/1 "Helvetica Neue",Arial,sans-serif;
+    white-space:nowrap;
+  }
+
+  .hunt-map {
+    min-height:390px;
+  }
+
+  .map-node {
+    cursor:pointer;
+    transition:transform .15s ease;
+    transform-origin:center;
+  }
+
+  .map-node:hover {
+    transform:scale(1.04);
+  }
+
+  .map-node.active circle,
+  .map-node.active rect {
+    stroke:var(--accent);
+    stroke-width:2.2;
+  }
+
+  .map-tip {
+    margin-top:12px;
+    border:1px solid rgba(221,107,18,.28);
+    background:var(--accent-soft);
+    padding:12px 14px;
+    border-radius:8px;
+    color:#4b3424;
+    font-size:14px;
+    line-height:1.5;
+    min-height:62px;
+  }
+
+  .dashboard {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+
+  .controls {
+    display:grid;
+    gap:20px;
+  }
+
+  .control label {
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:9px;
+    color:#514b41;
+    font:700 12px/1.2 "Helvetica Neue",Arial,sans-serif;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+
+  input[type="range"] {
+    width:100%;
+    accent-color:var(--accent);
+  }
+
+  .sim-stats {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:22px;
+  }
+
+  .sim-stat {
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 10px;
+    background:rgba(255,255,255,.28);
+    text-align:center;
+  }
+
+  .sim-stat strong {
+    display:block;
+    color:var(--ink);
+    font:800 24px/1 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .sim-stat span {
+    display:block;
+    margin-top:7px;
+    color:var(--muted);
+    font:12px/1.35 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .submit-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:18px;
+  }
+
+  .submit-box {
+    padding:22px;
+    min-height:188px;
+  }
+
+  .submit-box h3 {
+    margin:0 0 10px;
+    font-size:18px;
+    font-weight:400;
+  }
+
+  .submit-box p {
+    margin:0;
+    color:#302c25;
+    font-size:14.5px;
+    line-height:1.6;
+  }
+
+  .field {
+    margin-top:14px;
+    padding:12px;
+    border:1px dashed var(--line);
+    border-radius:8px;
+    color:var(--muted);
+    background:rgba(255,255,255,.25);
+    font:12px/1.4 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .prize {
+    display:grid;
+    grid-template-columns:1fr .75fr;
+    gap:18px;
+    align-items:stretch;
+  }
+
+  .prize-copy {
+    padding:28px;
+  }
+
+  .prize-copy h2 {
+    font-size:32px;
+    margin-bottom:14px;
+  }
+
+  .prize-copy p {
+    margin:0;
+    max-width:640px;
+    color:#302c25;
+    font-size:16px;
+    line-height:1.7;
+  }
+
+  .prize-note {
+    margin-top:18px;
+    display:inline-flex;
+    gap:9px;
+    align-items:center;
+    color:var(--accent);
+    border:1px solid rgba(221,107,18,.28);
+    background:var(--accent-soft);
+    border-radius:999px;
+    padding:9px 12px;
+    font:700 13px/1 "Helvetica Neue",Arial,sans-serif;
+  }
+
+  .footer-note {
+    display:flex;
+    justify-content:space-between;
+    align-items:end;
+    gap:22px;
+    margin-top:48px;
+    color:#5f584c;
+    font-size:14px;
+    line-height:1.6;
+  }
+
+  .signature {
+    color:var(--accent);
+    font-size:30px;
+    font-style:italic;
+    white-space:nowrap;
+  }
+
+  @media (max-width:950px) {
+    h1 { font-size:46px; }
+    .hero-grid,
+    .scoreboard,
+    .dashboard,
+    .prize {
+      grid-template-columns:1fr;
+    }
+    .how-grid,
+    .submit-grid {
+      grid-template-columns:1fr 1fr;
+    }
+  }
+
+  @media (max-width:640px) {
+    main { padding:34px 16px 64px; }
+    .topbar,
+    .section-head,
+    .footer-note {
+      flex-direction:column;
+      align-items:flex-start;
+    }
+    h1 { font-size:38px; }
+    .lead { font-size:16px; }
+    .how-grid,
+    .submit-grid,
+    .sim-stats,
+    .timer-card {
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">O-Woche · Gamification</p>
+      <h1>Der Wiesel Bug Hunt</h1>
+      <p class="lead">In der ersten Studienwoche testen wir Wiesel gemeinsam auf Herz, Nieren und komische Antworten. Wer den Bot ausprobiert, Bugs findet oder besonders hilfreiche Verbesserungsideen meldet, sammelt Punkte fürs Leaderboard.</p>
+    </div>
+    <div class="student-pill">Student View · 7 Tage Wettbewerb</div>
+  </div>
+
+  <section class="hero-grid" aria-label="Bug Hunt Übersicht">
+    <div class="panel hero-panel">
+      <div>
+        <h2>Die Jagd läuft noch</h2>
+        <p class="hint">Countdown für die O-Woche. Der Timer ist hier als Demo umgesetzt und kann später durch ein echtes Start-/Enddatum ersetzt werden.</p>
+
+        <div class="timer-card" aria-label="Countdown">
+          <div class="time-cell">
+            <strong id="days">06</strong>
+            <span>Tage</span>
+          </div>
+          <div class="time-cell">
+            <strong id="hours">13</strong>
+            <span>Stunden</span>
+          </div>
+          <div class="time-cell">
+            <strong id="minutes">42</strong>
+            <span>Minuten</span>
+          </div>
+          <div class="time-cell">
+            <strong id="seconds">09</strong>
+            <span>Sekunden</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="week-strip">
+        <svg viewBox="0 0 640 170" role="img">
+          <title>Wochentimeline</title>
+          <desc>Eine Timeline über sieben Tage des Bug Hunts.</desc>
+          <line x1="42" y1="76" x2="598" y2="76" stroke="var(--line)" stroke-width="1"/>
+          <line x1="42" y1="76" x2="206" y2="76" stroke="var(--accent)" stroke-width="2"/>
+          <g>
+            <circle cx="42" cy="76" r="18" fill="var(--accent)" stroke="var(--accent)"/>
+            <text x="42" y="82" text-anchor="middle" font-size="15" fill="#fff">1</text>
+            <text x="42" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Start</text>
+            <text x="42" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">Bot finden</text>
+          </g>
+          <g>
+            <circle cx="134" cy="76" r="18" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="134" y="82" text-anchor="middle" font-size="15" fill="var(--accent)">2</text>
+            <text x="134" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Fragen</text>
+            <text x="134" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">alles testen</text>
+          </g>
+          <g>
+            <circle cx="226" cy="76" r="18" fill="var(--paper)" stroke="var(--line)"/>
+            <text x="226" y="82" text-anchor="middle" font-size="15" fill="var(--muted)">3</text>
+            <text x="226" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Bugs</text>
+            <text x="226" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">melden</text>
+          </g>
+          <g>
+            <circle cx="318" cy="76" r="18" fill="var(--paper)" stroke="var(--line)"/>
+            <text x="318" y="82" text-anchor="middle" font-size="15" fill="var(--muted)">4</text>
+            <text x="318" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Chaos</text>
+            <text x="318" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">provozieren</text>
+          </g>
+          <g>
+            <circle cx="410" cy="76" r="18" fill="var(--paper)" stroke="var(--line)"/>
+            <text x="410" y="82" text-anchor="middle" font-size="15" fill="var(--muted)">5</text>
+            <text x="410" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Ideen</text>
+            <text x="410" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">sammeln</text>
+          </g>
+          <g>
+            <circle cx="502" cy="76" r="18" fill="var(--paper)" stroke="var(--line)"/>
+            <text x="502" y="82" text-anchor="middle" font-size="15" fill="var(--muted)">6</text>
+            <text x="502" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Endspurt</text>
+            <text x="502" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">Leaderboard</text>
+          </g>
+          <g>
+            <circle cx="598" cy="76" r="22" fill="var(--paper)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="598" y="83" text-anchor="middle" font-size="22" fill="var(--accent)">♛</text>
+            <text x="598" y="120" text-anchor="middle" font-size="13" fill="var(--ink)">Finale</text>
+            <text x="598" y="139" text-anchor="middle" font-size="11" fill="var(--muted)">Preis</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Leaderboard</h2>
+      <p class="hint">Ob echte Namen, Teamnamen oder Nicknames: Das Treppchen macht sichtbar, dass sich Testen lohnt.</p>
+
+      <div class="leaderboard">
+        <div class="rank">
+          <div class="medal">1</div>
+          <div class="team">
+            <strong>Team Prüfungsamt-Speedrun</strong>
+            <span>8 Funde · 2 kritische Bugs</span>
+          </div>
+          <div class="points">820 XP</div>
+        </div>
+
+        <div class="rank">
+          <div class="medal">2</div>
+          <div class="team">
+            <strong>Die Modulhandbuch-Maulwürfe</strong>
+            <span>11 Funde · 0 kritische Bugs</span>
+          </div>
+          <div class="points">690 XP</div>
+        </div>
+
+        <div class="rank">
+          <div class="medal">3</div>
+          <div class="team">
+            <strong>WiSo Chaos Crew</strong>
+            <span>6 Funde · 1 sehr guter Prompt</span>
+          </div>
+          <div class="points">610 XP</div>
+        </div>
+
+        <div class="rank">
+          <div class="medal">4</div>
+          <div class="team">
+            <strong>StudOn Survivors</strong>
+            <span>5 Funde · 3 UX-Ideen</span>
+          </div>
+          <div class="points">430 XP</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ablauf-title">
+    <div class="section-head">
+      <h2 id="ablauf-title">So läuft der Bug Hunt ab</h2>
+      <p class="hint">Aus Studierendensicht soll es extrem einfach sein: Bot öffnen, ausprobieren, komische Stelle finden, Fund einreichen, Punkte bekommen.</p>
+    </div>
+
+    <div class="how-grid">
+      <article class="card">
+        <span class="step">01</span>
+        <h3>Bot öffnen</h3>
+        <p>Du bekommst den Link in der O-Woche und probierst Wiesel einfach aus: Fragen stellen, klicken, nachhaken.</p>
+      </article>
+      <article class="card">
+        <span class="step">02</span>
+        <h3>Grenzen testen</h3>
+        <p>Frag normal, verwirrend, sehr spezifisch oder absichtlich schräg. Ziel ist nicht brav sein — Ziel ist: herausfinden, was kaputtgeht.</p>
+      </article>
+      <article class="card">
+        <span class="step">03</span>
+        <h3>Fund melden</h3>
+        <p>Screenshot, kurze Beschreibung und optional der genaue Prompt. Je besser der Fund nachvollziehbar ist, desto besser die Bewertung.</p>
+      </article>
+      <article class="card">
+        <span class="step">04</span>
+        <h3>Punkte sammeln</h3>
+        <p>Je nach Fundtyp gibt es XP. Kritische Bugs, falsche Antworten oder richtig gute Verbesserungsideen bringen besonders viel.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section scoreboard" aria-label="Punktesystem und Jagdkarte">
+    <div class="panel">
+      <h2>Punktesystem</h2>
+      <p class="hint" style="margin:8px 0 18px">Die Werte sind Platzhalter. Wichtig ist: Nicht jeder Fund ist gleich viel wert.</p>
+
+      <div class="score-list">
+        <div class="score-item">
+          <div>
+            <strong>Falsche oder gefährlich missverständliche Antwort</strong>
+            <span>Wiesel sagt etwas, das sachlich falsch oder potenziell problematisch ist.</span>
+          </div>
+          <div class="score-points">+200 XP</div>
+        </div>
+        <div class="score-item">
+          <div>
+            <strong>Reproduzierbarer Bug</strong>
+            <span>Etwas geht zuverlässig kaputt: UI, Antwortlogik, Session, Links, Ladefehler.</span>
+          </div>
+          <div class="score-points">+150 XP</div>
+        </div>
+        <div class="score-item">
+          <div>
+            <strong>Komische Antwort / Halluzination</strong>
+            <span>Der Bot antwortet seltsam, widersprüchlich oder klingt nicht mehr wie Wiesel.</span>
+          </div>
+          <div class="score-points">+100 XP</div>
+        </div>
+        <div class="score-item">
+          <div>
+            <strong>Versteckte Info fehlt</strong>
+            <span>Eine wichtige Info aus O-Woche, FAU, WiSo, Campo oder StudOn wird nicht gefunden.</span>
+          </div>
+          <div class="score-points">+80 XP</div>
+        </div>
+        <div class="score-item">
+          <div>
+            <strong>Gute Verbesserungsidee</strong>
+            <span>Ein Vorschlag, der Wiesel für Erstis spürbar hilfreicher machen würde.</span>
+          </div>
+          <div class="score-points">+50 XP</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hunt-map">
+      <h2>Wo kann ich Bugs finden?</h2>
+      <p class="hint" style="margin:8px 0 14px">Klickbare Testzonen für Studierende. Jede Zone steht für eine Art, den Bot herauszufordern.</p>
+
+      <svg viewBox="0 0 520 290" role="img">
+        <title>Bug-Hunt-Testzonen</title>
+        <desc>Karte mit Testzonen wie Fakten, Links, Ton, Edge Cases, UI und Prüfungsamt.</desc>
+        <path d="M93 148 C142 68 245 63 310 118 C364 162 421 161 470 102" fill="none" stroke="#b7b0a0" stroke-width="2" stroke-dasharray="7 7"/>
+        <path d="M112 216 C181 174 258 201 321 159 C381 119 407 205 457 222" fill="none" stroke="#b7b0a0" stroke-width="2" stroke-dasharray="7 7"/>
+
+        <g class="map-node active" data-tip="Fakten-Check: Stimmen Fristen, Kontakte, Räume, StudOn-/Campo-Erklärungen und Zuständigkeiten?">
+          <circle cx="88" cy="145" r="42" fill="#e8f1df" stroke="#abc394"/>
+          <text x="88" y="139" text-anchor="middle" font-size="25">✓</text>
+          <text x="88" y="166" text-anchor="middle" font-size="14">Fakten</text>
+        </g>
+
+        <g class="map-node" data-tip="Link-Check: Sind Links klickbar, korrekt, aktuell und führen sie nicht ins Nirgendwo?">
+          <circle cx="210" cy="82" r="38" fill="#e1edf3" stroke="#9cb9c8"/>
+          <text x="210" y="77" text-anchor="middle" font-size="24">↗</text>
+          <text x="210" y="101" text-anchor="middle" font-size="14">Links</text>
+        </g>
+
+        <g class="map-node" data-tip="Wiesel-Ton: Klingt der Bot hilfreich, direkt und lebendig — oder wie ein langweiliger FAQ-Beamter?">
+          <circle cx="336" cy="128" r="42" fill="#f5ead0" stroke="#d2b77b"/>
+          <text x="336" y="123" text-anchor="middle" font-size="24">☻</text>
+          <text x="336" y="150" text-anchor="middle" font-size="14">Ton</text>
+        </g>
+
+        <g class="map-node" data-tip="Edge Cases: Sehr kurze Fragen, Tippfehler, wirre Begriffe, widersprüchliche Angaben oder sehr spezifische Sonderfälle.">
+          <circle cx="450" cy="95" r="40" fill="#fff0de" stroke="#e0b282"/>
+          <text x="450" y="90" text-anchor="middle" font-size="24">?!</text>
+          <text x="450" y="116" text-anchor="middle" font-size="14">Edge Case</text>
+        </g>
+
+        <g class="map-node" data-tip="UI-Bugs: Layout kaputt, mobile Ansicht komisch, Buttons unklar, Chat hängt, Status nicht verständlich.">
+          <circle cx="183" cy="224" r="39" fill="#efe7f0" stroke="#c3aec7"/>
+          <text x="183" y="219" text-anchor="middle" font-size="24">▣</text>
+          <text x="183" y="244" text-anchor="middle" font-size="14">UI</text>
+        </g>
+
+        <g class="map-node" data-tip="Bossfight Prüfungsamt: Der härteste Bereich. Alles rund um Anmeldung, Rücktritt, Fristen, Krankheit, Versuchszählung besonders kritisch prüfen.">
+          <rect x="365" y="195" width="118" height="58" rx="28" fill="#fff0de" stroke="#e0b282"/>
+          <text x="424" y="218" text-anchor="middle" font-size="22">♛</text>
+          <text x="424" y="240" text-anchor="middle" font-size="14">Bossfight</text>
+        </g>
+      </svg>
+
+      <div class="map-tip" id="mapTip">Fakten-Check: Stimmen Fristen, Kontakte, Räume, StudOn-/Campo-Erklärungen und Zuständigkeiten?</div>
+    </div>
+  </section>
+
+  <section class="section dashboard" aria-label="Wettbewerbs-Simulation">
+    <div class="panel">
+      <h2>Was passiert, wenn mehr Leute mitmachen?</h2>
+      <p class="hint" style="margin:8px 0 20px">Kleine Simulation für die Vorstellung des Konzepts. Keine echten Daten, nur ein Gefühl für Dynamik.</p>
+
+      <div class="controls">
+        <div class="control">
+          <label for="students">Teilnehmende Studierende <span id="studentsOut">80</span></label>
+          <input id="students" type="range" min="10" max="400" step="10" value="80">
+        </div>
+        <div class="control">
+          <label for="activity">ø Einreichungen pro Person <span id="activityOut">3</span></label>
+          <input id="activity" type="range" min="1" max="12" step="1" value="3">
+        </div>
+        <div class="control">
+          <label for="quality">Anteil wirklich nützlicher Funde <span id="qualityOut">35%</span></label>
+          <input id="quality" type="range" min="5" max="80" step="5" value="35">
+        </div>
+      </div>
+
+      <div class="sim-stats">
+        <div class="sim-stat">
+          <strong id="submissions">240</strong>
+          <span>Einreichungen</span>
+        </div>
+        <div class="sim-stat">
+          <strong id="usefulFinds">84</strong>
+          <span>nützliche Funde</span>
+        </div>
+        <div class="sim-stat">
+          <strong id="topScore">1.260</strong>
+          <span>Top-Team XP</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Warum das für Studierende funktioniert</h2>
+      <svg viewBox="0 0 520 260" role="img">
+        <title>Motivationsmodell</title>
+        <desc>Modell: Neugier, Wettbewerb, Feedback und Preis führen zu Bot-Nutzung.</desc>
+        <line x1="90" y1="130" x2="430" y2="130" stroke="var(--line)" stroke-width="1"/>
+        <path d="M130 130 C160 76 212 76 242 130" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <path d="M278 130 C306 184 360 184 390 130" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <g>
+          <circle cx="90" cy="130" r="42" fill="#e8f1df" stroke="#abc394"/>
+          <text x="90" y="124" text-anchor="middle" font-size="24">?</text>
+          <text x="90" y="151" text-anchor="middle" font-size="14">Neugier</text>
+        </g>
+        <g>
+          <circle cx="220" cy="130" r="42" fill="#fff0de" stroke="#e0b282"/>
+          <text x="220" y="124" text-anchor="middle" font-size="24">♛</text>
+          <text x="220" y="151" text-anchor="middle" font-size="14">Wettbewerb</text>
+        </g>
+        <g>
+          <circle cx="350" cy="130" r="42" fill="#e1edf3" stroke="#9cb9c8"/>
+          <text x="350" y="124" text-anchor="middle" font-size="24">↺</text>
+          <text x="350" y="151" text-anchor="middle" font-size="14">Feedback</text>
+        </g>
+        <g>
+          <circle cx="430" cy="130" r="42" fill="#f5ead0" stroke="#d2b77b"/>
+          <text x="430" y="124" text-anchor="middle" font-size="24">★</text>
+          <text x="430" y="151" text-anchor="middle" font-size="14">Preis</text>
+        </g>
+        <text x="260" y="226" text-anchor="middle" font-size="14" fill="var(--muted)">Aus „ich soll einen Bot testen“ wird „wir knacken gemeinsam das Wiesel“.</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="einreichen-title">
+    <div class="section-head">
+      <h2 id="einreichen-title">Fund einreichen</h2>
+      <p class="hint">So könnte die Logik aussehen, bevor später ein echtes Formular oder In-App-Meldebutton gebaut wird.</p>
+    </div>
+
+    <div class="submit-grid">
+      <div class="submit-box">
+        <h3>1. Was ist passiert?</h3>
+        <p>Kurz beschreiben: falsche Antwort, komischer Ton, kaputter Link, UI-Fehler oder Verbesserungsidee.</p>
+        <div class="field">Beispiel: „Wiesel verwechselt Prüfungsanmeldung mit Kursanmeldung.“</div>
+      </div>
+      <div class="submit-box">
+        <h3>2. Wie kann man es wiederholen?</h3>
+        <p>Am besten den Prompt oder eine kurze Klickfolge angeben. Reproduzierbare Funde zählen stärker.</p>
+        <div class="field">Prompt / Screenshot / Link / Gerät</div>
+      </div>
+      <div class="submit-box">
+        <h3>3. Teamname eintragen</h3>
+        <p>Der Fund wird geprüft, bekommt Punkte und landet anschließend auf dem Leaderboard.</p>
+        <div class="field">Teamname: „StudOn Survivors“</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section prize panel">
+    <div class="prize-copy">
+      <p class="eyebrow">Finale</p>
+      <h2>Am Ende gewinnt nicht nur Platz 1.</h2>
+      <p>Das Treppchen bekommt einen Preis — aber der eigentliche Gewinn ist ein besserer Bot für alle Erstsemester. Jeder gute Fund hilft, Wiesel vor dem echten Betrieb robuster, verständlicher und nützlicher zu machen.</p>
+      <div class="prize-note">🏆 Preis noch offen · z.B. Goodies, Mensagutschein oder Wiesel-Ehrenstatus</div>
+    </div>
+
+    <svg viewBox="0 0 360 300" role="img">
+      <title>Treppchen mit Wiesel</title>
+      <desc>Ein stilisiertes Siegerpodest für den Bug Hunt.</desc>
+      <rect x="128" y="126" width="92" height="126" fill="#f5ead0" stroke="#d2b77b"/>
+      <rect x="44" y="166" width="84" height="86" fill="#e1edf3" stroke="#9cb9c8"/>
+      <rect x="220" y="188" width="90" height="64" fill="#fff0de" stroke="#e0b282"/>
+      <text x="174" y="180" text-anchor="middle" font-size="48" fill="var(--gold)">1</text>
+      <text x="86" y="210" text-anchor="middle" font-size="38" fill="var(--silver)">2</text>
+      <text x="265" y="226" text-anchor="middle" font-size="34" fill="var(--bronze)">3</text>
+      <path d="M172 95 C193 83 198 52 181 37 C165 22 136 34 139 61 C141 82 153 95 172 95Z" fill="#d5b07b" stroke="#66533e" stroke-width="2"/>
+      <circle cx="166" cy="56" r="4" fill="#1a1814"/>
+      <path d="M151 66 C160 71 170 70 178 63" fill="none" stroke="#66533e" stroke-width="2"/>
+      <path d="M159 95 C133 105 124 142 134 174 C145 207 178 210 199 184 C216 163 211 120 188 101" fill="#c59a67" stroke="#66533e" stroke-width="2"/>
+      <path d="M193 122 L229 101" stroke="#66533e" stroke-width="6" stroke-linecap="round"/>
+      <path d="M126 132 L93 107" stroke="#66533e" stroke-width="6" stroke-linecap="round"/>
+      <text x="180" y="280" text-anchor="middle" font-size="18" fill="var(--muted)">Leaderboard Finale</text>
+    </svg>
+  </section>
+
+  <div class="footer-note">
+    <p><strong>Studentische Perspektive:</strong><br>Ich teste nicht für irgendeine Evaluation — ich spiele mit, sammle Punkte und helfe dabei, den Bot besser zu machen.</p>
+    <div class="signature">happy bug hunting!</div>
+  </div>
+</main>
+
+<script>
+  // Demo countdown: starts at 7 days and counts down locally from page load.
+  const totalSeconds = 7 * 24 * 60 * 60;
+  const startedAt = Date.now();
+
+  function updateCountdown() {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    const left = Math.max(0, totalSeconds - elapsed);
+
+    const days = Math.floor(left / 86400);
+    const hours = Math.floor((left % 86400) / 3600);
+    const minutes = Math.floor((left % 3600) / 60);
+    const seconds = left % 60;
+
+    document.getElementById("days").textContent = String(days).padStart(2, "0");
+    document.getElementById("hours").textContent = String(hours).padStart(2, "0");
+    document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
+    document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  const mapTip = document.getElementById("mapTip");
+  document.querySelectorAll(".map-node").forEach(node => {
+    node.addEventListener("click", () => {
+      document.querySelectorAll(".map-node").forEach(n => n.classList.remove("active"));
+      node.classList.add("active");
+      mapTip.textContent = node.dataset.tip;
+    });
+  });
+
+  const students = document.getElementById("students");
+  const activity = document.getElementById("activity");
+  const quality = document.getElementById("quality");
+
+  function updateSimulation() {
+    const s = Number(students.value);
+    const a = Number(activity.value);
+    const q = Number(quality.value);
+    const submissions = s * a;
+    const useful = Math.round(submissions * q / 100);
+    const top = Math.round((useful * 15 + s * 3) / 10) * 10;
+
+    document.getElementById("studentsOut").textContent = s.toLocaleString("de-DE");
+    document.getElementById("activityOut").textContent = a.toLocaleString("de-DE");
+    document.getElementById("qualityOut").textContent = q + "%";
+    document.getElementById("submissions").textContent = submissions.toLocaleString("de-DE");
+    document.getElementById("usefulFinds").textContent = useful.toLocaleString("de-DE");
+    document.getElementById("topScore").textContent = top.toLocaleString("de-DE");
+  }
+
+  [students, activity, quality].forEach(input => input.addEventListener("input", updateSimulation));
+  updateSimulation();
+</script>
+</body>
+</html>
