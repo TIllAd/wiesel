@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Nutzungszeiten</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+  :root { --bg:#020617; --panel:#0f172a; --line:#1e293b; --text:#e5e7eb; --muted:#94a3b8; --accent:#e3b341; --accent-soft:rgba(227,179,65,.14); --blue:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  .page { min-height:100vh; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .toolbar { background:var(--panel); border-bottom:1px solid var(--line); padding:20px 24px; }
+  h1 { margin:0 0 6px; font-size:24px; letter-spacing:-0.04em; }
+  .subline { margin:0 0 18px; color:var(--muted); font-size:13px; line-height:1.5; }
+  .controls { display:flex; flex-wrap:wrap; align-items:end; gap:14px; }
+  .quick { display:flex; flex-wrap:wrap; gap:8px; }
+  button { border:1px solid var(--line); border-radius:10px; background:#111827; color:var(--text); font:inherit; font-size:13px; padding:8px 10px; cursor:pointer; }
+  button:hover { border-color:#334155; background:#111c31; }
+  button.active { background:var(--accent-soft); border-color:var(--accent); color:#fde68a; }
+  .range-form { display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
+  label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
+  input[type="date"] { color-scheme:dark; border:1px solid var(--line); border-radius:10px; background:#020617; color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
+  .status { color:var(--muted); font-size:13px; margin:16px 0 0; }
+  .content { min-width:0; min-height:0; padding:24px; overflow:auto; }
+  .chart-card { height:calc(100vh - 210px); min-height:520px; background:#080d19; border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px rgba(0,0,0,.22); }
+  .chart-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:12px; }
+  .chart-head h2 { margin:0 0 4px; font-size:20px; letter-spacing:-0.03em; }
+  .chart-head p { margin:0; color:var(--muted); font-size:13px; }
+  .chart-wrap { position:relative; height:calc(100% - 58px); min-height:420px; }
+  .is-hidden { display:none !important; }
+  @media (max-width:760px) {
+    .toolbar, .content { padding:16px; }
+    .chart-card { height:calc(100vh - 260px); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="toolbar">
+    <h1>Nutzungszeiten</h1>
+    <p class="subline">Nachrichten pro Stunde aus <code>chat_messages.created_at</code>. Pan/Zoom ist aktiv; Doppelklick setzt den Zoom zurück.</p>
+    <div class="controls">
+      <div class="quick" aria-label="Schnellauswahl" id="quick-actions">
+        <button type="button" data-quick="24h">24h</button>
+        <button type="button" data-quick="7d">7 Tage</button>
+        <button type="button" data-quick="30d">30 Tage</button>
+        <button type="button" data-quick="custom">Eigener Zeitraum</button>
+      </div>
+      <form class="range-form is-hidden" id="range-form">
+        <label>Start <input type="date" id="start-date" /></label>
+        <label>Ende <input type="date" id="end-date" /></label>
+        <button type="submit">Zeitraum laden</button>
+      </form>
+    </div>
+    <p class="status" id="status">Lade Nutzung…</p>
+  </header>
+
+  <main class="content">
+    <section class="chart-card">
+      <div class="chart-head">
+        <div>
+          <h2 id="chart-title">Nachrichten pro Stunde</h2>
+          <p id="chart-meta">–</p>
+        </div>
+        <button type="button" id="reset-zoom">Zoom zurücksetzen</button>
+      </div>
+      <div class="chart-wrap"><canvas id="usage-chart"></canvas></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const ACCENT = '#e3b341';
+  const status = document.getElementById('status');
+  const title = document.getElementById('chart-title');
+  const meta = document.getElementById('chart-meta');
+  const form = document.getElementById('range-form');
+  const startInput = document.getElementById('start-date');
+  const endInput = document.getElementById('end-date');
+  const quickButtons = Array.from(document.querySelectorAll('[data-quick]'));
+  const pad = (value) => String(value).padStart(2, '0');
+  const toDateString = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const labelForDate = (dateString) => {
+    const [year, month, day] = String(dateString || '').split('-');
+    return year && month && day ? `${day}.${month}.${year}` : String(dateString || 'unbekannt');
+  };
+
+  let chart;
+
+  function setQuickActive(kind) {
+    quickButtons.forEach((button) => button.classList.toggle('active', button.dataset.quick === kind));
+  }
+
+  function rangeForQuick(kind) {
+    const now = new Date();
+    const end = new Date(now);
+    const start = new Date(now);
+    if (kind === '24h') start.setDate(now.getDate() - 1);
+    if (kind === '7d') start.setDate(now.getDate() - 6);
+    if (kind === '30d') start.setDate(now.getDate() - 29);
+    return [toDateString(start), toDateString(end), kind === '24h' ? now.getTime() - 24 * 60 * 60 * 1000 : null];
+  }
+
+  async function fetchUsage(start, end) {
+    const url = `/api/usage/timeseries?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&granularity=hour&t=${Date.now()}`;
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  function formatHour(iso) {
+    const date = new Date(iso);
+    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${pad(date.getHours())}:00`;
+  }
+
+  function renderChart(data, start, end, lowerBoundMs = null) {
+    let points = Array.isArray(data.points) ? data.points : [];
+    if (lowerBoundMs) {
+      points = points.filter((point) => new Date(point.timestamp).getTime() >= lowerBoundMs);
+    }
+    const labels = points.map((point) => formatHour(point.timestamp));
+    const counts = points.map((point) => Number(point.count || 0));
+    const total = counts.reduce((sum, value) => sum + value, 0);
+
+    title.textContent = 'Nachrichten pro Stunde';
+    meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · ${total} Nachricht(en) · ${points.length} Stunden-Buckets`;
+    status.textContent = `${total} Nachricht(en) geladen.`;
+
+    const config = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Nachrichten pro Stunde',
+          data: counts,
+          borderColor: ACCENT,
+          backgroundColor: 'rgba(227,179,65,.16)',
+          pointBackgroundColor: ACCENT,
+          pointBorderColor: '#020617',
+          pointRadius: 2.5,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.25,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        scales: {
+          x: { ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(148,163,184,.12)' } },
+          y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(148,163,184,.12)' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#e5e7eb' } },
+          tooltip: { backgroundColor: '#0f172a', borderColor: ACCENT, borderWidth: 1 },
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true, borderColor: ACCENT, backgroundColor: 'rgba(227,179,65,.12)' }, mode: 'x' }
+          }
+        }
+      }
+    };
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById('usage-chart'), config);
+  }
+
+  async function loadRange(start, end, quickKind = '', lowerBoundMs = null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      status.textContent = 'Ungültiges Datum. Erwartet wird YYYY-MM-DD.';
+      return;
+    }
+    if (end < start) {
+      status.textContent = 'Ende muss nach Start liegen. Zeitpfeil, schon mal gehört.';
+      return;
+    }
+    startInput.value = start;
+    endInput.value = end;
+    setQuickActive(quickKind);
+    status.textContent = `Lade ${start} bis ${end}…`;
+    const data = await fetchUsage(start, end);
+    renderChart(data, start, end, lowerBoundMs);
+    history.replaceState(null, '', quickKind ? `#${quickKind}` : `#${start}..${end}`);
+  }
+
+  document.getElementById('quick-actions').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-quick]');
+    if (!button) return;
+    const kind = button.dataset.quick;
+    if (kind === 'custom') {
+      form.classList.toggle('is-hidden');
+      setQuickActive('custom');
+      return;
+    }
+    form.classList.add('is-hidden');
+    const [start, end, lowerBoundMs] = rangeForQuick(kind);
+    loadRange(start, end, kind, lowerBoundMs).catch((error) => { status.textContent = `Nutzungsdaten konnten nicht geladen werden: ${error.message}`; });
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    loadRange(startInput.value, endInput.value, 'custom').catch((error) => { status.textContent = `Nutzungsdaten konnten nicht geladen werden: ${error.message}`; });
+  });
+
+  document.getElementById('reset-zoom').addEventListener('click', () => chart?.resetZoom());
+  document.getElementById('usage-chart').addEventListener('dblclick', () => chart?.resetZoom());
+
+  const today = new Date();
+  startInput.value = toDateString(today);
+  endInput.value = toDateString(today);
+  const hash = location.hash.replace(/^#/, '');
+  if (['24h', '7d', '30d'].includes(hash)) {
+    const [start, end, lowerBoundMs] = rangeForQuick(hash);
+    loadRange(start, end, hash, lowerBoundMs).catch((error) => { status.textContent = `Nutzungsdaten konnten nicht geladen werden: ${error.message}`; });
+  } else {
+    const [start, end, lowerBoundMs] = rangeForQuick('24h');
+    loadRange(start, end, '24h', lowerBoundMs).catch((error) => { status.textContent = `Nutzungsdaten konnten nicht geladen werden: ${error.message}`; });
+  }
+})();
+</script>
+</body>
+</html>
