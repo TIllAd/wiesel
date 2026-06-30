@@ -557,7 +557,10 @@ if _static_dir.exists():
 # ============================================================================
 
 @app.get("/")
-async def root():
+async def docs_landing_page():
+    docs_index = _static_dir / "docs" / "index.html"
+    if docs_index.exists():
+        return FileResponse(str(docs_index))
     return RedirectResponse(url="/chat?debug=true")
 
 
@@ -690,19 +693,34 @@ async def wiki_endpoint():
         raise HTTPException(status_code=500)
 
 
+DEFAULT_ANALYTICS_DIR = Path.home() / "hermes" / "analytics"
+
+
+def analytics_dirs() -> list[Path]:
+    """Daily analytics exports live in ~/hermes/analytics; an env override may add another source."""
+    dirs: list[Path] = [DEFAULT_ANALYTICS_DIR]
+    configured = os.getenv("WIESEL_ANALYTICS_DIR")
+    if configured:
+        configured_dir = Path(configured)
+        if configured_dir not in dirs:
+            dirs.append(configured_dir)
+    return dirs
+
+
 @app.get("/api/analytics/month-files")
 async def analytics_month_files(month: Optional[str] = None):
-    analytics_dir = Path(os.getenv("WIESEL_ANALYTICS_DIR", r"C:\Users\tillt\hermes\analytics"))
     if month is None:
         month = datetime.now().strftime("%Y-%m")
     elif not re.fullmatch(r"\d{4}-\d{2}", month):
         raise HTTPException(status_code=400, detail="Invalid month format; expected YYYY-MM")
 
     prefix = f"analytics_{month}-"
-    files = sorted(
-        path.name for path in analytics_dir.glob(f"{prefix}*.json")
+    files = sorted({
+        path.name
+        for analytics_dir in analytics_dirs()
+        for path in analytics_dir.glob(f"{prefix}*.json")
         if path.is_file() and path.name != "analytics_latest.json"
-    )
+    })
     return {"month": month, "files": files}
 
 
@@ -711,9 +729,8 @@ async def analytics_file(filename: str):
     if not re.fullmatch(r"analytics_\d{4}-\d{2}-\d{2}\.json", filename):
         raise HTTPException(status_code=400, detail="Invalid analytics filename")
 
-    analytics_dir = Path(os.getenv("WIESEL_ANALYTICS_DIR", r"C:\Users\tillt\hermes\analytics"))
-    path = analytics_dir / filename
-    if not path.is_file():
+    path = next((analytics_dir / filename for analytics_dir in analytics_dirs() if (analytics_dir / filename).is_file()), None)
+    if path is None:
         raise HTTPException(status_code=404, detail="Analytics file not found")
 
     try:
@@ -833,6 +850,11 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Wiesel Backend shutting down...")
+
+
+# Broad docs mount: keep this after every API/page route, or it will eat the app.
+if (_static_dir / "docs").exists():
+    app.mount("/", StaticFiles(directory=str(_static_dir / "docs"), html=True), name="docs")
 
 
 if __name__ == "__main__":
