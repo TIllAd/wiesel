@@ -52,9 +52,7 @@
 
     <section class="section" aria-labelledby="public-docs">
       <h2 class="section-title" id="public-docs">Öffentlich</h2>
-      <ul class="doc-list">
-        <li><a class="doc-link external" href="/#public/nutzungsverhalten.html">Nutzungsverhalten</a></li>
-      </ul>
+      <ul class="doc-list" id="public-doc-list"></ul>
       <p class="placeholder">Weitere öffentliche Docs folgen.</p>
     </section>
 
@@ -108,8 +106,15 @@
   </main>
 </div>
 
+<script src="/docs-config.js"></script>
 <script>
 (() => {
+  const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
+  const publicList = document.getElementById('public-doc-list');
+  publicList.innerHTML = docsConfig.publicDocs.map((doc) => (
+    `<li><a class="doc-link external" href="/#${doc.path}">${doc.title}</a></li>`
+  )).join('');
+
   const frame = document.getElementById('doc-frame');
   const emptyState = document.getElementById('empty-state');
   const links = Array.from(document.querySelectorAll('[data-doc]'));
