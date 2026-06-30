@@ -229,7 +229,8 @@ def email_subject(r):
 def email_summary(r):
     usage = r["llm_usage"]
     icon, text, _ = ampel(len(r["flagged_sessions"]))
-    report_url = f"https://docs.chatbot-wiso.de/internal/reports.html#{r['date']}"
+    github_report_url = f"https://github.com/TIllAd/wiesel/blob/main/reports/{r['date']}.md"
+    flagged_report_url = f"https://docs.chatbot-wiso.de/internal/reports.html#{r['date']}"
     docs_url = "https://docs.chatbot-wiso.de/internal/"
 
     return (
@@ -237,8 +238,9 @@ def email_summary(r):
         f"  Sessions      {r['total_sessions']}\n"
         f"  Nachrichten   {r['total_messages']}  (Ø {r['avg_session_len']}/Session)\n"
         f"  Kosten heute  {usage['estimated_cost_eur']:.4f} €\n\n"
-        f"📊 Tagesbericht:  {report_url}\n"
-        f"🏠 Alle Docs:     {docs_url}\n"
+        f"📊 Vollständiger Tagesreport (GitHub):  {github_report_url}\n"
+        f"🚩 Auffälligkeiten im Browser:          {flagged_report_url}\n"
+        f"🏠 Alle internen Docs:                   {docs_url}\n"
     )
 
 
