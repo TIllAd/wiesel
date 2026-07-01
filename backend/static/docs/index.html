@@ -11,28 +11,29 @@
   <aside class="sidebar" aria-label="Dokumentnavigation">
     <p class="brand">Wiesel Docs</p>
 
-    <section class="section" aria-label="Weitere Docs">
+    <section class="section" aria-labelledby="public-docs">
+      <h2 class="section-title" id="public-docs">Öffentlich</h2>
       <ul class="doc-list" id="public-doc-list"></ul>
     </section>
 
-    <section class="section section-internal" aria-label="Interner Bereich">
-      <a class="doc-link internal-entry" href="/internal/">Zum internen Bereich</a>
+    <section class="section" aria-labelledby="internal-docs">
+      <h2 class="section-title" id="internal-docs">Intern</h2>
+      <ul class="doc-list" id="internal-doc-list"></ul>
     </section>
-
   </aside>
 
   <main class="content">
     <div class="empty-state" id="empty-state">
       <div class="empty-card">
         <h1>Wähle eine Doc-Seite aus der Liste</h1>
-        <p>Öffentliche Dokumente werden hier im iframe geladen.</p>
+        <p>Öffentliche Dokumente werden hier im geschützten Bereich geladen.</p>
       </div>
     </div>
     <iframe class="is-hidden" id="doc-frame" title="Wiesel Dokument"></iframe>
   </main>
 </div>
 
-<script src="/docs-config.js?v=public-20260701"></script>
+<script src="/docs-config.js?v=docs-20260701-nav3"></script>
 <script>
 (() => {
   if (window.top !== window.self) {
@@ -40,24 +41,43 @@
     return;
   }
 
-  const docsConfig = window.WIESEL_DOCS || { publicDocs: [] };
+  const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
+  const publicDocs = Array.isArray(docsConfig.publicDocs) ? docsConfig.publicDocs : [];
+  const internalDocs = Array.isArray(docsConfig.internalDocs) ? docsConfig.internalDocs : [];
   const frame = document.getElementById('doc-frame');
   const emptyState = document.getElementById('empty-state');
   const publicList = document.getElementById('public-doc-list');
+  const internalList = document.getElementById('internal-doc-list');
 
-
-  function renderList(target, items, renderLink) {
-    target.innerHTML = items.map(renderLink).join('');
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;',
+    }[char]));
   }
 
-  renderList(publicList, docsConfig.publicDocs, (doc) => (
-    `<li><a class="doc-link" href="#${doc.path}" data-doc="${doc.path}">${doc.title}</a></li>`
-  ));
+  function normalizePath(value) {
+    return String(value || '').replace(/^\/+/, '');
+  }
+
+  publicList.innerHTML = publicDocs.map((doc) => {
+    const path = normalizePath(doc.path);
+    return `<li><a class="doc-link" href="#${escapeHtml(path)}" data-doc="${escapeHtml(path)}">${escapeHtml(doc.title)}</a></li>`;
+  }).join('');
+
+  internalList.innerHTML = internalDocs.map((doc) => {
+    const path = normalizePath(doc.path);
+    return `<li><a class="doc-link" href="/internal/#${escapeHtml(path)}">${escapeHtml(doc.title)}</a></li>`;
+  }).join('');
+
   const links = Array.from(document.querySelectorAll('[data-doc]'));
   const docs = new Set(links.map((link) => link.dataset.doc));
 
   function normalizeHash() {
-    const raw = decodeURIComponent(location.hash.replace(/^#/, '')).replace(/^\/+/, '');
+    const raw = normalizePath(decodeURIComponent(location.hash.replace(/^#/, '')));
     return docs.has(raw) ? raw : '';
   }
 

@@ -11,7 +11,8 @@
   <aside class="sidebar" aria-label="Dokumentnavigation">
     <a class="brand" href="./" data-overview>Wiesel Docs</a>
 
-    <section class="section" aria-label="Weitere Docs">
+    <section class="section" aria-labelledby="public-docs">
+      <h2 class="section-title" id="public-docs">Öffentlich</h2>
       <ul class="doc-list" id="public-doc-list"></ul>
     </section>
 
@@ -34,13 +35,12 @@
   </main>
 </div>
 
-<script src="/docs-config.js?v=public-20260701"></script>
-<script src="./docs-internal-config.js?v=internal-20260701"></script>
+<script src="/docs-config.js?v=docs-20260701-nav3"></script>
 <script>
 (() => {
-  const docsConfig = window.WIESEL_DOCS || { publicDocs: [] };
+  const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
   const publicDocs = Array.isArray(docsConfig.publicDocs) ? docsConfig.publicDocs : [];
-  const internalDocs = Array.isArray(window.WIESEL_INTERNAL_DOCS) ? window.WIESEL_INTERNAL_DOCS : [];
+  const internalDocs = Array.isArray(docsConfig.internalDocs) ? docsConfig.internalDocs : [];
 
   const publicList = document.getElementById('public-doc-list');
   const internalList = document.getElementById('internal-doc-list');
