@@ -21,7 +21,7 @@
   </div>
 
   <div class="grid2">
-    <div class="card"><div class="k">Gesamtkosten (Berichtszeitraum)</div><div class="v" id="c-total-cost">–</div><div class="s" id="c-total-sub">–</div></div>
+    <div class="card"><div class="k">Gesamtkosten gesamt</div><div class="v" id="c-total-cost">–</div><div class="s" id="c-total-sub">–</div></div>
     <div class="card"><div class="k">Ø Kosten pro Anfrage</div><div class="v" id="c-avg-cost">–</div><div class="s">aktuell gemessen</div></div>
   </div>
 
@@ -99,6 +99,8 @@ let DATA = null;
 let LATEST_DATA = null;
 let MONTHLY_DATA = [];
 let PREVIOUS_MONTHLY_DATA = [];
+let ALL_DATA = [];
+let TOTAL_DATA = null;
 let chart = null;
 const xs = Array.from({length: 100}, (_, i) => i + 1);
 
@@ -121,12 +123,20 @@ function fmtDateShort(isoDate) {
   const [y, m, d] = isoDate.split('-').map(Number);
   return `${d}.${m}.`;
 }
+function fmtDateLong(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return `${d}. ${MONTH_NAMES_DE[m - 1]} ${y}`;
+}
 function fmtDateRange(startIso, endIso) {
   if (!startIso || !endIso) return '';
   const [sy, sm, sd] = startIso.split('-').map(Number);
   const [ey, em, ed] = endIso.split('-').map(Number);
+  if (startIso === endIso) {
+    return fmtDateLong(startIso);
+  }
   if (sy === ey && sm === em) {
-    return `${sd}. – ${ed}. ${MONTH_NAMES_DE[em - 1]} ${ey}`;
+    return `${sd}.–${ed}. ${MONTH_NAMES_DE[em - 1]} ${ey}`;
   }
   if (sy === ey) {
     return `${sd}. ${MONTH_NAMES_DE[sm - 1]} – ${ed}. ${MONTH_NAMES_DE[em - 1]} ${ey}`;
@@ -230,7 +240,7 @@ function aggregateAnalytics(days, fallback) {
   return {
     ...fallback,
     exported_at: fallback?.exported_at || new Date().toISOString(),
-    periode: `Monatsstand ${first?.slice(0, 7) || ''}: ${first} bis ${last}`,
+    periode: `${first?.slice(0, 7) !== last?.slice(0, 7) ? 'Gesamtstand' : 'Monatsstand ' + (first?.slice(0, 7) || '')}: ${first} bis ${last}`,
     berichtszeitraum_start: first,
     berichtszeitraum_ende: last,
     statistik: {
@@ -454,19 +464,25 @@ function populate() {
     Math.max(usageValue('cache_write_requests'), 1)
   )));
 
-  const periodeText = DATA.berichtszeitraum_start && DATA.berichtszeitraum_ende
+  const totalData = TOTAL_DATA || DATA;
+  const totalPeriodText = totalData.berichtszeitraum_start && totalData.berichtszeitraum_ende
+    ? fmtDateRange(totalData.berichtszeitraum_start, totalData.berichtszeitraum_ende)
+    : totalData.periode;
+  const monthPeriodText = DATA.berichtszeitraum_start && DATA.berichtszeitraum_ende
     ? fmtDateRange(DATA.berichtszeitraum_start, DATA.berichtszeitraum_ende)
     : DATA.periode;
   document.getElementById('periode-label').textContent =
-    `Berichtszeitraum: ${periodeText} · Exportiert: ${DATA.exported_at.slice(0,10)}`;
+    `Gesamtzeitraum: ${totalPeriodText} · Aktueller Monat: ${monthPeriodText} · Exportiert: ${fmtDateLong((LATEST_DATA || DATA).exported_at.slice(0, 10))}`;
 
-  document.getElementById('c-total-cost').textContent = fmt(km.gemessen_eur);
-  const reqs = usageValue('requests_erfolgreich', 'requests_successful');
-  const start = DATA.berichtszeitraum_start;
-  const ende = DATA.berichtszeitraum_ende;
+  const totalCost = usageValueFrom(totalData, 'kosten_eur_geschaetzt', 'estimated_cost_eur');
+  document.getElementById('c-total-cost').textContent = fmt(totalCost);
+  const reqs = usageValueFrom(totalData, 'requests_erfolgreich', 'requests_successful');
+  const start = totalData.berichtszeitraum_start;
+  const ende = totalData.berichtszeitraum_ende;
   const tageGesamt = start && ende ? Math.round((new Date(ende) - new Date(start)) / 86400000) + 1 : null;
   const zeitraumText = start && ende ? `${fmtDateRange(start, ende)} (${tageGesamt} Tag${tageGesamt === 1 ? '' : 'e'}) · ` : '';
-  document.getElementById('c-total-sub').textContent = `${zeitraumText}${DATA.statistik.sessions_gesamt} Sitzungen, ${reqs} Anfragen`;
+  const totalStats = totalData.statistik || {};
+  document.getElementById('c-total-sub').textContent = `${zeitraumText}${totalStats.sessions_gesamt || 0} Sitzungen, ${reqs} Anfragen`;
   document.getElementById('c-avg-cost').textContent = fmtCt(km.schnitt_ct_pro_request);
 
   const todayData = LATEST_DATA || DATA;
@@ -580,13 +596,29 @@ async function loadMonthlyData(latest, month = null, fallbackToLatest = true) {
   return days.length ? days : (fallbackToLatest ? [latest] : []);
 }
 
+async function loadAllData(latest) {
+  try {
+    const index = await fetchJson('/api/analytics/files');
+    const names = Array.isArray(index.files) ? index.files : [];
+    const results = await Promise.allSettled(
+      names.map(name => fetchJson('/api/analytics/file/' + encodeURIComponent(name)))
+    );
+    const days = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    return days.length ? days : [latest];
+  } catch {
+    return [latest];
+  }
+}
+
 async function loadData() {
   try {
     const latest = await fetchJson('analytics_latest.json');
     LATEST_DATA = latest;
     MONTHLY_DATA = await loadMonthlyData(latest);
     PREVIOUS_MONTHLY_DATA = await loadMonthlyData(latest, previousMonthKey(), false);
+    ALL_DATA = await loadAllData(latest);
     DATA = aggregateAnalytics(MONTHLY_DATA, latest);
+    TOTAL_DATA = aggregateAnalytics(ALL_DATA, latest);
     populate();
   } catch {
     document.getElementById('chart-loading').textContent =

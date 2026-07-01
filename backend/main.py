@@ -767,6 +767,20 @@ def analytics_dirs() -> list[Path]:
     return dirs
 
 
+def analytics_export_files(prefix: str = "analytics_") -> list[str]:
+    return sorted({
+        path.name
+        for analytics_dir in analytics_dirs()
+        for path in analytics_dir.glob(f"{prefix}*.json")
+        if path.is_file() and path.name != "analytics_latest.json"
+    })
+
+
+@app.get("/api/analytics/files")
+async def analytics_files():
+    return {"files": analytics_export_files()}
+
+
 @app.get("/api/analytics/month-files")
 async def analytics_month_files(month: Optional[str] = None):
     if month is None:
@@ -775,12 +789,7 @@ async def analytics_month_files(month: Optional[str] = None):
         raise HTTPException(status_code=400, detail="Invalid month format; expected YYYY-MM")
 
     prefix = f"analytics_{month}-"
-    files = sorted({
-        path.name
-        for analytics_dir in analytics_dirs()
-        for path in analytics_dir.glob(f"{prefix}*.json")
-        if path.is_file() and path.name != "analytics_latest.json"
-    })
+    files = analytics_export_files(prefix)
     return {"month": month, "files": files}
 
 
