@@ -35,7 +35,7 @@
   </main>
 </div>
 
-<script src="/docs-config.js?v=docs-20260701-arch6"></script>
+<script src="/docs-config.js?v=docs-20260701-navfix1"></script>
 <script>
 (() => {
   const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
@@ -63,14 +63,11 @@
     return String(value || '').replace(/^\/+/, '');
   }
 
-  function publicHref(doc) {
-    return `/#${normalizePath(doc.path)}`;
-  }
-
   function renderPublicDocs() {
-    publicList.innerHTML = publicDocs.map((doc) => (
-      `<li><a class="doc-link" href="${escapeHtml(publicHref(doc))}">${escapeHtml(doc.title)}</a></li>`
-    )).join('');
+    publicList.innerHTML = publicDocs.map((doc) => {
+      const path = normalizePath(doc.path);
+      return `<li><a class="doc-link" href="/#${escapeHtml(path)}">${escapeHtml(doc.title)}</a></li>`;
+    }).join('');
   }
 
   function renderInternalDocs() {
@@ -126,6 +123,11 @@
   }
 
   function route() {
+    const raw = normalizePath(decodeURIComponent(location.hash.replace(/^#/, '')));
+    if (raw.startsWith('public/')) {
+      window.location.href = '/#' + raw;
+      return;
+    }
     showDoc(normalizeHash());
   }
 
