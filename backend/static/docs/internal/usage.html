@@ -7,13 +7,13 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-<link rel="stylesheet" href="../docs-theme.css" />
+<link rel="stylesheet" href="../docs-theme.css?v=docs-20260701-usage1" />
 </head>
 <body>
 <div class="page">
   <header class="toolbar">
     <h1>Nutzungszeiten</h1>
-    <p class="subline">Nutzer-Nachrichten pro Stunde aus <code>chat_messages.created_at</code>, angezeigt in Europe/Berlin. Pan/Zoom ist aktiv; Doppelklick setzt den Zoom zurück.</p>
+    <p class="subline">Wann fragen wie viele anonyme Sessions? Linie = Nutzer-Anfragen, Balken = aktive Sessions pro Stunde. Angezeigt in Europe/Berlin; Pan/Zoom ist aktiv.</p>
     <div class="controls">
       <div class="quick" aria-label="Schnellauswahl" id="quick-actions">
         <button type="button" data-quick="24h">24h</button>
@@ -40,7 +40,7 @@
     <section class="chart-card">
       <div class="chart-head">
         <div>
-          <h2 id="chart-title">Nachrichten pro Stunde</h2>
+          <h2 id="chart-title">Wann wird gefragt?</h2>
           <p id="chart-meta">–</p>
         </div>
         <div class="chart-actions">
@@ -49,6 +49,7 @@
         </div>
       </div>
       <div class="chart-wrap"><canvas id="usage-chart"></canvas></div>
+      <div class="slot-summary" id="slot-summary" aria-label="Stärkste Zeitfenster"></div>
     </section>
     <section class="detail-panel" aria-label="Weitere Nutzungskennzahlen">
       <h2>Weitere Kennzahlen</h2>
@@ -91,6 +92,14 @@
     return `${(value / 3600).toFixed(1).replace('.', ',')} h`;
   };
   const formatHourLabel = (iso) => iso ? formatHour(iso) : '–';
+  const formatAxisLabel = (iso, index, points) => {
+    if (!iso) return '';
+    const label = formatHour(iso);
+    const [day, hour] = label.split(' ');
+    const prevLabel = index > 0 ? formatHour(points[index - 1]?.timestamp || '') : '';
+    const prevDay = prevLabel.split(' ')[0];
+    return day !== prevDay ? [day, hour.replace(':00', ' Uhr')] : hour.replace(':00', ' Uhr');
+  };
 
   let chart;
   let activeQuick = '24h';
@@ -139,15 +148,39 @@
     return weekday === 'Sat' || weekday === 'Sun';
   }
 
+  function renderSlotSummary(points) {
+    const host = document.getElementById('slot-summary');
+    if (!host) return;
+    const active = points
+      .filter((point) => Number(point.user_messages || 0) > 0 || Number(point.active_sessions || 0) > 0)
+      .sort((a, b) => Number(b.user_messages || 0) - Number(a.user_messages || 0))
+      .slice(0, 5);
+    if (!active.length) {
+      host.innerHTML = '<span class="slot-empty">Keine Nutzer-Anfragen im gewählten Zeitraum.</span>';
+      return;
+    }
+    host.innerHTML = `
+      <span class="slot-label">Stärkste Stunden</span>
+      ${active.map((point) => `
+        <span class="slot-chip">
+          <strong>${formatHourLabel(point.timestamp)}</strong>
+          <span>${Number(point.user_messages || 0)} Anfragen · ${Number(point.active_sessions || 0)} Session(s)</span>
+        </span>
+      `).join('')}
+    `;
+  }
+
   function renderChart(data, start, end, lowerBoundMs = null) {
     let points = Array.isArray(data.points) ? data.points : [];
     if (lowerBoundMs) {
       points = points.filter((point) => new Date(point.timestamp).getTime() >= lowerBoundMs);
     }
-    const labels = points.map((point) => formatHour(point.timestamp));
+    const rawLabels = points.map((point) => formatHour(point.timestamp));
+    const labels = points.map((point, index) => formatAxisLabel(point.timestamp, index, points));
     const counts = points.map((point) => Number(point.count || 0));
     const userCounts = points.map((point) => Number(point.user_messages || 0));
     const sessionStarts = points.map((point) => Number(point.session_starts || 0));
+    const activeSessions = points.map((point) => Number(point.active_sessions || 0));
     const weekendFlags = points.map((point) => isWeekendInBerlin(point.timestamp));
     const total = counts.reduce((sum, value) => sum + value, 0);
     const userTotal = userCounts.reduce((sum, value) => sum + value, 0);
@@ -158,14 +191,16 @@
     const avgUserMessagesPerSession = sessionTotal ? userTotal / sessionTotal : 0;
     const peakUserPoint = points.reduce((peak, point) => Number(point.user_messages || 0) > Number(peak?.user_messages || 0) ? point : peak, null);
     const peakUserCount = Number(peakUserPoint?.user_messages || 0);
+    const peakSessionPoint = points.reduce((peak, point) => Number(point.active_sessions || 0) > Number(peak?.active_sessions || 0) ? point : peak, null);
+    const peakSessionCount = Number(peakSessionPoint?.active_sessions || 0);
 
-    title.textContent = 'Nutzer-Nachrichten pro Stunde';
-    meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · Zeitzone: ${data.timezone || DISPLAY_TIME_ZONE} · Peak Nutzer: ${formatHourLabel(peakUserPoint?.timestamp)} (${peakUserCount})`;
+    title.textContent = 'Wann wird gefragt?';
+    meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · Linie: Anfragen · Balken: aktive Sessions · Peak: ${formatHourLabel(peakUserPoint?.timestamp)} (${peakUserCount} Anfragen, ${Number(peakUserPoint?.active_sessions || 0)} Sessions)`;
     status.textContent = `${userTotal} Nutzer-Anfrage(n), ${sessionTotal} Session(s) geladen.`;
     document.getElementById('m-total').textContent = userTotal;
     document.getElementById('m-total-sub').textContent = `${assistantTotal} Wiesel-Antworten · Ø ${(userTotal / daysInView).toFixed(1).replace('.', ',')} Nutzer-Anfragen / Tag`;
     document.getElementById('m-sessions').textContent = sessionTotal;
-    document.getElementById('m-sessions-sub').textContent = `${newSessions} neu gestartet im Zeitraum`;
+    document.getElementById('m-sessions-sub').textContent = `${newSessions} neu gestartet · Peak ${peakSessionCount} gleichzeitig aktive Sessions`;
     document.getElementById('m-per-session').textContent = avgUserMessagesPerSession.toFixed(1).replace('.', ',');
     document.getElementById('m-per-session-sub').textContent = `${total} technische Nachrichten inkl. Wiesel-Antworten`;
     document.getElementById('m-gap').textContent = formatDuration(data.avg_gap_seconds);
@@ -176,7 +211,8 @@
     document.getElementById('d-per-day').textContent = (userTotal / daysInView).toFixed(1).replace('.', ',');
     document.getElementById('d-peak').textContent = `${formatHourLabel(peakUserPoint?.timestamp)} · ${peakUserCount} Nutzer`;
     document.getElementById('d-gap').textContent = formatDuration(data.avg_gap_seconds);
-    document.getElementById('detail-note').textContent = `${userTotal} Nutzer-Anfragen sind der Hauptindikator für Nachfrage. ${assistantTotal} Wiesel-Antworten und ${total} technische Nachrichten stehen nur als Kontext darunter.`;
+    document.getElementById('detail-note').textContent = `${userTotal} Nutzer-Anfragen sind der Hauptindikator für Nachfrage. Aktive Sessions heißen hier: anonyme Sessions mit mindestens einer Nachricht in dieser Stunde — keine Namen, keine Einzelverfolgung.`;
+    renderSlotSummary(points);
 
     const avgPerHour = points.length ? userTotal / points.length : 0;
     const weekendBandPlugin = {
@@ -249,16 +285,29 @@
         labels,
         datasets: [
           {
+            type: 'bar',
+            label: 'Aktive Sessions',
+            data: activeSessions,
+            yAxisID: 'ySessions',
+            borderColor: 'rgba(227,179,65,.82)',
+            backgroundColor: 'rgba(227,179,65,.24)',
+            borderWidth: 1.2,
+            borderRadius: 5,
+            maxBarThickness: 28,
+          },
+          {
+            type: 'line',
             label: 'Nutzer-Anfragen',
             data: userCounts,
+            yAxisID: 'y',
             borderColor: ACCENT,
-            backgroundColor: 'rgba(184,80,15,.14)',
+            backgroundColor: 'rgba(184,80,15,.12)',
             pointBackgroundColor: ACCENT,
             pointBorderColor: '#fffaf0',
-            pointRadius: 2.5,
+            pointRadius: 3,
             pointHoverRadius: 5,
             borderWidth: 2.4,
-            tension: 0.25,
+            tension: 0.18,
             fill: true,
           }
         ]
@@ -269,12 +318,42 @@
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: 'index' },
         scales: {
-          x: { ticks: { color: '#6f5e49', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(111,94,73,.20)' } },
-          y: { beginAtZero: true, ticks: { color: '#6f5e49', precision: 0 }, grid: { color: 'rgba(111,94,73,.20)' } }
+          x: {
+            title: { display: true, text: 'Zeitfenster', color: '#6f5e49', font: { weight: 700 } },
+            ticks: { color: '#6f5e49', maxRotation: 0, autoSkip: true, maxTicksLimit: 14 },
+            grid: { color: 'rgba(111,94,73,.16)' }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Nutzer-Anfragen', color: '#6f5e49', font: { weight: 700 } },
+            ticks: { color: '#6f5e49', precision: 0 },
+            grid: { color: 'rgba(111,94,73,.20)' }
+          },
+          ySessions: {
+            beginAtZero: true,
+            position: 'right',
+            title: { display: true, text: 'Aktive Sessions', color: '#8a6a13', font: { weight: 700 } },
+            ticks: { color: '#8a6a13', precision: 0 },
+            grid: { drawOnChartArea: false }
+          }
         },
         plugins: {
           legend: { labels: { color: '#1a1814' } },
-          tooltip: { backgroundColor: '#fffaf0', titleColor: '#1a1814', bodyColor: '#4f4638', borderColor: ACCENT, borderWidth: 1 },
+          tooltip: {
+            backgroundColor: '#fffaf0',
+            titleColor: '#1a1814',
+            bodyColor: '#4f4638',
+            borderColor: ACCENT,
+            borderWidth: 1,
+            callbacks: {
+              title(items) { return rawLabels[items?.[0]?.dataIndex] || ''; },
+              afterBody(items) {
+                const index = items?.[0]?.dataIndex;
+                const point = points[index] || {};
+                return `Neue Sessions: ${Number(point.session_starts || 0)}`;
+              }
+            }
+          },
           zoom: {
             pan: { enabled: true, mode: 'x' },
             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, drag: { enabled: true, borderColor: ACCENT, backgroundColor: 'rgba(184,80,15,.12)' }, mode: 'x' }
