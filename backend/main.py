@@ -267,8 +267,11 @@ def get_db():
 
 
 from backend.routers import agenda as agenda_router
+from backend.routers import mentor as mentor_router
 agenda_router.init(Base, get_db, json_timestamp, engine)
+mentor_router.init(Base, get_db, json_timestamp, engine)
 app.include_router(agenda_router.router)
+app.include_router(mentor_router.router)
 
 
 def create_jwt_token(session_id: str) -> str:

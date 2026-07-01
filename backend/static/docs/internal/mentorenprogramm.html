@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wiesel Mentorenprogramm</title>
+<link rel="stylesheet" href="../docs-theme.css" />
+<style>
+  .mentor-page { min-height:100vh; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .mentor-wrap { padding:24px; display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:18px; align-items:start; }
+  .editor-card, .side-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+  .editor-card { height:calc(100vh - 170px); min-height:520px; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .editor-head { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .editor-head p { margin:0; color:var(--muted); font-size:13px; line-height:1.45; }
+  .editor-actions { display:flex; gap:8px; flex-shrink:0; }
+  .toggle-preview { background:var(--panel-2); }
+  .toggle-preview.active { background:var(--accent-soft); border-color:var(--accent); color:var(--text); }
+  .editor-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:0; overflow:auto; align-items:stretch; }
+  .editor-body.preview-hidden { grid-template-columns:1fr; }
+  .editor-body.preview-hidden .editor-pane { border-left:0; }
+  .editor-pane, .preview-pane { min-width:0; min-height:100%; }
+  .editor-pane { border-left:1px solid var(--line); display:flex; }
+  textarea { width:100%; height:auto; min-height:100%; border:0; resize:none; padding:20px 22px; background:var(--panel); color:var(--text); font:14px/1.65 var(--mono); outline:none; overflow:hidden; }
+  textarea:focus { box-shadow:inset 0 0 0 2px var(--accent-soft); }
+  .preview-pane { padding:20px 22px; color:var(--text); line-height:1.65; }
+  .preview-pane h1, .preview-pane h2, .preview-pane h3 { color:var(--text); line-height:1.2; margin:0 0 12px; }
+  .preview-pane h1 { font-size:26px; }
+  .preview-pane h2 { font-size:20px; margin-top:22px; }
+  .preview-pane h3 { font-size:16px; margin-top:18px; }
+  .preview-pane p { margin:0 0 13px; }
+  .preview-pane ul, .preview-pane ol { margin:0 0 14px; padding-left:22px; }
+  .preview-pane li { margin:4px 0; }
+  .preview-pane a { color:var(--accent); text-decoration:none; }
+  .preview-pane a:hover { text-decoration:underline; }
+  .preview-pane code { font-family:var(--mono); font-size:.92em; background:var(--panel-3); border:1px solid var(--line); border-radius:5px; padding:1px 5px; }
+  .preview-pane blockquote { margin:0 0 14px; padding:8px 13px; border-left:3px solid var(--accent); color:var(--muted); background:var(--panel-2); border-radius:8px; }
+  .preview-empty { color:var(--muted); font-style:italic; }
+  .side-card { padding:16px; }
+  .side-card h2 { font-size:19px; margin:0 0 9px; }
+  .side-card p { margin:0 0 10px; color:var(--muted); font-size:13px; line-height:1.55; }
+  .side-card ul { margin:0; padding-left:18px; color:var(--muted-2); font-size:13px; line-height:1.65; }
+  .status-line { color:var(--muted); font-size:12px; }
+  .save-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .save-primary:hover { background:var(--accent-2); border-color:var(--accent-2); }
+  @media(max-width:1100px){ .mentor-wrap{ grid-template-columns:1fr; padding:16px; } .side-card{ order:-1; } }
+  @media(max-width:760px){ .editor-card{ height:auto; min-height:0; } .editor-body{ grid-template-columns:1fr; overflow:visible; } .preview-pane{ min-height:340px; } .editor-pane{ border-left:0; border-top:1px solid var(--line); min-height:340px; } .editor-head{ align-items:flex-start; flex-direction:column; } .editor-actions{ flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+<div class="mentor-page">
+  <header class="toolbar">
+    <div class="title-row">
+      <div>
+        <h1>Mentorenprogramm</h1>
+        <p class="subline">Offene interne Arbeitsfläche. Nicht hübsch vollklatschen, sondern Gedanken sammeln.</p>
+      </div>
+      <p class="status" id="status">Lädt…</p>
+    </div>
+  </header>
+
+  <main class="mentor-wrap">
+    <section class="editor-card" aria-labelledby="mentor-editor-title">
+      <div class="editor-head">
+        <p id="mentor-editor-title">Gemeinsame Notizen, Fragen und nächste Schritte. Markdown ist erlaubt, aber kein Muss.</p>
+        <div class="editor-actions">
+          <button type="button" class="toggle-preview active" id="toggle-preview" aria-pressed="true">Preview an</button>
+          <button type="button" id="reload">Neu laden</button>
+          <button type="button" class="save-primary" id="save">Speichern</button>
+        </div>
+      </div>
+      <div class="editor-body">
+        <article class="preview-pane" id="preview" aria-label="Markdown-Vorschau"></article>
+        <div class="editor-pane">
+          <textarea id="content" spellcheck="true" placeholder="Hier reinschreiben…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side-card" aria-label="Leitplanken">
+      <h2>Nur Leitplanken</h2>
+      <p>Diese Seite ist absichtlich fast leer. Sie soll nicht das Konzept ersetzen, sondern den Call vorbereiten.</p>
+      <ul>
+        <li>Was soll die Mentor-Testphase leisten?</li>
+        <li>Wer testet, ab wann, mit welchem Hinweis?</li>
+        <li>Welche Fragen stellen wir nach dem Test?</li>
+        <li>Welche Unsicherheiten müssen ins Team?</li>
+      </ul>
+      <p class="status-line" id="saved-at">Noch nicht gespeichert.</p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  const contentEl = document.getElementById('content');
+  const editorBodyEl = document.querySelector('.editor-body');
+  const previewEl = document.getElementById('preview');
+  const statusEl = document.getElementById('status');
+  const savedAtEl = document.getElementById('saved-at');
+  const saveBtn = document.getElementById('save');
+  const reloadBtn = document.getElementById('reload');
+  const previewBtn = document.getElementById('toggle-preview');
+  let lastSaved = '';
+  let dirty = false;
+  let previewVisible = true;
+
+  function setStatus(text) { statusEl.textContent = text; }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  }
+  function inlineMarkdown(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return html;
+  }
+  function renderMarkdown(markdown) {
+    const lines = String(markdown || '').split(/\r?\n/);
+    const blocks = [];
+    let list = null;
+    let para = [];
+
+    function flushPara() {
+      if (!para.length) return;
+      blocks.push(`<p>${inlineMarkdown(para.join('\n')).replace(/\n/g, '<br>')}</p>`);
+      para = [];
+    }
+    function flushList() {
+      if (!list) return;
+      blocks.push(`<${list.type}>${list.items.map(item => `<li>${inlineMarkdown(item)}</li>`).join('')}</${list.type}>`);
+      list = null;
+    }
+    function addList(type, item) {
+      flushPara();
+      if (!list || list.type !== type) flushList(), list = { type, items: [] };
+      list.items.push(item);
+    }
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { flushPara(); flushList(); continue; }
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        flushPara(); flushList();
+        const level = heading[1].length;
+        blocks.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+        continue;
+      }
+      const unordered = line.match(/^[-*–]\s+(.+)$/);
+      if (unordered) { addList('ul', unordered[1]); continue; }
+      const ordered = line.match(/^\d+[.)]\s+(.+)$/);
+      if (ordered) { addList('ol', ordered[1]); continue; }
+      const quote = line.match(/^>\s?(.+)$/);
+      if (quote) {
+        flushPara(); flushList();
+        blocks.push(`<blockquote>${inlineMarkdown(quote[1])}</blockquote>`);
+        continue;
+      }
+      para.push(line.replace(/\s{2}$/, ''));
+    }
+    flushPara();
+    flushList();
+    return blocks.length ? blocks.join('') : '<p class="preview-empty">Noch nichts zum Anzeigen.</p>';
+  }
+  function autoGrowEditor() {
+    contentEl.style.height = 'auto';
+    contentEl.style.height = `${Math.max(contentEl.scrollHeight, contentEl.parentElement.clientHeight)}px`;
+  }
+  function updatePreview() {
+    previewEl.innerHTML = renderMarkdown(contentEl.value);
+    autoGrowEditor();
+  }
+  function setPreviewVisible(visible) {
+    previewVisible = visible;
+    previewEl.hidden = !visible;
+    editorBodyEl.classList.toggle('preview-hidden', !visible);
+    previewBtn.textContent = visible ? 'Preview an' : 'Preview aus';
+    previewBtn.classList.toggle('active', visible);
+    previewBtn.setAttribute('aria-pressed', String(visible));
+    autoGrowEditor();
+  }
+  function fmt(iso) {
+    if (!iso) return 'Noch nicht gespeichert.';
+    const d = new Date(iso);
+    return `Zuletzt gespeichert: ${d.toLocaleString('de-DE', { dateStyle:'short', timeStyle:'short' })}`;
+  }
+
+  async function api(method, body) {
+    const opts = { method, headers:{ 'Content-Type':'application/json' }, cache:'no-store' };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const r = await fetch('/api/mentor', opts);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail:`HTTP ${r.status}` }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    return r.json();
+  }
+
+  async function loadDoc() {
+    setStatus('Lädt…');
+    const doc = await api('GET');
+    contentEl.value = doc.content || '';
+    updatePreview();
+    lastSaved = contentEl.value;
+    dirty = false;
+    savedAtEl.textContent = fmt(doc.updated_at);
+    setStatus('Bereit.');
+  }
+
+  async function saveDoc() {
+    setStatus('Speichert…');
+    saveBtn.disabled = true;
+    const doc = await api('PUT', { content: contentEl.value });
+    lastSaved = doc.content || '';
+    dirty = false;
+    savedAtEl.textContent = fmt(doc.updated_at);
+    setStatus('Gespeichert.');
+    saveBtn.disabled = false;
+  }
+
+  contentEl.addEventListener('input', () => {
+    dirty = contentEl.value !== lastSaved;
+    updatePreview();
+    setStatus(dirty ? 'Ungespeicherte Änderungen.' : 'Bereit.');
+  });
+
+  saveBtn.addEventListener('click', () => saveDoc().catch(err => {
+    saveBtn.disabled = false;
+    setStatus(`Fehler: ${err.message}`);
+  }));
+
+  previewBtn.addEventListener('click', () => setPreviewVisible(!previewVisible));
+  window.addEventListener('resize', autoGrowEditor);
+
+  reloadBtn.addEventListener('click', () => {
+    if (dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+    loadDoc().catch(err => setStatus(`Fehler: ${err.message}`));
+  });
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!dirty) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  loadDoc().catch(err => setStatus(`Fehler: ${err.message}`));
+})();
+</script>
+</body>
+</html>
