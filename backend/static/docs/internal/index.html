@@ -11,21 +11,13 @@
   <aside class="sidebar" aria-label="Dokumentnavigation">
     <a class="brand" href="./" data-overview>Wiesel Docs</a>
 
-    <section class="section" aria-labelledby="public-docs">
-      <h2 class="section-title" id="public-docs">Öffentlich</h2>
+    <section class="section" aria-label="Weitere Docs">
       <ul class="doc-list" id="public-doc-list"></ul>
-      <p class="placeholder">Weitere öffentliche Docs folgen.</p>
     </section>
 
     <section class="section" aria-labelledby="internal-docs">
       <h2 class="section-title" id="internal-docs">Intern</h2>
-      <ul class="doc-list">
-        <li><a class="doc-link" href="cost-cache-model.html" data-doc="cost-cache-model.html">Betriebskosten</a></li>
-        <li><a class="doc-link" href="reports.html" data-doc="reports.html">Auffälligkeiten</a></li>
-        <li><a class="doc-link" href="usage.html" data-doc="usage.html">Nutzungszeiten</a></li>
-        <li><a class="doc-link" href="knowledge-base.html" data-doc="knowledge-base.html">Wissensbasis</a></li>
-        <li><a class="doc-link" href="agenda.html" data-doc="agenda.html">Agenda</a></li>
-      </ul>
+      <ul class="doc-list" id="internal-doc-list"></ul>
     </section>
   </aside>
 
@@ -35,75 +27,81 @@
         <h1 id="internal-docs-title">Wähle eine interne Doc-Seite</h1>
         <p class="hub-copy">Die wichtigsten Betriebsansichten für Wiesel. Direkt hier im geschützten Bereich geladen.</p>
 
-        <div class="doc-grid" aria-label="Verfügbare interne Docs">
-          <a class="doc-card" href="cost-cache-model.html" data-doc="cost-cache-model.html">
-            <span class="card-kicker">Kosten</span>
-            <div>
-              <h2>Betriebskosten</h2>
-              <p>Token-, Cache- und Sitzungs-Kosten im Berichtszeitraum.</p>
-            </div>
-            <span class="card-foot"><span>Kostenmodell</span><span class="card-arrow">→</span></span>
-          </a>
-
-          <a class="doc-card" href="reports.html" data-doc="reports.html">
-            <span class="card-kicker">Review</span>
-            <div>
-              <h2>Auffälligkeiten</h2>
-              <p>Geflaggte Sessions, Warnsignale und Tage mit Review-Bedarf.</p>
-            </div>
-            <span class="card-foot"><span>Moderation</span><span class="card-arrow">→</span></span>
-          </a>
-
-          <a class="doc-card" href="usage.html" data-doc="usage.html">
-            <span class="card-kicker">Analytics</span>
-            <div>
-              <h2>Nutzungszeiten</h2>
-              <p>Nachrichten, Sessions und Peaks nach Zeitraum.</p>
-            </div>
-            <span class="card-foot"><span>Verlauf</span><span class="card-arrow">→</span></span>
-          </a>
-
-          <a class="doc-card" href="knowledge-base.html" data-doc="knowledge-base.html">
-            <span class="card-kicker">Inhalt</span>
-            <div>
-              <h2>Wissensbasis</h2>
-              <p>Was Wiesel kennt — und wo Lücken oder falsche Antworten gemeldet wurden.</p>
-            </div>
-            <span class="card-foot"><span>KB & Lücken</span><span class="card-arrow">→</span></span>
-          </a>
-
-          <a class="doc-card" href="agenda.html" data-doc="agenda.html">
-            <span class="card-kicker">Team</span>
-            <div>
-              <h2>Agenda</h2>
-              <p>Laufende Themen, Aufgaben und Hinweise — als Kanban mit Neu / Aktiv / Erledigt.</p>
-            </div>
-            <span class="card-foot"><span>Kanban</span><span class="card-arrow">→</span></span>
-          </a>
-        </div>
+        <div class="doc-grid" id="internal-doc-grid" aria-label="Verfügbare interne Docs"></div>
       </section>
     </div>
     <iframe class="is-hidden" id="doc-frame" title="Wiesel internes Dokument"></iframe>
   </main>
 </div>
 
-<script src="/docs-config.js"></script>
+<script src="/docs-config.js?v=public-20260701"></script>
+<script src="./docs-internal-config.js?v=internal-20260701"></script>
 <script>
 (() => {
-  const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
-  const publicList = document.getElementById('public-doc-list');
-  publicList.innerHTML = docsConfig.publicDocs.map((doc) => (
-    `<li><a class="doc-link external" href="/#${doc.path}">${doc.title}</a></li>`
-  )).join('');
+  const docsConfig = window.WIESEL_DOCS || { publicDocs: [] };
+  const publicDocs = Array.isArray(docsConfig.publicDocs) ? docsConfig.publicDocs : [];
+  const internalDocs = Array.isArray(window.WIESEL_INTERNAL_DOCS) ? window.WIESEL_INTERNAL_DOCS : [];
 
+  const publicList = document.getElementById('public-doc-list');
+  const internalList = document.getElementById('internal-doc-list');
+  const internalGrid = document.getElementById('internal-doc-grid');
   const frame = document.getElementById('doc-frame');
   const emptyState = document.getElementById('empty-state');
-  const links = Array.from(document.querySelectorAll('[data-doc]'));
   const overviewLinks = Array.from(document.querySelectorAll('[data-overview]'));
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;',
+    }[char]));
+  }
+
+  function normalizePath(value) {
+    return String(value || '').replace(/^\/+/, '');
+  }
+
+  function publicHref(doc) {
+    return `/#${normalizePath(doc.path)}`;
+  }
+
+  function renderPublicDocs() {
+    publicList.innerHTML = publicDocs.map((doc) => (
+      `<li><a class="doc-link" href="${escapeHtml(publicHref(doc))}">${escapeHtml(doc.title)}</a></li>`
+    )).join('');
+  }
+
+  function renderInternalDocs() {
+    internalList.innerHTML = internalDocs.map((doc) => {
+      const path = normalizePath(doc.path);
+      return `<li><a class="doc-link" href="${escapeHtml(path)}" data-doc="${escapeHtml(path)}">${escapeHtml(doc.title)}</a></li>`;
+    }).join('');
+
+    internalGrid.innerHTML = internalDocs.map((doc) => {
+      const path = normalizePath(doc.path);
+      return `
+        <a class="doc-card" href="${escapeHtml(path)}" data-doc="${escapeHtml(path)}">
+          <span class="card-kicker">${escapeHtml(doc.kicker || 'Intern')}</span>
+          <div>
+            <h2>${escapeHtml(doc.title)}</h2>
+            <p>${escapeHtml(doc.description || '')}</p>
+          </div>
+          <span class="card-foot"><span>${escapeHtml(doc.foot || 'Öffnen')}</span><span class="card-arrow">→</span></span>
+        </a>
+      `;
+    }).join('');
+  }
+
+  renderPublicDocs();
+  renderInternalDocs();
+
+  const links = Array.from(document.querySelectorAll('[data-doc]'));
   const docs = new Set(links.map((link) => link.dataset.doc));
 
   function normalizeHash() {
-    const raw = decodeURIComponent(location.hash.replace(/^#/, '')).replace(/^\/+/, '');
+    const raw = normalizePath(decodeURIComponent(location.hash.replace(/^#/, '')));
     return docs.has(raw) ? raw : '';
   }
 

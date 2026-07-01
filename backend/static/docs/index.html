@@ -11,30 +11,28 @@
   <aside class="sidebar" aria-label="Dokumentnavigation">
     <p class="brand">Wiesel Docs</p>
 
-    <section class="section" aria-labelledby="public-docs">
-      <h2 class="section-title" id="public-docs">Öffentlich</h2>
+    <section class="section" aria-label="Weitere Docs">
       <ul class="doc-list" id="public-doc-list"></ul>
-      <p class="placeholder">Weitere öffentliche Docs folgen.</p>
     </section>
 
-    <section class="section" aria-labelledby="internal-docs">
-      <h2 class="section-title" id="internal-docs">Intern</h2>
-      <ul class="doc-list" id="internal-doc-list"></ul>
+    <section class="section section-internal" aria-label="Interner Bereich">
+      <a class="doc-link internal-entry" href="/internal/">Zum internen Bereich</a>
     </section>
+
   </aside>
 
   <main class="content">
     <div class="empty-state" id="empty-state">
       <div class="empty-card">
         <h1>Wähle eine Doc-Seite aus der Liste</h1>
-        <p>Öffentliche Dokumente werden hier im iframe geladen. Interne Dokumente öffnen als geschützter Bereich im Top-Level, weil Login-Seiten in iframes eine schlechte Idee sind. Überraschend vernünftig.</p>
+        <p>Öffentliche Dokumente werden hier im iframe geladen.</p>
       </div>
     </div>
     <iframe class="is-hidden" id="doc-frame" title="Wiesel Dokument"></iframe>
   </main>
 </div>
 
-<script src="/docs-config.js"></script>
+<script src="/docs-config.js?v=public-20260701"></script>
 <script>
 (() => {
   if (window.top !== window.self) {
@@ -42,11 +40,11 @@
     return;
   }
 
-  const docsConfig = window.WIESEL_DOCS || { publicDocs: [], internalDocs: [] };
+  const docsConfig = window.WIESEL_DOCS || { publicDocs: [] };
   const frame = document.getElementById('doc-frame');
   const emptyState = document.getElementById('empty-state');
   const publicList = document.getElementById('public-doc-list');
-  const internalList = document.getElementById('internal-doc-list');
+
 
   function renderList(target, items, renderLink) {
     target.innerHTML = items.map(renderLink).join('');
@@ -55,10 +53,6 @@
   renderList(publicList, docsConfig.publicDocs, (doc) => (
     `<li><a class="doc-link" href="#${doc.path}" data-doc="${doc.path}">${doc.title}</a></li>`
   ));
-  renderList(internalList, [{ title: 'Interne Docs', path: '/internal/' }], (doc) => (
-    `<li><a class="doc-link external" href="${doc.path}">${doc.title}</a></li>`
-  ));
-
   const links = Array.from(document.querySelectorAll('[data-doc]'));
   const docs = new Set(links.map((link) => link.dataset.doc));
 
