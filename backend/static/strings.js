@@ -1,7 +1,7 @@
 // Global UI translations for chat.html. Loaded before the main inline script.
 window.STRINGS = {
   de: {
-    noSession: '⚠️ Kein Session-Token. Dein Verlauf wird nicht gespeichert.',
+    noSession: '⚠️ Kein Session-Token. Klick hier für einen frischen Test-Chat.',
     sessionRequired: 'Kein aktiver Chat. Öffne Wiesel bitte über StudOn oder starte einen frischen Test-Chat.',
     pageTitle: 'Wiesel – Dein Studienbegleiter',
     wieselAlt: 'Wiesel',
@@ -63,7 +63,7 @@ window.STRINGS = {
     }
   },
   en: {
-    noSession: '⚠️ No session token. Your history will not be saved.',
+    noSession: '⚠️ No session token. Click here to start a fresh test chat.',
     sessionRequired: 'No active chat session. Please open Wiesel through StudOn or start a fresh test chat.',
     pageTitle: 'Wiesel – Your study companion',
     wieselAlt: 'Wiesel',
