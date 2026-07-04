@@ -92,7 +92,7 @@ JWT_ALGORITHM = "HS256"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wiesel.db")
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
-DEFAULT_GREETING = "Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?"
+DEFAULT_GREETING = "Hey, ich bin Weasel, dein Uni-Buddy – ich begleite dich durch deinen Unistart. Wie kann ich dir helfen?"
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
 TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
