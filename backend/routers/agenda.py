@@ -41,6 +41,13 @@ _json_timestamp = None
 _AgendaItem     = None
 
 
+def _db_dep():
+    """Proper generator dependency: FastAPI runs the finally/close of get_db.
+    The previous `Depends(_db_dep)` pulled only the first yield
+    and leaked one DB session per request."""
+    yield from _get_db()
+
+
 def init(Base, get_db, json_timestamp, engine):
     """Called by main.py to wire up shared DB objects without circular imports."""
     global _get_db, _json_timestamp, _AgendaItem
@@ -88,13 +95,13 @@ def _to_dict(item) -> dict:
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("")
-async def agenda_list(db: Session = Depends(lambda: next(_get_db()))):
+async def agenda_list(db: Session = Depends(_db_dep)):
     items = db.query(_AgendaItem).order_by(_AgendaItem.created_at.desc()).all()
     return {"items": [_to_dict(i) for i in items]}
 
 
 @router.post("", status_code=201)
-async def agenda_create(req: AgendaCreateRequest, db: Session = Depends(lambda: next(_get_db()))):
+async def agenda_create(req: AgendaCreateRequest, db: Session = Depends(_db_dep)):
     if not req.title.strip():
         raise HTTPException(status_code=400, detail="title required")
     if req.status not in VALID_STATUSES:
@@ -115,7 +122,7 @@ async def agenda_create(req: AgendaCreateRequest, db: Session = Depends(lambda: 
 
 
 @router.patch("/{item_id}")
-async def agenda_update(item_id: int, req: AgendaUpdateRequest, db: Session = Depends(lambda: next(_get_db()))):
+async def agenda_update(item_id: int, req: AgendaUpdateRequest, db: Session = Depends(_db_dep)):
     item = db.query(_AgendaItem).filter(_AgendaItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -140,7 +147,7 @@ async def agenda_update(item_id: int, req: AgendaUpdateRequest, db: Session = De
 
 
 @router.delete("/{item_id}", status_code=204)
-async def agenda_delete(item_id: int, db: Session = Depends(lambda: next(_get_db()))):
+async def agenda_delete(item_id: int, db: Session = Depends(_db_dep)):
     item = db.query(_AgendaItem).filter(_AgendaItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")

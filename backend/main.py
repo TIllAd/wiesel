@@ -7,10 +7,13 @@ import os
 import json
 import logging
 import re
+import time
 import uuid
 import base64
 import binascii
+from collections import defaultdict, deque
 from io import BytesIO
+from urllib.parse import urlparse, unquote
 from dotenv import load_dotenv
 load_dotenv()
 from datetime import datetime, timedelta, timezone
@@ -116,6 +119,67 @@ LLM_CACHE_WRITE_USD_PER_MTOK = float(os.getenv("LLM_CACHE_WRITE_USD_PER_MTOK", "
 LLM_CACHE_READ_USD_PER_MTOK = float(os.getenv("LLM_CACHE_READ_USD_PER_MTOK", "0.10"))
 
 # ============================================================================
+# SECURITY / OPS CONFIG (P0)
+# ============================================================================
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "").strip()
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
+JWT_TTL_HOURS = int(os.getenv("JWT_TTL_HOURS", "2"))
+DAILY_BUDGET_EUR = float(os.getenv("DAILY_BUDGET_EUR", "15"))
+RATE_LIMIT_CHAT_PER_MIN_SESSION = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_SESSION", "10"))
+RATE_LIMIT_CHAT_PER_MIN_IP = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_IP", "30"))
+RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP = int(os.getenv("RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP", "20"))
+BUDGET_EXCEEDED_FALLBACK = "Wiesel macht gerade eine Zwangspause (Tagesbudget erreicht). Versuch es bitte morgen wieder — oder schreib ans Studienbüro: studienbuero@wiso.fau.de."
+RATE_LIMITED_DETAIL = "Langsam — zu viele Anfragen. Warte kurz und versuch es dann nochmal."
+
+# ── Cloudflare Access (zweite Auth-Methode für Admin-Endpoints) ─────────────
+# Team-Domain: "wiso-team" oder "wiso-team.cloudflareaccess.com" (ohne https://).
+# Audience-Tag: aus der Access-Application in Cloudflare Zero Trust kopieren.
+# Beide gesetzt → Cf-Access-Jwt-Assertion-Header wird als Admin-Auth akzeptiert.
+CF_ACCESS_TEAM_DOMAIN = os.getenv("CF_ACCESS_TEAM_DOMAIN", "").strip()
+CF_ACCESS_AUD = os.getenv("CF_ACCESS_AUD", "").strip()
+
+
+def _cf_access_issuer() -> str:
+    domain = CF_ACCESS_TEAM_DOMAIN
+    if not domain:
+        return ""
+    if domain.startswith("http://") or domain.startswith("https://"):
+        return domain.rstrip("/")
+    if "." not in domain:
+        domain = f"{domain}.cloudflareaccess.com"
+    return f"https://{domain}"
+
+
+_DEV_JWT_SECRETS = {"wiesel_jwt_secret_dev", ""}
+_DEV_LTI_SECRETS = {"test_consumer_secret_mock", ""}
+
+
+def validate_config() -> None:
+    """Fail fast in production when secrets are missing or left on dev defaults."""
+    problems = []
+    if ENVIRONMENT == "production":
+        if not ANTHROPIC_API_KEY:
+            problems.append("ANTHROPIC_API_KEY fehlt")
+        if JWT_SECRET in _DEV_JWT_SECRETS:
+            problems.append("JWT_SECRET fehlt oder steht auf Dev-Default")
+        if not MOCK_LTI_MODE and LTI_CONSUMER_SECRET in _DEV_LTI_SECRETS:
+            problems.append("LTI_CONSUMER_SECRET fehlt oder steht auf Dev-Default")
+        if not ADMIN_API_KEY:
+            problems.append("ADMIN_API_KEY fehlt (Log-/Analytics-Endpoints brauchen ihn)")
+    if problems:
+        raise RuntimeError("Unsichere Konfiguration in production: " + "; ".join(problems))
+    if MOCK_LTI_MODE:
+        # Bewusst kein Hard-Fail: Default-Umstellung auf false erst NACH einem
+        # verifizierten echten StudOn-Launch (Fix-Plan Phase 1, Schritt 1 → 2).
+        logger.critical("MOCK_LTI_MODE ist AKTIV — OAuth-Signaturen werden NICHT geprüft. Nur für Test/Debug akzeptabel.")
+
+
+validate_config()
+
+# ============================================================================
 # DATABASE SETUP
 # ============================================================================
 
@@ -157,6 +221,14 @@ class ChatFlag(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class LTINonce(Base):
+    """Consumed OAuth nonces. Stored independently of sessions so a failed
+    launch cannot be replayed and successful nonces survive session cleanup."""
+    __tablename__ = "lti_nonces"
+    nonce = Column(String, primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class LLMUsage(Base):
     __tablename__ = "llm_usage"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -179,15 +251,40 @@ Base.metadata.create_all(bind=engine)
 # LTI 1.1 SIGNATURE VALIDATION
 # ============================================================================
 
-def _check_nonce(nonce: str) -> bool:
+def _nonce_already_used(nonce: str) -> bool:
     db = SessionLocal()
     try:
-        return db.query(SessionRecord).filter(SessionRecord.nonce == nonce).first() is None
+        return db.query(LTINonce).filter(LTINonce.nonce == nonce).first() is not None
+    finally:
+        db.close()
+
+
+def _consume_nonce(nonce: str) -> None:
+    """Persist a nonce after successful validation; prune entries older than the
+    timestamp window (they can no longer pass the skew check anyway)."""
+    db = SessionLocal()
+    try:
+        db.add(LTINonce(nonce=nonce))
+        db.query(LTINonce).filter(
+            LTINonce.created_at < datetime.utcnow() - timedelta(hours=2)
+        ).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.error("Could not persist LTI nonce", exc_info=True)
     finally:
         db.close()
 
 
 def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, str]:
+    """LTI 1.1 OAuth 1.0a validation (HMAC-SHA1).
+
+    Fix 2026-07: the previous version collected the body parameters via
+    collect_parameters() AND re-added `params` afterwards, so every parameter
+    appeared twice in the signature base string — legitimate launches could
+    never validate. The base string is now built from the form body exactly
+    once (plus any query-string parameters), per RFC 5849 §3.4.1.3.
+    """
     client_key = params.get("oauth_consumer_key", "")
     nonce      = params.get("oauth_nonce", "")
     timestamp  = params.get("oauth_timestamp", "0")
@@ -206,16 +303,18 @@ def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, 
     except ValueError:
         return False, "Invalid oauth_timestamp"
 
-    if nonce and not _check_nonce(nonce):
+    if not nonce:
+        return False, "Missing oauth_nonce"
+    if _nonce_already_used(nonce):
         return False, f"Nonce already used: {nonce!r}"
 
     collected = oauth_signature.collect_parameters(
+        uri_query=urlparse(uri).query,
         body=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         exclude_oauth_signature=True,
-        with_body=True,
+        with_realm=False,
     )
-    collected += [(k, v) for k, v in params.items() if k != "oauth_signature"]
 
     base_string = oauth_signature.construct_base_string(
         "POST",
@@ -227,6 +326,7 @@ def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, 
     if not hmac_lib.compare_digest(expected, received):
         return False, "OAuth signature mismatch"
 
+    _consume_nonce(nonce)
     return True, ""
 
 # ============================================================================
@@ -266,6 +366,167 @@ def get_db():
         db.close()
 
 
+ADMIN_COOKIE_NAME = "wiesel_admin_key"
+
+# JWKS-Client lazy + einmal pro Prozess; PyJWKClient cacht die Keys intern.
+_cf_jwks_client = None
+
+
+def _get_cf_jwks_client():
+    global _cf_jwks_client
+    if _cf_jwks_client is None:
+        from jwt import PyJWKClient
+        _cf_jwks_client = PyJWKClient(f"{_cf_access_issuer()}/cdn-cgi/access/certs", cache_keys=True)
+    return _cf_jwks_client
+
+
+def verify_cf_access_jwt(token: str) -> bool:
+    """Verify a Cloudflare Access `Cf-Access-Jwt-Assertion` header against the
+    team's public JWKS. Signature, exp, audience (Access-Application) und
+    issuer (Team-Domain) werden geprüft — ein gefälschter Header ohne gültiges
+    Access-Login scheitert also auch dann, wenn er den Origin direkt erreicht."""
+    if not (CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD and token):
+        return False
+    try:
+        signing_key = _get_cf_jwks_client().get_signing_key_from_jwt(token)
+        jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256", "ES256"],
+            audience=CF_ACCESS_AUD,
+            issuer=_cf_access_issuer(),
+            options={"require": ["exp", "aud", "iss"]},
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"Cloudflare Access JWT rejected: {e.__class__.__name__}: {e}")
+        return False
+
+
+def _mint_admin_cookie() -> str:
+    """Kurzlebiges, signiertes Admin-Session-Token fürs Cookie. Bewusst NICHT
+    der rohe ADMIN_API_KEY: der Auto-Mint über Cloudflare Access würde den
+    echten Key sonst auf jeden Team-Browser verteilen, und jede Key-Rotation
+    würde alle Cookies gleich mit betreffen."""
+    return jwt.encode(
+        {"scope": "admin", "iat": datetime.utcnow(), "exp": datetime.utcnow() + timedelta(hours=8)},
+        JWT_SECRET,
+        algorithm=JWT_ALGORITHM,
+    )
+
+
+def _admin_cookie_valid(value: str) -> bool:
+    if not value:
+        return False
+    # Übergangsweise: alte Cookies aus dem manuellen ?key=-Bootstrap enthielten
+    # den rohen Key — bleiben bis zu ihrem Ablauf gültig.
+    if ADMIN_API_KEY and hmac_lib.compare_digest(value.encode(), ADMIN_API_KEY.encode()):
+        return True
+    try:
+        claims = jwt.decode(value, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return claims.get("scope") == "admin"
+    except Exception:
+        return False
+
+
+def _admin_auth_method(request: Request) -> Optional[str]:
+    """Welcher Auth-Weg trägt diesen Request? 'cf' | 'key' | 'cookie' | None."""
+    cf_token = request.headers.get("cf-access-jwt-assertion", "")
+    if cf_token and verify_cf_access_jwt(cf_token):
+        return "cf"
+    if ADMIN_API_KEY:
+        header_key = request.headers.get("x-admin-key") or ""
+        if header_key and hmac_lib.compare_digest(header_key.encode(), ADMIN_API_KEY.encode()):
+            return "key"
+    if _admin_cookie_valid(request.cookies.get(ADMIN_COOKIE_NAME) or ""):
+        return "cookie"
+    return None
+
+
+def _set_admin_cookie(response) -> None:
+    response.set_cookie(
+        ADMIN_COOKIE_NAME, _mint_admin_cookie(),
+        httponly=True, samesite="lax",
+        secure=(ENVIRONMENT == "production"),
+        max_age=8 * 3600,
+    )
+
+
+def _raise_admin_unauthorized() -> None:
+    cf_configured = bool(CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD)
+    if not ADMIN_API_KEY and not cf_configured:
+        raise HTTPException(status_code=503, detail="Admin API not configured")
+    raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+
+def require_admin(request: Request) -> None:
+    """Guard for log/analytics/report endpoints and internal docs.
+
+    Drei Auth-Wege:
+    1. Cloudflare Access: gültiges `Cf-Access-Jwt-Assertion`-JWT (nur auf
+       /internal/* vorhanden — die Access-Application ist darauf begrenzt).
+    2. ADMIN_API_KEY via X-Admin-Key-Header (Scripts, Tests, Fable).
+    3. HttpOnly-Admin-Cookie — signiertes Session-Token, gesetzt entweder
+       manuell über /internal/?key=<key> oder automatisch beim ersten
+       CF-verifizierten /internal/*-Aufruf (deckt die /api/*-Fetches der
+       Dashboards ab, die Cloudflare Access selbst nicht schützt).
+    Ist kein Weg konfiguriert, sind die Endpoints gesperrt (503).
+    """
+    if _admin_auth_method(request) is None:
+        _raise_admin_unauthorized()
+
+
+# ── Rate limiting (in-memory sliding window; per process) ───────────────────
+_rate_buckets: dict[str, deque] = defaultdict(deque)
+
+
+def rate_limit_exceeded(key: str, limit: int, window_seconds: float = 60.0) -> bool:
+    now = time.monotonic()
+    bucket = _rate_buckets[key]
+    while bucket and now - bucket[0] > window_seconds:
+        bucket.popleft()
+    if len(bucket) >= limit:
+        return True
+    bucket.append(now)
+    return False
+
+
+def client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+# ── Daily budget kill-switch ────────────────────────────────────────────────
+def todays_llm_cost_eur() -> float:
+    from sqlalchemy import func
+    day_start_app = datetime.now(APP_TIMEZONE).replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start_utc = app_time_to_utc_naive(day_start_app)
+    db = SessionLocal()
+    try:
+        total = db.query(func.coalesce(func.sum(LLMUsage.estimated_cost_eur), 0.0)).filter(
+            LLMUsage.created_at >= day_start_utc
+        ).scalar()
+        return float(total or 0.0)
+    finally:
+        db.close()
+
+
+def budget_exhausted() -> bool:
+    if DAILY_BUDGET_EUR <= 0:
+        return False
+    try:
+        spent = todays_llm_cost_eur()
+    except Exception:
+        logger.error("Budget check failed", exc_info=True)
+        return False
+    if spent >= DAILY_BUDGET_EUR:
+        logger.critical(f"Tagesbudget erreicht: {spent:.2f} EUR >= {DAILY_BUDGET_EUR:.2f} EUR — LLM-Calls pausiert bis Mitternacht.")
+        return True
+    return False
+
+
 from backend.routers import agenda as agenda_router
 from backend.routers import mentor as mentor_router
 agenda_router.init(Base, get_db, json_timestamp, engine)
@@ -278,7 +539,7 @@ def create_jwt_token(session_id: str) -> str:
     payload = {
         "session_id": session_id,
         "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(hours=8)
+        "exp": datetime.utcnow() + timedelta(hours=JWT_TTL_HOURS)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -363,7 +624,12 @@ def validate_image_base64(image_base64: str, requested_mime: str = "image/jpeg")
     return payload, detected_mime
 
 
+_kb_cache: dict = {"signature": None, "content": None}
+
+
 def load_knowledge_base() -> str:
+    """Concatenate all KB markdown files. Cached in memory and invalidated via
+    file mtimes, instead of re-reading ~60 files on every chat request."""
     kb_dirs = [
         Path(__file__).parent.parent / "knowledge_base",
         Path("/knowledge_base"),
@@ -377,21 +643,31 @@ def load_knowledge_base() -> str:
     if not kb_dir:
         return "# Wissensbasis nicht gefunden"
 
+    md_files = sorted(kb_dir.glob("**/*.md"), key=lambda p: str(p))
+    try:
+        signature = tuple((str(p), p.stat().st_mtime_ns) for p in md_files)
+    except OSError:
+        signature = None
+    if signature is not None and signature == _kb_cache["signature"] and _kb_cache["content"]:
+        return _kb_cache["content"]
+
     parts = []
     main_kb = kb_dir / "wissen-basis.md"
     if main_kb.exists():
         parts.append(main_kb.read_text(encoding="utf-8"))
 
-    for md_file in sorted(kb_dir.glob("**/*.md"), key=lambda p: str(p)):
+    for md_file in md_files:
         if md_file.name == "wissen-basis.md":
             continue
         try:
             parts.append(md_file.read_text(encoding="utf-8"))
-            logger.info(f"KB loaded: {md_file.name}")
         except Exception as e:
             logger.warning(f"KB skip {md_file.name}: {e}")
 
-    return "\n\n---\n\n".join(parts) if parts else "# Wissensbasis nicht gefunden"
+    content = "\n\n---\n\n".join(parts) if parts else "# Wissensbasis nicht gefunden"
+    _kb_cache.update({"signature": signature, "content": content})
+    logger.info(f"KB (re)loaded: {len(md_files)} Dateien, {len(content)} Zeichen")
+    return content
 
 
 def build_system_prompt(kb_content: str = "") -> str:
@@ -409,19 +685,46 @@ def build_system_prompt(kb_content: str = "") -> str:
     return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
 
+_STATIC_LEAK_MARKERS = [
+    "Wiesel – System-Prompt",
+    "Wiesel - System-Prompt",
+    "Offen · Charakter-First",   # legacy prompt versions
+    "## Wie ich bin",
+    "## Was ich weiß",
+    "## Faktenbasis",
+]
+_leak_marker_cache: dict = {"mtime": None, "markers": _STATIC_LEAK_MARKERS}
+
+
+def _leak_markers() -> list[str]:
+    """Static markers + all `## ` section headers of the *current* prompt file,
+    so the detector follows prompt versions instead of matching stale headers."""
+    candidates = [
+        Path(__file__).parent.parent / "system-prompt.md",
+        Path("/system-prompt.md"),
+        Path("/app/system-prompt.md"),
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        return _STATIC_LEAK_MARKERS
+    try:
+        mtime = path.stat().st_mtime_ns
+        if mtime != _leak_marker_cache["mtime"]:
+            headers = [
+                line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+                if line.startswith("## ")
+            ]
+            _leak_marker_cache.update({"mtime": mtime, "markers": _STATIC_LEAK_MARKERS + headers})
+    except OSError:
+        pass
+    return _leak_marker_cache["markers"]
+
+
 def looks_like_system_prompt_leak(text: str) -> bool:
     """Detect accidental raw prompt disclosure before it reaches the frontend."""
     if not text:
         return False
-    markers = [
-        "Wiesel – System-Prompt",
-        "Wiesel - System-Prompt",
-        "Offen · Charakter-First",
-        "## Wie ich bin",
-        "## Was ich weiß",
-        "## Faktenbasis",
-    ]
-    return any(marker in text for marker in markers)
+    return any(marker in text for marker in _leak_markers())
 
 
 def is_ambiguous_first_message(query: str, chat_history: list) -> bool:
@@ -493,8 +796,16 @@ def record_llm_usage(
         db.close()
 
 
+# Ein Client für den Prozess. Async, damit ein 3–5-s-LLM-Call nicht den
+# ganzen Event-Loop blockiert (vorher wurden parallele Nutzer seriell bedient).
+_anthropic_client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+
+
 async def call_claude(session_id: str, query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    if _anthropic_client is None:
+        logger.error("ANTHROPIC_API_KEY fehlt — kein LLM-Call möglich")
+        return TECHNICAL_ERROR_FALLBACK
+    client = _anthropic_client
 
     messages = []
     if chat_history:
@@ -533,17 +844,24 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
 
     try:
         started_at = datetime.utcnow()
-        response = client.messages.create(
+        response = await client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=1024,
+            max_tokens=LLM_MAX_TOKENS,
             system=system_blocks,
             messages=messages,
             extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
         latency_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
         record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, usage=response.usage, latency_ms=latency_ms)
-        logger.info(f"LLM usage: input={response.usage.input_tokens} | output={response.usage.output_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)} | latency_ms={latency_ms}")
+        logger.info(f"LLM usage: input={response.usage.input_tokens} | output={response.usage.output_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)} | latency_ms={latency_ms} | stop={response.stop_reason}")
         text = response.content[0].text
+        if response.stop_reason == "max_tokens":
+            # Nicht mitten im Satz enden lassen: letzten vollständigen Satz behalten.
+            logger.warning("LLM-Antwort lief in max_tokens — wird sauber gekürzt")
+            cut = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+            if cut > 40:
+                text = text[: cut + 1]
+            text += "\n\n*(Antwort gekürzt — frag nach, dann mache ich kompakt weiter.)*"
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
             return SYSTEM_PROMPT_LEAK_FALLBACK
@@ -559,6 +877,18 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
 # ============================================================================
 # FASTAPI APP
 # ============================================================================
+
+@app.middleware("http")
+async def block_internal_docs_on_open_mounts(request: Request, call_next):
+    """docs/internal ist NICHT mehr über die offenen StaticFiles-Mounts erreichbar.
+    Kanonischer (geschützter) Zugang: /internal/... — siehe internal_docs()."""
+    path = unquote(request.url.path).replace("\\", "/").lower()
+    while "//" in path:
+        path = path.replace("//", "/")
+    if path.startswith("/static/docs/internal"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def reject_oversized_chat_requests(request: Request, call_next):
@@ -577,7 +907,16 @@ async def reject_oversized_chat_requests(request: Request, call_next):
     return await call_next(request)
 
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# CORS: same-origin deployment braucht eigentlich gar kein CORS; erlaubt sind
+# nur die konfigurierten Origins. allow_credentials=False, weil Auth über
+# explizite Header/Token läuft, nicht über Cookies.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Key"],
+)
 
 _static_dir = Path(__file__).parent / "static"
 if _static_dir.exists():
@@ -602,6 +941,8 @@ async def chat_page(request: Request, debug: str | None = None):
     # treating every truthy debug value as a launch request causes an infinite
     # redirect loop: debug=true -> debug=1 -> new token -> debug=1 -> ...
     if debug == "true":
+        if rate_limit_exceeded(f"debugsess:ip:{client_ip(request)}", RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP, window_seconds=86400.0):
+            raise HTTPException(status_code=429, detail=RATE_LIMITED_DETAIL)
         db = SessionLocal()
         try:
             debug_session_id = f"debug_session_wiesel_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -662,11 +1003,16 @@ async def lti_launch(request: Request):
 
 
 @app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(request: ChatRequest, http_request: Request):
     db = SessionLocal()
     try:
         if len(request.query or "") > MAX_QUERY_CHARS_HARD:
             raise HTTPException(status_code=400, detail=f"Deine Nachricht ist zu lang. Kürz sie bitte auf maximal {MAX_QUERY_CHARS_HARD} Zeichen.")
+
+        if rate_limit_exceeded(f"chat:sess:{request.session_id}", RATE_LIMIT_CHAT_PER_MIN_SESSION):
+            raise HTTPException(status_code=429, detail=RATE_LIMITED_DETAIL)
+        if rate_limit_exceeded(f"chat:ip:{client_ip(http_request)}", RATE_LIMIT_CHAT_PER_MIN_IP):
+            raise HTTPException(status_code=429, detail=RATE_LIMITED_DETAIL)
 
         session = db.query(SessionRecord).filter(SessionRecord.id == request.session_id).first()
         if not session:
@@ -694,6 +1040,9 @@ async def chat_endpoint(request: ChatRequest):
         if image_base64:
             image_base64, image_type = validate_image_base64(image_base64, image_type)
 
+        if budget_exhausted():
+            return ChatResponse(response=BUDGET_EXCEEDED_FALLBACK, session_id=request.session_id, timestamp=json_timestamp(datetime.utcnow()))
+
         kb_content = load_knowledge_base()
 
         response = await call_claude(request.session_id, request.query, chat_history, kb_content, image_base64=image_base64, image_type=image_type)
@@ -712,6 +1061,66 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500)
     finally:
         db.close()
+
+
+_INTERNAL_DOCS_DIR = _static_dir / "docs" / "internal"
+
+
+@app.get("/internal")
+@app.get("/internal/{path:path}")
+async def internal_docs(request: Request, path: str = "", key: Optional[str] = None):
+    """Interne Dashboards (docs/internal), nur mit Admin-Auth.
+
+    Normalfall Team: Cloudflare Access schützt /internal/* (Policy "Team Wiso
+    emails") → erster Seitenaufruf kommt mit gültigem Cf-Access-JWT an, wir
+    setzen automatisch das Admin-Cookie (Auto-Mint) — damit funktionieren auch
+    die fetch()-Calls der Dashboards auf /api/analytics|logs|reports|usage,
+    die außerhalb der Access-Application liegen. Kein manueller Schritt nötig.
+
+    Fallback ohne Cloudflare (lokal/Tests): einmalig /internal/?key=<ADMIN_API_KEY>
+    aufrufen — prüft den Key, setzt dasselbe Cookie, redirectet.
+
+    Das Cookie ist ein signiertes 8-h-Session-Token (JWT_SECRET), nicht der
+    rohe Admin-Key.
+
+    WICHTIG: Diese Route muss vor dem root-StaticFiles-Mount registriert sein
+    (ist sie — der Mount kommt am Dateiende) und shadowed damit die alten
+    /internal/*-URLs des Mounts. docs/public bleibt bewusst offen.
+    """
+    if key is not None:
+        if not ADMIN_API_KEY or not hmac_lib.compare_digest(key.encode(), ADMIN_API_KEY.encode()):
+            raise HTTPException(status_code=401, detail="Invalid admin key")
+        response = RedirectResponse(url=request.url.path or "/internal/", status_code=302)
+        _set_admin_cookie(response)
+        return response
+
+    auth_method = _admin_auth_method(request)
+    if auth_method is None:
+        _raise_admin_unauthorized()
+
+    if not _INTERNAL_DOCS_DIR.is_dir():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Pfad-Traversal-Schutz — gleiches Muster wie wiki_file_endpoint
+    try:
+        target = (_INTERNAL_DOCS_DIR / (path or "index.html")).resolve()
+        target.relative_to(_INTERNAL_DOCS_DIR.resolve())
+    except (ValueError, OSError):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if target.is_dir():
+        target = target / "index.html"
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    response = FileResponse(str(target))
+    # Cookie-Auto-Mint (Nachtrag 2): Die Cloudflare-Access-Application ist auf
+    # /internal/* begrenzt — die /api/*-Fetches der Dashboards bekommen deshalb
+    # NIE den Cf-Access-JWT-Header. Beim ersten CF-verifizierten Seitenaufruf
+    # setzen wir daher das Admin-Cookie, das die folgenden /api/*-Calls trägt.
+    if auth_method == "cf" and not _admin_cookie_valid(request.cookies.get(ADMIN_COOKIE_NAME) or ""):
+        _set_admin_cookie(response)
+    return response
 
 
 @app.get("/api/wiki")
@@ -776,12 +1185,12 @@ def analytics_export_files(prefix: str = "analytics_") -> list[str]:
     })
 
 
-@app.get("/api/analytics/files")
+@app.get("/api/analytics/files", dependencies=[Depends(require_admin)])
 async def analytics_files():
     return {"files": analytics_export_files()}
 
 
-@app.get("/api/analytics/month-files")
+@app.get("/api/analytics/month-files", dependencies=[Depends(require_admin)])
 async def analytics_month_files(month: Optional[str] = None):
     if month is None:
         month = datetime.now().strftime("%Y-%m")
@@ -793,7 +1202,7 @@ async def analytics_month_files(month: Optional[str] = None):
     return {"month": month, "files": files}
 
 
-@app.get("/api/analytics/file/{filename}")
+@app.get("/api/analytics/file/{filename}", dependencies=[Depends(require_admin)])
 async def analytics_file(filename: str):
     if not re.fullmatch(r"analytics_\d{4}-\d{2}-\d{2}\.json", filename):
         raise HTTPException(status_code=400, detail="Invalid analytics filename")
@@ -809,7 +1218,7 @@ async def analytics_file(filename: str):
         raise HTTPException(status_code=500, detail="Invalid analytics JSON")
 
 
-@app.get("/api/reports/range")
+@app.get("/api/reports/range", dependencies=[Depends(require_admin)])
 async def reports_range(start: str, end: str):
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", start):
         raise HTTPException(status_code=400, detail="Invalid start format; expected YYYY-MM-DD")
@@ -892,7 +1301,7 @@ async def reports_range(start: str, end: str):
         db.close()
 
 
-@app.get("/api/usage/timeseries")
+@app.get("/api/usage/timeseries", dependencies=[Depends(require_admin)])
 async def usage_timeseries(start: str, end: str, granularity: str = "hour", since: Optional[str] = None):
     if granularity != "hour":
         raise HTTPException(status_code=400, detail="Invalid granularity; only hour is supported")
@@ -1065,7 +1474,7 @@ async def flag_chat_session(request: ChatFlagRequest):
         db.close()
 
 
-@app.get("/api/session/{session_id}")
+@app.get("/api/session/{session_id}", dependencies=[Depends(require_admin)])
 async def session_endpoint(session_id: str):
     db = SessionLocal()
     try:
@@ -1092,6 +1501,10 @@ async def health_check():
 
 @app.post("/api/dev/session")
 async def create_dev_session(request: Request):
+    # Destruktiver Eval-Helfer (löscht Messages/Flags einer Session).
+    # In production nicht verfügbar — Route existiert dort faktisch nicht.
+    if ENVIRONMENT == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     body = await request.json()
     session_id = body.get("session_id")
     if not session_id:
@@ -1107,7 +1520,7 @@ async def create_dev_session(request: Request):
         db.close()
 
 
-@app.get("/api/logs/daily")
+@app.get("/api/logs/daily", dependencies=[Depends(require_admin)])
 async def get_daily_logs(date: Optional[str] = None):
     db = SessionLocal()
     try:
@@ -1139,8 +1552,23 @@ async def get_daily_logs(date: Optional[str] = None):
 @app.on_event("startup")
 async def startup_event():
     logger.info("Wiesel Backend starting...")
+    logger.info(f"Environment: {ENVIRONMENT}")
     logger.info(f"LTI Consumer Key: {LTI_CONSUMER_KEY}")
     logger.info(f"Database: {DATABASE_URL}")
+    # SQLite härten: WAL-Mode reduziert Korruptionsrisiko bei parallelen
+    # Zugriffen; quick_check erkennt eine kaputte DB beim Start statt im Betrieb.
+    if DATABASE_URL.startswith("sqlite"):
+        try:
+            from sqlalchemy import text as sa_text
+            with engine.connect() as conn:
+                conn.execute(sa_text("PRAGMA journal_mode=WAL"))
+                result = conn.execute(sa_text("PRAGMA quick_check")).fetchone()
+                if result and result[0] != "ok":
+                    logger.critical(f"SQLite quick_check FAILED: {result[0]} — DB prüfen/wiederherstellen (backend/db_backup.py)!")
+                else:
+                    logger.info("SQLite quick_check: ok (WAL aktiv)")
+        except Exception:
+            logger.error("SQLite startup check failed", exc_info=True)
 
 
 @app.on_event("shutdown")

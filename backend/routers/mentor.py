@@ -21,6 +21,11 @@ _get_db = None
 _json_timestamp = None
 _MentorDoc = None
 
+
+def _db_dep():
+    """Proper generator dependency (see agenda.py) — no leaked sessions."""
+    yield from _get_db()
+
 OLD_DEFAULT_CONTENT = """# Mentorenprogramm\n\n## Ziele\n\n\n## Wer testet?\n\n\n## Offene Fragen\n\n\n## Nächste Schritte\n\n"""
 
 DEFAULT_CONTENT = """**WiSo Wiesel**  
@@ -121,12 +126,12 @@ def _get_or_create_doc(db: Session):
 
 
 @router.get("")
-async def mentor_doc_get(db: Session = Depends(lambda: next(_get_db()))):
+async def mentor_doc_get(db: Session = Depends(_db_dep)):
     return _to_dict(_get_or_create_doc(db))
 
 
 @router.put("")
-async def mentor_doc_update(req: MentorDocUpdateRequest, db: Session = Depends(lambda: next(_get_db()))):
+async def mentor_doc_update(req: MentorDocUpdateRequest, db: Session = Depends(_db_dep)):
     doc = _get_or_create_doc(db)
     doc.content = req.content
     doc.updated_at = datetime.utcnow()
