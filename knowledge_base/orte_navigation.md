@@ -75,9 +75,11 @@ Mo–Do 9:00–16:00, Fr 9:00–14:00
 
 ## FAUcard Validierung
 
-Zentrale Universitätsverwaltung, Halbmondstraße 6–8, 91054 Erlangen (Raum 1.056)
-Muss einmal pro Semester validiert werden — Automat vor Ort.
-[Navigation](https://www.google.com/maps/search/?api=1&query=Halbmondstraße+6+Erlangen+FAU)
+Muss **einmal pro Semester** validiert werden — am Automaten.
+Standorte:
+- **Lange Gasse 20, Nürnberg** — Erdgeschoss und 1. Untergeschoss (für WiSo-Studierende der kürzeste Weg; Angabe aus Mentoren-Feedback Juni 2026)
+- **Zentrale Universitätsverwaltung, Halbmondstraße 6–8, 91054 Erlangen** (Raum 1.056)
+[Navigation Erlangen](https://www.google.com/maps/search/?api=1&query=Halbmondstraße+6+Erlangen+FAU)
 
 ---
 
