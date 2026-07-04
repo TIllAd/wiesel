@@ -14,9 +14,9 @@
       --wiesel-surface:      #ffffff;
       --wiesel-border:       #e2ddce;
       --wiesel-border-input: #d3d1c7;
-      --wiesel-primary:      #0f6e56;
-      --wiesel-primary-tint: #eaf6f1;
-      --wiesel-primary-text: #085041;
+      --wiesel-primary:      #8B1F2F;
+      --wiesel-primary-tint: #f7eced;
+      --wiesel-primary-text: #6E1425;
       --wiesel-text:         #2c2c2a;
       --wiesel-text-muted:   #7a7669;
       --wiesel-text-hint:    #b4b2a9;
@@ -25,8 +25,8 @@
       --bg2:     var(--wiesel-bg);
       --bg3:     #ede8dc;
       --border:  var(--wiesel-border);
-      --navy:    #1a2856;
-      --navy2:   #253570;
+      --navy:    #3B0A18;
+      --navy2:   #5C1228;
       --text:    var(--wiesel-text);
       --tdim:    var(--wiesel-text-muted);
       --font:    'Nunito', 'Inter', system-ui, sans-serif;
@@ -111,7 +111,7 @@
       backdrop-filter:blur(2px);
     }
     #messages.drag-over #drop-overlay { display:flex; }
-    .drop-icon { width:42px; height:42px; border-radius:999px; background:var(--wiesel-primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:21px; box-shadow:0 8px 18px rgba(15,110,86,.16); }
+    .drop-icon { width:42px; height:42px; border-radius:999px; background:var(--wiesel-primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:21px; box-shadow:0 8px 18px rgba(139,31,47,.16); }
     .drop-title { font-size:15px; font-weight:850; color:var(--wiesel-primary-text); }
     .drop-subtitle { font-size:12px; font-weight:750; color:var(--wiesel-primary); }
 
@@ -167,7 +167,7 @@
     .msg.bot a { color:var(--wiesel-primary); text-underline-offset:2px; }
     .msg.bot code { background:var(--bg3); padding:1px 5px; border-radius:4px; font-size:13px; }
 
-    .msg.user { background:var(--wiesel-primary); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-radius:22px 22px 6px 22px; box-shadow:0 2px 8px rgba(15,110,86,.18); }
+    .msg.user { background:var(--wiesel-primary); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-radius:22px 22px 6px 22px; box-shadow:0 2px 8px rgba(139,31,47,.18); }
     .msg.error { background:#fff0f0; border:1px solid #fecaca; color:#b91c1c; max-width:min(64ch, calc(100% - 28px)); }
     .flag-help-title { color:#991b1b; font-size:12px; font-weight:900; margin:2px 4px 4px; }
     .flag-help-text { color:#6b7280; font-size:11px; line-height:1.35; margin:0 4px 8px; }
@@ -197,7 +197,7 @@
     #query:focus { border-color:var(--wiesel-primary); }
     body.voice-recording #query { border:1.5px solid var(--wiesel-primary); }
     #query::placeholder { color:var(--wiesel-text-hint); opacity:1; }
-    #send { background:var(--wiesel-primary); border:none; border-radius:58% 42% 63% 37% / 41% 55% 45% 59%; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 2px 8px rgba(15,110,86,.22); }
+    #send { background:var(--wiesel-primary); border:none; border-radius:58% 42% 63% 37% / 41% 55% 45% 59%; color:#fff; font-size:17px; width:42px; height:42px; cursor:pointer; flex-shrink:0; transition:transform .15s,box-shadow .15s; display:flex; align-items:center; justify-content:center; align-self:flex-end; box-shadow:0 2px 8px rgba(139,31,47,.22); }
     #send:hover { transform:scale(1.07); box-shadow:0 4px 14px rgba(15,110,86,.32); }
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
@@ -250,7 +250,7 @@
       overflow:visible;
     }
     #mic-btn:hover { transform:scale(1.04); box-shadow:0 4px 12px rgba(15,110,86,.14); }
-    #mic-btn.recording { background:var(--wiesel-primary); border-color:var(--wiesel-primary); color:#fff; box-shadow:0 4px 12px rgba(15,110,86,.22); }
+    #mic-btn.recording { background:var(--wiesel-primary); border-color:var(--wiesel-primary); color:#fff; box-shadow:0 4px 12px rgba(139,31,47,.22); }
     #mic-btn.voice-pulse::before,
     #mic-btn.voice-pulse::after {
       content:""; position:absolute; inset:-7px; border:2px solid var(--wiesel-primary); border-radius:999px;
