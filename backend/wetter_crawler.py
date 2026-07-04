@@ -15,8 +15,8 @@ from datetime import datetime, date, timedelta
 from pathlib import Path
 
 CITIES = {
-    "Erlangen": "https://wttr.in/Erlangen?format=j1&lang=de",
-    "Nürnberg": "https://wttr.in/Nuernberg?format=j1&lang=de",
+    "Erlangen": "https://wttr.in/49.5897,11.0039?format=j1&lang=de",
+    "Nürnberg": "https://wttr.in/49.4521,11.0767?format=j1&lang=de",
 }
 OUTPUT = Path(__file__).parent.parent / "knowledge_base" / "wetter-heute.md"
 
