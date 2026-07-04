@@ -98,7 +98,7 @@ window.STRINGS = {
     voiceInput: 'Voice input',
     send: 'Send',
     footer: 'Weasel can make mistakes. Check important info · FAU WiSo',
-    greeting: 'Hey – I’m Wiesel. I know the university chaos pretty well. What do you need?',
+    greeting: 'Hey, I’m Weasel, your university buddy — I’ll guide you through your start at uni. How can I help you?',
     typingPhrases: ['Where did I put that again…', 'One moment, I’ll dig for it…', 'It has to be around here somewhere…', 'Wait, I know that thing…'],
     readImage: 'One moment, I’ll read that quickly…',
     tooLong: 'Your message is too long. Please shorten it to at most 2000 characters.',
