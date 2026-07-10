@@ -36,7 +36,7 @@ window.STRINGS = {
     voiceInput: 'Spracheingabe',
     send: 'Senden',
     footer: 'Wiesel kann Fehler machen. Prüfe wichtige Informationen · FAU WiSo',
-    greeting: 'Hey – ich bin Wiesel. Kenne das Uni-Chaos hier ganz gut. Was brauchst du?',
+    greeting: 'Hey – ich bin Wiesel. Kenne mich an der Wiso ganz gut aus.',
     typingPhrases: ['Wo hab ich das nochmal hingelegt…', 'Moment, ich wühl kurz nach…', 'Irgendwo hier muss das sein…', 'Warte, ich kenn das Ding doch…'],
     readImage: 'Moment, ich les das kurz durch…',
     tooLong: 'Deine Nachricht ist zu lang. Kürz sie bitte auf maximal 2000 Zeichen.',
