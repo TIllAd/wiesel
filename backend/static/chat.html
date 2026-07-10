@@ -187,6 +187,14 @@
     .msg.bot ul,.msg.bot ol { padding-left:1.3em; margin:.3em 0 .5em; }
     .msg.bot li { margin:.2em 0; }
     .msg.bot strong { color:var(--wiesel-primary-text); font-weight:700; }
+    .msg-col { display:flex; flex-direction:column; gap:4px; max-width:min(64ch,85%); }
+    .msg-col .msg { max-width:none; }
+    .msg-actions { display:flex; padding-left:4px; }
+    .msg-copy-btn { background:none; border:0; display:flex; align-items:center; gap:4px; color:var(--wiesel-text-hint); font-family:var(--font); font-size:.68rem; font-weight:700; padding:3px 6px; border-radius:6px; cursor:pointer; }
+    .msg-copy-btn svg { width:13px; height:13px; flex-shrink:0; }
+    .msg-copy-btn:hover { color:var(--wiesel-primary-text); background:var(--wiesel-primary-tint); }
+    .msg-copy-btn:focus-visible { outline:2px solid var(--wiesel-primary); outline-offset:1px; }
+    .msg-copy-btn.copied { color:var(--state-success-fg); }
     .msg.bot a { color:var(--wiesel-primary); text-underline-offset:2px; }
     .msg.bot code { background:var(--bg3); padding:1px 5px; border-radius:4px; font-size:13px; }
 
@@ -384,7 +392,7 @@
 </div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=5"></script>
+<script src="/static/strings.js?v=6"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -636,6 +644,15 @@
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
       document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => { av.className = 'msg-avatar frozen'; });
       row.appendChild(makeWieselSVG(avatarState));
+      const col = document.createElement('div');
+      col.className = 'msg-col';
+      col.appendChild(bubble);
+      col.appendChild(makeCopyBar(text));
+      row.appendChild(col);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      announce(T.srBotReply);
+      return row;
     } else if (role === 'user') {
       bubble.appendChild(srSpan(T.srUserPrefix));
       if (text) { const span = document.createElement('span'); span.textContent = text; bubble.appendChild(span); }
@@ -646,9 +663,45 @@
     row.appendChild(bubble);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    if (role === 'bot') announce(T.srBotReply);
     if (role === 'error') announce(T.srErrorMessage);
     return row;
+  }
+
+  function makeCopyBar(text) {
+    const bar = document.createElement('div');
+    bar.className = 'msg-actions';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'msg-copy-btn';
+    btn.dataset.copyText = text;
+    btn.title = T.copyMessage;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="copy-label"></span>';
+    btn.querySelector('.copy-label').textContent = T.copyMessage;
+    btn.addEventListener('click', async () => {
+      const value = btn.dataset.copyText || '';
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e2) {}
+        document.body.removeChild(ta);
+      }
+      const label = btn.querySelector('.copy-label');
+      btn.classList.add('copied');
+      if (label) label.textContent = T.copiedMessage;
+      announce(T.copiedMessage);
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        if (label) label.textContent = T.copyMessage;
+      }, 1800);
+    });
+    bar.appendChild(btn);
+    return bar;
   }
 
   function addTyping() {
@@ -692,6 +745,13 @@
     bubble.insertAdjacentHTML('beforeend', marked.parse(T.greeting));
     bubble.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
     greetingRow.setAttribute('aria-label', T.srBotMessage);
+    const copyBtn = greetingRow.querySelector('.msg-copy-btn');
+    if (copyBtn) {
+      copyBtn.dataset.copyText = T.greeting;
+      copyBtn.title = T.copyMessage;
+      const label = copyBtn.querySelector('.copy-label');
+      if (label) label.textContent = T.copyMessage;
+    }
   }
 
   loadGreeting();
