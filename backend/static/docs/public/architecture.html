@@ -18,7 +18,7 @@
     --accent:#B8500F;
     --accent-2:#8f3f0c;
     --accent-soft:rgba(184,80,15,.12);
-    --green:#3B6D11;
+    --ok:#4f4638;
     --blue:#7c4d1f;
     --shadow:0 14px 40px rgba(67,48,26,.09);
     --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
@@ -66,8 +66,10 @@
   .readout { padding:0 12px 12px; }
   .terminal { min-height:202px; border:1px solid var(--line); border-radius:10px; background:#fffaf0; padding:12px; color:var(--muted-2); font:12px/1.75 var(--mono); overflow:auto; }
   .terminal .active { color:var(--text); }
-  .terminal .ok { color:var(--green); }
-  .terminal .warn { color:var(--accent-2); }
+  .terminal .ok { color:var(--ok); font-weight:800; }
+  .terminal .ok::before { content:"✓ Gespeichert: "; }
+  .terminal .warn { color:var(--accent-2); font-weight:800; }
+  .terminal .warn::before { content:"Hinweis: "; }
 
   .controls { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:14px; }
   .transport { display:flex; align-items:center; gap:11px; }

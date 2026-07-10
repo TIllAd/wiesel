@@ -4,17 +4,17 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wiesel Agenda</title>
-<link rel="stylesheet" href="../docs-theme.css" />
+<link rel="stylesheet" href="../assets/docs-theme.css" />
 <style>
   .kanban-layout { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:22px; align-items:start; }
   @media(max-width:800px){ .kanban-layout{ grid-template-columns:1fr; } }
 
   .col { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); min-height:300px; display:flex; flex-direction:column; }
   .col-head { padding:14px 16px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px; }
-  .col-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-  .dot-neu   { background:#7c8fa6; }
-  .dot-aktiv { background:#B8500F; }
-  .dot-done  { background:#3B6D11; }
+  .col-status { border:1px solid var(--line); border-radius:999px; padding:2px 7px; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; flex-shrink:0; }
+  .status-neu   { background:var(--panel-2); color:var(--muted-2); border-style:dotted; }
+  .status-aktiv { background:var(--accent-soft); color:var(--accent-2); border-color:var(--accent); border-style:dashed; }
+  .status-done  { background:var(--panel-3); color:var(--text); border-style:double; }
   .col-title { font-family:var(--serif); font-size:16px; font-weight:400; margin:0; flex:1; }
   .col-count { font-size:12px; color:var(--muted); }
   .col-add   { background:none; border:none; color:var(--accent); font:inherit; font-size:19px; line-height:1; cursor:pointer; padding:0 2px; }
@@ -29,10 +29,10 @@
   .card.drag-placeholder { border:2px dashed var(--accent); background:var(--accent-soft); min-height:48px; border-radius:10px; }
 
   .card-top { display:flex; align-items:flex-start; gap:8px; }
-  .card-prio { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
-  .prio-high   { background:#B8500F; }
-  .prio-normal { background:#7c8fa6; }
-  .prio-low    { background:#b5b0a6; }
+  .card-prio { border:1px solid var(--line); border-radius:999px; padding:1px 6px; flex-shrink:0; margin-top:1px; font-size:10px; font-weight:800; }
+  .prio-high   { background:var(--accent-soft); color:var(--accent-2); border-color:var(--accent); border-style:dashed; }
+  .prio-normal { background:var(--panel-2); color:var(--muted-2); border-style:solid; }
+  .prio-low    { background:var(--panel); color:var(--muted); border-style:dotted; }
   .card-title  { flex:1; font-size:13px; font-weight:600; line-height:1.4; color:var(--text); }
   .card-del    { background:none; border:none; color:var(--muted); font-size:15px; line-height:1; cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s; }
   .card:hover .card-del { opacity:1; }
@@ -96,7 +96,7 @@
   <div class="kanban-layout" id="board">
     <div class="col" id="col-neu"      data-status="neu">
       <div class="col-head">
-        <span class="col-dot dot-neu"></span>
+        <span class="col-status status-neu" aria-label="Status Neu">Neu</span>
         <h2 class="col-title">Neu</h2>
         <span class="col-count" id="cnt-neu">0</span>
         <button type="button" class="col-add" data-col="neu" title="Karte hinzufügen">+</button>
@@ -107,7 +107,7 @@
 
     <div class="col" id="col-aktiv"    data-status="aktiv">
       <div class="col-head">
-        <span class="col-dot dot-aktiv"></span>
+        <span class="col-status status-aktiv" aria-label="Status Aktiv">Aktiv</span>
         <h2 class="col-title">Aktiv</h2>
         <span class="col-count" id="cnt-aktiv">0</span>
         <button type="button" class="col-add" data-col="aktiv" title="Karte hinzufügen">+</button>
@@ -118,7 +118,7 @@
 
     <div class="col" id="col-erledigt" data-status="erledigt">
       <div class="col-head">
-        <span class="col-dot dot-done"></span>
+        <span class="col-status status-done" aria-label="Status Erledigt">Erledigt</span>
         <h2 class="col-title">Erledigt</h2>
         <span class="col-count" id="cnt-erledigt">0</span>
         <button type="button" class="col-add" data-col="erledigt" title="Karte hinzufügen">+</button>
@@ -196,7 +196,7 @@
 
     div.innerHTML = `
       <div class="card-top">
-        <span class="card-prio prio-${esc(item.priority)}"></span>
+        <span class="card-prio prio-${esc(item.priority)}">${item.priority === 'high' ? 'Hoch' : item.priority === 'low' ? 'Niedrig' : 'Normal'}</span>
         <span class="card-title">${esc(item.title)}</span>
         <button type="button" class="card-del" title="Löschen">×</button>
       </div>

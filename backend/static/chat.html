@@ -30,6 +30,15 @@
       --text:    var(--wiesel-text);
       --tdim:    var(--wiesel-text-muted);
       --font:    'Nunito', 'Inter', system-ui, sans-serif;
+      --state-error-fg:#7f1d1d;
+      --state-error-bg:#fff7ed;
+      --state-error-border:#b8500f;
+      --state-warning-fg:#713f12;
+      --state-warning-bg:#fff8dc;
+      --state-warning-border:#b45309;
+      --state-success-fg:#3b2f16;
+      --state-success-bg:#f8f3e8;
+      --state-success-border:#6f5e49;
     }
 
     body {
@@ -41,6 +50,8 @@
       flex-direction: column;
       overflow: hidden;
     }
+
+    .sr-only { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
 
     #no-session {
       display: none;
@@ -71,8 +82,9 @@
     .hsub { font-size:.65rem; color:rgba(255,255,255,.5); }
     .hbadge { margin-left:auto; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
     .chat-flag-wrap { position:relative; flex-shrink:0; }
-    .chat-flag-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.26); color:#fecaca; border-radius:9px; width:30px; height:30px; cursor:pointer; font-size:15px; }
-    .chat-flag-btn:hover, .chat-flag-btn.flagged { background:#fee2e2; border-color:#fecaca; color:#dc2626; }
+    .chat-flag-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.26); color:#fff0d8; border-radius:9px; width:30px; height:30px; cursor:pointer; font-size:15px; }
+    .chat-flag-btn:hover, .chat-flag-btn.flagged { background:#fff7ed; border-color:var(--state-error-border); color:var(--state-error-fg); box-shadow:inset 0 -3px 0 var(--state-error-border); }
+    .chat-flag-btn.flagged::after { content:"✓"; position:absolute; right:-5px; top:-7px; width:14px; height:14px; border-radius:999px; background:var(--state-success-bg); border:1px double var(--state-success-border); color:var(--state-success-fg); font-size:10px; line-height:12px; }
     .chat-flag-menu { display:none; position:absolute; right:0; top:36px; z-index:30; background:#fff; border:1px solid var(--border); border-radius:12px; width:260px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
     .chat-flag-wrap.open .chat-flag-menu { display:block; }
     #ctx-label { font-size:11px; color:rgba(255,255,255,.4); margin-left:6px; }
@@ -84,6 +96,7 @@
     .kchip { position:relative; display:inline-flex; flex-direction:column; align-items:flex-start; gap:3px; background:transparent; border:0; color:var(--wiesel-primary-text); font-size:13px; font-weight:800; padding:2px 0 4px; border-radius:0; cursor:pointer; transition:transform .15s, color .15s; font-family:var(--font); }
     .kchip::after { content:""; display:block; width:100%; height:6px; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 6' preserveAspectRatio='none'%3E%3Cpath d='M2 3 Q 33 0.5 65 3 T 128 3' fill='none' stroke='%23c45060' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 6px no-repeat; }
     .kchip:hover { color:var(--wiesel-primary); transform:translateY(-1px); }
+    .kchip:focus-visible { outline:2px solid var(--wiesel-primary); outline-offset:4px; border-radius:6px; }
 
     /* MESSAGES */
     #messages {
@@ -172,11 +185,12 @@
     .msg.bot code { background:var(--bg3); padding:1px 5px; border-radius:4px; font-size:13px; }
 
     .msg.user { background:var(--wiesel-primary); border:none; color:#fff; font-weight:700; white-space:pre-wrap; border-radius:22px 22px 6px 22px; box-shadow:0 2px 8px rgba(139,31,47,.18); }
-    .msg.error { background:#fff0f0; border:1px solid #fecaca; color:#b91c1c; max-width:min(64ch, calc(100% - 28px)); }
-    .flag-help-title { color:#991b1b; font-size:12px; font-weight:900; margin:2px 4px 4px; }
+    .msg.error { background:var(--state-error-bg); border:1.5px solid var(--state-error-border); border-left:6px solid var(--state-error-border); color:var(--state-error-fg); max-width:min(64ch, calc(100% - 28px)); }
+    .msg.error::before { content:"⚠ Fehler: "; font-weight:900; }
+    .flag-help-title { color:var(--state-error-fg); font-size:12px; font-weight:900; margin:2px 4px 4px; }
     .flag-help-text { color:#6b7280; font-size:11px; line-height:1.35; margin:0 4px 8px; }
-    .flag-option { display:block; width:100%; border:0; background:#fff; color:#991b1b; text-align:left; font-family:var(--font); font-weight:800; font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer; }
-    .flag-option:hover { background:#fee2e2; }
+    .flag-option { display:block; width:100%; border:1px solid transparent; background:#fff; color:var(--state-error-fg); text-align:left; font-family:var(--font); font-weight:800; font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer; text-decoration:none; }
+    .flag-option:hover, .flag-option:focus-visible { background:var(--state-error-bg); border-color:var(--state-error-border); outline:none; }
     .flag-toast { position:fixed; right:16px; top:70px; z-index:60; width:min(360px, calc(100vw - 32px)); background:var(--wiesel-primary-tint); border:1px solid var(--wiesel-border); border-left:5px solid var(--wiesel-primary); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.18); padding:12px 14px; color:var(--wiesel-primary-text); display:none; }
     .flag-toast.show { display:block; animation:fadeIn .18s ease; }
     .flag-toast-title { font-weight:900; font-size:14px; margin-bottom:4px; }
@@ -205,9 +219,13 @@
     #send:hover { transform:scale(1.07); box-shadow:0 4px 14px rgba(15,110,86,.32); }
     #send:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    #char-limit-hint { display:none; text-align:center; font-size:.65rem; color:#b91c1c; background:#fff0f0; padding:4px 14px; flex-shrink:0; }
+    #char-limit-hint { display:none; text-align:center; font-size:.65rem; color:var(--state-error-fg); background:var(--state-error-bg); border-top:1px dashed var(--state-error-border); padding:4px 14px; flex-shrink:0; }
 
     .fnote { text-align:center; font-size:.58rem; color:var(--wiesel-footer); opacity:1; padding:4px 0 2px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--wiesel-bg); flex-shrink:0; }
+    .flinks { text-align:center; font-size:.58rem; padding:0 0 6px; background:var(--wiesel-bg); flex-shrink:0; }
+    .flinks a { color:var(--wiesel-footer); text-decoration:underline; text-underline-offset:2px; margin:0 7px; }
+    .flinks a:hover, .flinks a:focus-visible { color:var(--wiesel-primary-text); }
+    .flinks a:focus-visible { outline:2px solid var(--wiesel-primary); outline-offset:2px; border-radius:3px; }
 
     #attach-btn {
       background:var(--wiesel-surface); border:1px solid var(--wiesel-border-input); cursor:pointer;
@@ -238,7 +256,7 @@
     }
     .img-preview-wrap img { height: 48px; width: 48px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
     .img-preview-label { font-size: .7rem; color: var(--tdim); flex: 1; }
-    .img-remove-btn { background: none; border: none; cursor: pointer; color: var(--tdim); font-size: 16px; padding: 0 4px; }
+    .img-remove-btn { background: none; border: 1px solid transparent; border-radius:6px; cursor: pointer; color: var(--tdim); font-size: 16px; padding: 0 4px; }
     .img-remove-btn:hover { color: var(--wiesel-primary); }
     .msg-img { max-width: 220px; border-radius: 10px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
 
@@ -268,10 +286,19 @@
     }
     @keyframes mic-ring { 0%{transform:scale(.88);opacity:.5} 100%{transform:scale(1.55);opacity:0} }
     @keyframes mic-arc-spin { to{transform:rotate(360deg)} }
+
+    .voice-state { align-self:center; min-width:72px; color:var(--wiesel-text-muted); font-size:.65rem; font-weight:800; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition:none !important; }
+      .av-idle, .av-think, .av-found, .av-talk, .av-dig, .av-confused, .msg-row, .typing-row, .flag-toast.show { animation:none !important; transform:none !important; }
+      #mic-btn.voice-pulse::before, #mic-btn.voice-pulse::after, #mic-btn.timeout::before { animation:none !important; }
+    }
   </style>
 </head>
 <body>
 
+<div id="sr-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <div id="no-session"></div>
 
 <div class="hbar">
@@ -291,6 +318,7 @@
       <div class="flag-help-title" id="flag-help-title"></div>
       <div class="flag-help-text" id="flag-help-text"></div>
       <button id="chat-flag-option" class="flag-option" type="button"></button>
+      <a id="knowledge-link" class="flag-option knowledge-option" href="https://github.com/TIllAd/wiesel/issues/new?template=faq_update.md" target="_blank" rel="noopener noreferrer"></a>
     </div>
   </div>
   <span id="ctx-label"></span>
@@ -299,14 +327,14 @@
 <div class="kbar">
   <div class="klabel" id="quick-label"></div>
   <div class="kchips">
-    <div class="kchip" id="quick-exams"></div>
-    <div class="kchip" id="quick-start"></div>
-    <div class="kchip" id="quick-office"></div>
-    <div class="kchip" id="quick-links"></div>
+    <button class="kchip" id="quick-exams" type="button"></button>
+    <button class="kchip" id="quick-start" type="button"></button>
+    <button class="kchip" id="quick-office" type="button"></button>
+    <button class="kchip" id="quick-links" type="button"></button>
   </div>
 </div>
 
-<div id="messages">
+<div id="messages" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false">
   <div id="drop-overlay" aria-hidden="true">
     <div class="drop-icon">⇪</div>
     <div class="drop-title" id="drop-title"></div>
@@ -323,27 +351,33 @@
   </div>
 </div>
 
-<input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
+<label class="sr-only" id="file-input-label" for="file-input"></label>
+<input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" aria-labelledby="file-input-label">
 <div id="img-preview" style="display:none" class="img-preview-wrap">
   <img id="img-thumb" src="" alt="">
   <span class="img-preview-label" id="img-name"></span>
-  <button class="img-remove-btn" id="img-remove-btn" onclick="removeImage()">✕</button>
+  <button class="img-remove-btn" id="img-remove-btn" type="button">✕</button>
 </div>
 <div id="input-area">
-  <textarea id="query" rows="1" maxlength="2000"></textarea>
-  <button id="attach-btn" onclick="document.getElementById('file-input').click()">
+  <label class="sr-only" id="query-label" for="query"></label>
+  <textarea id="query" rows="1" maxlength="2000" aria-labelledby="query-label" aria-describedby="char-limit-hint footer-note"></textarea>
+  <button id="attach-btn" type="button">
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M16.5 6.5 8.1 14.9a3 3 0 0 0 4.2 4.2l8.1-8.1a5 5 0 0 0-7.1-7.1L5.2 12a7 7 0 0 0 9.9 9.9l7.2-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </button>
-  <button id="mic-btn">🎤</button>
-  <button id="send" disabled>↑</button>
+  <button id="mic-btn" type="button" aria-pressed="false">🎤</button>
+  <span id="voice-state" class="voice-state"></span>
+  <button id="send" type="button" disabled>↑</button>
 </div>
-<div id="char-limit-hint"></div>
+<div id="char-limit-hint" role="status" aria-live="polite"></div>
 <div class="fnote" id="footer-note"></div>
+<div class="flinks" id="footer-links">
+  <a href="/static/legal/impressum.html" id="link-impressum"></a><a href="/static/legal/datenschutz.html" id="link-datenschutz"></a><a href="/static/legal/barrierefreiheit.html" id="link-a11y"></a>
+</div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=2"></script>
+<script src="/static/strings.js?v=4"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -363,6 +397,8 @@
   const messagesEl = document.getElementById('messages');
   const queryEl    = document.getElementById('query');
   const sendBtn    = document.getElementById('send');
+  const srStatusEl = document.getElementById('sr-status');
+  const voiceStateEl = document.getElementById('voice-state');
   const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
   const MAX_IMAGE_DIMENSION = 1600;
   const MAX_QUERY_CHARS = 2000;
@@ -374,6 +410,8 @@
 
   function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
   function setTitle(id, text) { const el = document.getElementById(id); if (el) { el.title = text; el.setAttribute('aria-label', text); } }
+  function announce(text) { if (srStatusEl) srStatusEl.textContent = text || ''; }
+  function srSpan(text) { const span = document.createElement('span'); span.className = 'sr-only'; span.textContent = text; return span; }
 
   function applyTranslations() {
     setText('no-session', T.noSession);
@@ -387,6 +425,8 @@
     setText('flag-help-title', T.flagMenuTitle);
     setText('flag-help-text', T.flagMenuText);
     setText('chat-flag-option', T.flagOption);
+    setText('knowledge-link', T.knowledgeContribute);
+    setTitle('knowledge-link', T.knowledgeContributeAria);
     setText('quick-label', T.quickLabel);
     setText('quick-exams', T.quickExamsLabel);
     setText('quick-start', T.quickStartLabel);
@@ -394,17 +434,24 @@
     setText('quick-links', T.quickLinksLabel);
     setText('drop-title', T.dropTitle);
     setText('drop-subtitle', T.dropSubtitle);
+    messagesEl.setAttribute('aria-label', T.chatLogLabel);
     setText('flag-toast-title', T.flagToastTitle);
     setText('flag-toast-text', T.flagToastText);
     setText('flag-toast-close', T.flagToastClose);
     setText('flag-toast-new', T.flagToastNew);
     document.getElementById('img-thumb').alt = T.previewAlt;
     setTitle('img-remove-btn', T.removeImage);
+    setText('file-input-label', T.fileInputLabel);
+    setText('query-label', T.queryLabel);
     queryEl.placeholder = T.queryPlaceholder;
     setTitle('attach-btn', T.attachImage);
     setTitle('mic-btn', T.voiceInput);
+    setText('voice-state', T.voiceIdle);
     setTitle('send', T.send);
     setText('footer-note', T.footer);
+    setText('link-impressum', T.footerImpressum);
+    setText('link-datenschutz', T.footerPrivacy);
+    setText('link-a11y', T.footerA11y);
     document.getElementById('quick-exams').addEventListener('click', () => quickSend(T.quickExamsPrompt));
     document.getElementById('quick-start').addEventListener('click', () => quickSend(T.quickStartPrompt));
     document.getElementById('quick-office').addEventListener('click', () => quickSend(T.quickOfficePrompt));
@@ -438,8 +485,9 @@
   function makeWieselSVG(state) {
     const wrap = document.createElement('div');
     wrap.className = `msg-avatar av-${state}`;
+    wrap.setAttribute('aria-hidden', 'true');
     let src = state === 'dig' ? DIG_VARIANTS[0] : (WIESEL_IMGS[state] || WIESEL_FALLBACK);
-    wrap.innerHTML = `<img src="${src}" alt="${T.wieselAlt}" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
+    wrap.innerHTML = `<img src="${src}" alt="" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
     return wrap;
   }
 
@@ -478,9 +526,11 @@
         btn.classList.add('flagged');
         btn.title = T.flagBtnMarked;
         showFlagToast();
+        announce(T.flagToastTitle);
       } catch {
         btn.disabled = false;
         btn.title = T.flagBtnFailed;
+        announce(T.flagBtnFailed);
       }
     });
   }
@@ -508,28 +558,37 @@
   function addMessage(role, text, avatarState = 'talk') {
     const row = document.createElement('div');
     row.className = 'msg-row ' + (role === 'user' ? 'user' : role === 'bot' ? 'bot' : 'error');
+    row.setAttribute('role', 'article');
+    const speakerLabel = role === 'user' ? T.srUserMessage : role === 'bot' ? T.srBotMessage : T.srErrorMessage;
+    row.setAttribute('aria-label', speakerLabel);
     const bubble = document.createElement('div');
     bubble.className = 'msg ' + role;
     if (role === 'user' && window._pendingImgSrc) {
       const img = document.createElement('img');
       img.src = window._pendingImgSrc;
       img.className = 'msg-img';
+      img.alt = T.attachedImageAlt;
       bubble.appendChild(img);
       window._pendingImgSrc = null;
     }
     if (role === 'bot') {
-      bubble.innerHTML = marked.parse(text);
+      bubble.appendChild(srSpan(T.srBotPrefix));
+      bubble.insertAdjacentHTML('beforeend', marked.parse(text));
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
       document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => { av.className = 'msg-avatar frozen'; });
       row.appendChild(makeWieselSVG(avatarState));
     } else if (role === 'user') {
+      bubble.appendChild(srSpan(T.srUserPrefix));
       if (text) { const span = document.createElement('span'); span.textContent = text; bubble.appendChild(span); }
     } else {
-      bubble.textContent = text;
+      bubble.appendChild(srSpan(T.srErrorPrefix));
+      bubble.appendChild(document.createTextNode(text.replace(/^⚠️\s*/, '')));
     }
     row.appendChild(bubble);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (role === 'bot') announce(T.srBotReply);
+    if (role === 'error') announce(T.srErrorMessage);
     return row;
   }
 
@@ -537,6 +596,9 @@
     const row = document.createElement('div');
     row.className = 'typing-row';
     row.id = 'typing-row';
+    row.setAttribute('role', 'status');
+    row.setAttribute('aria-label', T.srTyping);
+    announce(T.srTyping);
     const phrase = typingPhrases[Math.floor(Math.random() * typingPhrases.length)];
     row.appendChild(makeWieselSVG('dig'));
     const bub = document.createElement('div');
@@ -667,14 +729,19 @@
       pendingImageBase64 = dataUrl.split(',')[1];
       pendingImageType = 'image/jpeg';
       document.getElementById('img-thumb').src = dataUrl;
+      document.getElementById('img-thumb').alt = `${T.previewAlt}: ${file.name}`;
       document.getElementById('img-name').textContent = file.name;
       document.getElementById('img-preview').style.display = 'flex';
       sendBtn.disabled = false;
+      announce(`${T.srImageAttached}: ${file.name}`);
     } catch (err) {
       removeImage();
       addMessage('error', '⚠️ ' + (err.message || T.imageProcessError));
     }
   }
+
+  document.getElementById('attach-btn').addEventListener('click', () => document.getElementById('file-input').click());
+  document.getElementById('img-remove-btn').addEventListener('click', removeImage);
 
   document.getElementById('file-input').addEventListener('change', async function() {
     const file = this.files[0];
@@ -715,6 +782,7 @@
     pendingImageBase64 = null; pendingImageType = null;
     document.getElementById('img-preview').style.display = 'none';
     document.getElementById('img-thumb').src = '';
+    document.getElementById('img-thumb').alt = T.previewAlt;
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
   }
 
@@ -727,11 +795,17 @@
 
   function showVoiceError(message) {
     addMessage('error', '⚠️ ' + message);
+    announce(message);
   }
 
   function setVoiceRecordingUi(active) {
     micBtn.disabled = false;
     micBtn.classList.toggle('recording', active);
+    micBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    micBtn.setAttribute('aria-label', active ? T.voiceRecording : T.voiceInput);
+    micBtn.title = active ? T.voiceRecording : T.voiceInput;
+    if (voiceStateEl) voiceStateEl.textContent = active ? T.voiceRecordingShort : T.voiceIdle;
+    announce(active ? T.voiceRecording : T.voiceStopped);
     document.body.classList.toggle('voice-recording', active);
     if (!active) {
       clearTimeout(voicePulseTimer);
@@ -781,6 +855,8 @@
     voiceInterimTranscript = '';
     setVoiceRecordingUi(false);
     micBtn.classList.add('timeout');
+    if (voiceStateEl) voiceStateEl.textContent = T.voiceTimeout;
+    announce(T.voiceTimeout);
     try { recognition.stop(); } catch {}
     timeoutUiTimer = setTimeout(() => {
       voiceTimedOut = false;
@@ -859,6 +935,8 @@
       try {
         voiceTimedOut = false;
         isVoiceStarting = true;
+        if (voiceStateEl) voiceStateEl.textContent = T.voiceStarting;
+        announce(T.voiceStarting);
         voiceBaseText = queryEl.value;
         voiceFinalTranscript = '';
         voiceInterimTranscript = '';
