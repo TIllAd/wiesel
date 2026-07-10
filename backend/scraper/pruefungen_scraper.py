@@ -19,6 +19,23 @@ URLS = [
     ("pruefungen-uebersicht.md", "Prüfungen Übersicht FAU",           "https://www.fau.de/studium/studienorganisation/pruefungen/#pruefungsamt", 150),
 ]
 
+# FAU markiert unbestätigte Anmeldezeiträume auf der eigenen Seite selbst mit
+# "(voraussichtlich)". Genau solche Zeilen dürfen nie in die Wissensbasis --
+# sonst zitiert Wiesel sie trotz Prompt-Verbot als vermeintlichen Fakt (Fund
+# aus Morpheus Runde 2, R1: exakt dieses Wort tauchte 1:1 in der Bot-Antwort auf).
+_UNCONFIRMED_MARKERS = ("voraussichtlich",)
+
+# Fix 2026-07: der Warnhinweis stand vorher nur manuell in der .md-Datei und
+# wurde bei jedem wöchentlichen Scraper-Lauf wieder überschrieben, weil er nie
+# Teil des generierten Templates war. Jetzt fest im Code, übersteht jeden Lauf.
+TERMINE_WARNUNG = (
+    "> ⚠️ **WICHTIG — Gültigkeit der Termine:** Anmeldezeiträume unten gelten nur für "
+    "die hier konkret genannten, bereits bestätigten Semester. Für künftige, noch "
+    "nicht bestätigte Semester nichts schätzen oder aus alten Terminen fortschreiben "
+    "-- auf die Quelle oben verweisen.\n\n---\n\n"
+)
+FILES_WITH_TERMINE_WARNUNG = {"pruefungsamt-fau.md", "pruefungen-uebersicht.md"}
+
 STATIC = [
     ("campo-bescheinigungen.md", "Bescheinigungen über campo", """Immatrikulationsbescheinigung und Notenauszug können direkt in campo heruntergeladen werden.
 Login: https://www.campo.fau.de/ (mit IdM-Kennung)
@@ -42,6 +59,7 @@ def scrape(label, url, max_lines):
             tag.decompose()
         lines = [l.strip() for l in main.get_text(separator="\n").splitlines()]
         lines = [l for l in lines if l and len(l) > 2]
+        lines = [l for l in lines if not any(m in l.lower() for m in _UNCONFIRMED_MARKERS)]
         return "\n".join(lines[:max_lines])
     except Exception as e:
         return f"[Fehler beim Abrufen: {e}]"
@@ -53,7 +71,8 @@ def main():
     for filename, label, url, max_lines in URLS:
         print(f"  Scraping: {label} ...")
         text = scrape(label, url, max_lines)
-        content = f"# {label}\nQuelle: {url}\nGecrawlt am: {date.today()}\n\n---\n\n{text}\n"
+        banner = TERMINE_WARNUNG if filename in FILES_WITH_TERMINE_WARNUNG else ""
+        content = f"# {label}\nQuelle: {url}\nGecrawlt am: {date.today()}\n\n---\n\n{banner}{text}\n"
         with open(os.path.join(BASE_DIR, filename), "w", encoding="utf-8") as f:
             f.write(content)
         print(f"    → {filename} ({len(text)} Zeichen)")
