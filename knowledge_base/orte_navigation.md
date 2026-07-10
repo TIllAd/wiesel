@@ -29,7 +29,7 @@ Mo–Fr 11:00–14:00
 
 **Prüfungsamt WiSo**
 Lange Gasse 20, 90403 Nürnberg
-Mo–Do 9:00–11:00, Di zusätzlich 13:00–16:00, Fr geschlossen
+Mo, Mi, Do: 9:00–11:00 Uhr · Di: 9:00–11:00 Uhr UND zusätzlich 13:00–16:00 Uhr · Fr: geschlossen
 Kontakt: pruefungsamt@wiso.fau.de · [wiso.fau.de/pruefungsamt](https://www.wiso.rw.fau.de/pruefungsamt)
 [Navigation](https://www.google.com/maps/search/?api=1&query=Prüfungsamt+WiSo+FAU+Lange+Gasse+20+Nürnberg)
 
