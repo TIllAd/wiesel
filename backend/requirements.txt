@@ -9,3 +9,4 @@ PyJWT[crypto]==2.8.0  # [crypto] = cryptography, nötig für RS256-Verifikation 
 oauthlib==3.2.2
 python-dotenv==1.0.0
 Pillow>=10.0.0
+bs4-0.0.2
