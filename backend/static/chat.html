@@ -80,7 +80,13 @@
     .hname { font-size:.9rem; font-weight:900; color:#ffffff; }
     .hname em { font-style:normal; color:#f5c4b3; }
     .hsub { font-size:.65rem; color:rgba(255,255,255,.5); }
-    .hbadge { margin-left:auto; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
+    .hbadge { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); font-size:.58rem; font-weight:800; padding:2px 8px; border-radius:7px; letter-spacing:.05em; text-transform:uppercase; }
+    .lswitch { margin-left:auto; display:flex; align-items:center; gap:1px; }
+    .lswitch button { background:none; border:0; color:rgba(255,255,255,.5); font-family:var(--font); font-size:.62rem; font-weight:800; letter-spacing:.02em; padding:3px 5px; cursor:pointer; border-radius:5px; }
+    .lswitch button:hover { color:rgba(255,255,255,.85); }
+    .lswitch button.active { color:#fff; text-decoration:underline; text-underline-offset:3px; }
+    .lswitch button:focus-visible { outline:2px solid #fff; outline-offset:1px; }
+    .lswitch .sep { color:rgba(255,255,255,.25); font-size:.6rem; }
     .chat-flag-wrap { position:relative; flex-shrink:0; }
     .chat-flag-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.26); color:#fff0d8; border-radius:9px; width:30px; height:30px; cursor:pointer; font-size:15px; }
     .chat-flag-btn:hover, .chat-flag-btn.flagged { background:#fff7ed; border-color:var(--state-error-border); color:var(--state-error-fg); box-shadow:inset 0 -3px 0 var(--state-error-border); }
@@ -311,6 +317,7 @@
       <div class="hsub" id="hsub"></div>
     </div>
   </a>
+  <div class="lswitch" id="lswitch" role="group"></div>
   <div class="hbadge" id="hbadge"></div>
   <div id="chat-flag" class="chat-flag-wrap" style="display:none">
     <button id="chat-flag-btn" class="chat-flag-btn" type="button">🚩</button>
@@ -377,7 +384,7 @@
 </div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=4"></script>
+<script src="/static/strings.js?v=5"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -403,10 +410,59 @@
   const MAX_IMAGE_DIMENSION = 1600;
   const MAX_QUERY_CHARS = 2000;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-  const LANG = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en';
+  const SUPPORTED_LANGS = ['de', 'en', 'es', 'it', 'zh'];
+  const LANG_LABELS = { de: 'DE', en: 'EN', es: 'ES', it: 'IT', zh: '中文' };
+  const LANG_NAMES  = { de: 'Deutsch', en: 'English', es: 'Español', it: 'Italiano', zh: '中文' };
+
+  function detectLang() {
+    const saved = localStorage.getItem('wieselLang');
+    if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
+    const nav = (navigator.language || 'de').toLowerCase();
+    return SUPPORTED_LANGS.find(l => nav.startsWith(l)) || 'de';
+  }
+
+  let LANG = detectLang();
   document.documentElement.lang = LANG;
 
-  const T = window.STRINGS[LANG];
+  let T = window.STRINGS[LANG];
+
+  function renderLangSwitch() {
+    const el = document.getElementById('lswitch');
+    if (!el) return;
+    el.innerHTML = '';
+    el.setAttribute('aria-label', T.langSwitchLabel);
+    SUPPORTED_LANGS.forEach((l, i) => {
+      if (i > 0) {
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = '|';
+        el.appendChild(sep);
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = LANG_LABELS[l];
+      btn.lang = l;
+      btn.title = LANG_NAMES[l];
+      if (l === LANG) {
+        btn.className = 'active';
+        btn.setAttribute('aria-current', 'true');
+      }
+      btn.addEventListener('click', () => setLang(l));
+      el.appendChild(btn);
+    });
+  }
+
+  function setLang(newLang) {
+    if (!SUPPORTED_LANGS.includes(newLang) || newLang === LANG) return;
+    LANG = newLang;
+    localStorage.setItem('wieselLang', LANG);
+    document.documentElement.lang = LANG;
+    T = window.STRINGS[LANG];
+    applyTranslations();
+    renderLangSwitch();
+    refreshGreeting();
+  }
 
   function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
   function setTitle(id, text) { const el = document.getElementById(id); if (el) { el.title = text; el.setAttribute('aria-label', text); } }
@@ -452,12 +508,15 @@
     setText('link-impressum', T.footerImpressum);
     setText('link-datenschutz', T.footerPrivacy);
     setText('link-a11y', T.footerA11y);
-    document.getElementById('quick-exams').addEventListener('click', () => quickSend(T.quickExamsPrompt));
-    document.getElementById('quick-start').addEventListener('click', () => quickSend(T.quickStartPrompt));
-    document.getElementById('quick-office').addEventListener('click', () => quickSend(T.quickOfficePrompt));
-    document.getElementById('quick-links').addEventListener('click', () => quickSend(T.quickLinksPrompt));
+    const lswitchEl = document.getElementById('lswitch');
+    if (lswitchEl) lswitchEl.setAttribute('aria-label', T.langSwitchLabel);
   }
   applyTranslations();
+  renderLangSwitch();
+  document.getElementById('quick-exams').addEventListener('click', () => quickSend(T.quickExamsPrompt));
+  document.getElementById('quick-start').addEventListener('click', () => quickSend(T.quickStartPrompt));
+  document.getElementById('quick-office').addEventListener('click', () => quickSend(T.quickOfficePrompt));
+  document.getElementById('quick-links').addEventListener('click', () => quickSend(T.quickLinksPrompt));
 
   if (sessionId) {
     fetch(`/api/session/${sessionId}`)
@@ -615,10 +674,24 @@
   let pendingImageBase64 = null;
   let pendingImageType = null;
 
+  let greetingRow = null;
+  let userHasSentMessage = false;
+
   function loadGreeting() {
     const greeting = T.greeting;
-    addMessage('bot', greeting, detectAvatarState(greeting));
+    greetingRow = addMessage('bot', greeting, detectAvatarState(greeting));
     sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+  }
+
+  function refreshGreeting() {
+    if (!greetingRow || userHasSentMessage) return;
+    const bubble = greetingRow.querySelector('.msg');
+    if (!bubble) return;
+    bubble.innerHTML = '';
+    bubble.appendChild(srSpan(T.srBotPrefix));
+    bubble.insertAdjacentHTML('beforeend', marked.parse(T.greeting));
+    bubble.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+    greetingRow.setAttribute('aria-label', T.srBotMessage);
   }
 
   loadGreeting();
@@ -659,6 +732,7 @@
     const sid = sessionId;
     let readTimer = null;
     if (pendingImageBase64) window._pendingImgSrc = 'data:' + pendingImageType + ';base64,' + pendingImageBase64;
+    userHasSentMessage = true;
     addMessage('user', text);
     queryEl.value = ''; queryEl.style.height = 'auto'; sendBtn.disabled = true;
     const hint = document.getElementById('char-limit-hint');
