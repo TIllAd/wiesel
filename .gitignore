@@ -24,6 +24,9 @@ ENV/
 .Trashes
 ehthumbs.db
 
+# FUSE artifacts (Docker bind-mount + uvicorn --reload leaves these behind)
+.fuse_hidden*
+
 # Project
 *.db
 *.sqlite
