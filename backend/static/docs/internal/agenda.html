@@ -251,6 +251,7 @@
     /* cancel */
     div.querySelector('.btn-cancel').addEventListener('click', () => {
       div.classList.remove('editing');
+      div.draggable = true;
     });
 
     /* drag */
@@ -270,8 +271,12 @@
 
   function toggleEdit(div, item) {
     const isEditing = div.classList.contains('editing');
-    document.querySelectorAll('.card.editing').forEach(c => c.classList.remove('editing'));
-    if (!isEditing) div.classList.add('editing');
+    // draggable=true auf dem Karten-Container bricht sonst die normale Text-
+    // Cursor-Platzierung/-Selektion im Eingabefeld (Klick+minimale Bewegung wird
+    // vom Browser als Drag-Start interpretiert statt als Cursor-Positionierung).
+    // Deshalb während des Editierens deaktivieren.
+    document.querySelectorAll('.card.editing').forEach(c => { c.classList.remove('editing'); c.draggable = true; });
+    if (!isEditing) { div.classList.add('editing'); div.draggable = false; }
   }
 
   /* ── Drag & Drop on columns ───────────────────── */
