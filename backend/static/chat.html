@@ -619,7 +619,11 @@
     if (!toast || !closeBtn || !newBtn) return;
     closeBtn.addEventListener('click', () => toast.classList.remove('show'));
     newBtn.addEventListener('click', () => {
-    window.location.href = isDebugSession ? '/chat?debug=true' : '/chat' + location.search;
+    // Immer eine echte neue Session erzwingen (nicht nur bei bestehenden Debug-Sessions) —
+    // sonst landet man bei nicht-Debug-Sessions (z.B. via StudOn/LTI-Link) durch simples
+    // Neuladen von /chat mit denselben Query-Params wieder in der exakt gleichen Session,
+    // weil GET /chat ohne debug=true keine neue SessionRecord anlegt.
+    window.location.href = canMintDebugSession ? '/chat?debug=true' : '/chat' + location.search;
     });
   }
 
