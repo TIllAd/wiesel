@@ -13,7 +13,21 @@ Raumnummern findest du über:
 
 ## Mensen
 
-**Südmensa** (nächste Mensa zum WiSo-Campus Erlangen)
+**Mensa Insel Schütt** (nächste reguläre Mensa zum WiSo-Campus, Nürnberg)
+Insel Schütt 8, 90403 Nürnberg
+Reguläre Mensazeiten Mo–Fr — aktuelle Zeiten auf [werkswelt.de](https://www.werkswelt.de/index.php?id=mensen-cafeterien-cafebars) prüfen
+[Navigation](https://www.google.com/maps/search/?api=1&query=Mensa+Insel+Schütt+Nürnberg)
+
+**Mensateria Ohm** (Nürnberg, auch mit Biergarten)
+Keßlerplatz 12, 90489 Nürnberg
+[Navigation](https://www.google.com/maps/search/?api=1&query=Mensateria+Ohm+Keßlerplatz+12+Nürnberg)
+
+**Cafeteria Lange Gasse** (direkt im WiSo-Gebäude, Nürnberg — begrenzte Auswahl, kein volles Mittagessen)
+Lange Gasse 20, 90403 Nürnberg (Erdgeschoss)
+Mo–Do 8:00–17:00, Fr 8:00–15:00
+[Navigation](https://www.google.com/maps/search/?api=1&query=Cafeteria+Lange+Gasse+20+Nürnberg)
+
+**Südmensa** (Erlangen — volle Auswahl, ca. 10–15 Min. von der Langen Gasse)
 Erwin-Rommel-Str. 60, 91058 Erlangen
 Mo–Do 11:00–14:15, Fr 11:00–14:00
 [Navigation](https://www.google.com/maps/search/?api=1&query=Südmensa+Erwin-Rommel-Straße+60+Erlangen)
@@ -49,16 +63,16 @@ Sprechzeiten: aktuelle Zeiten auf [werkswelt.de](https://www.werkswelt.de/index.
 
 ## Bibliotheken
 
-**Universitätsbibliothek Erlangen (Hauptbibliothek)**
-Schuhstraße 1a, 91052 Erlangen
-Mo–Fr 8:00–24:00, Sa–So 10:00–24:00
-[Navigation](https://www.google.com/maps/search/?api=1&query=Universitätsbibliothek+Erlangen+Schuhstraße+1a)
-
-**Wirtschafts- und Sozialwissenschaftliche Zweigbibliothek (WSZB)**
+**Wirtschafts- und Sozialwissenschaftliche Zweigbibliothek (WSZB)** (Standardbibliothek für WiSo-Studierende, im WiSo-Gebäude)
 Lange Gasse 20, 90403 Nürnberg (Ebene 3)
 Mo–Sa 8:00–24:00, So 10:00–24:00
 [ub.fau.de/ub/standorte/wszb](https://www.ub.fau.de/ub/standorte/wszb)
 [Navigation](https://www.google.com/maps/search/?api=1&query=Wirtschafts+Sozialwissenschaftliche+Zweigbibliothek+Lange+Gasse+20+Nürnberg)
+
+**Universitätsbibliothek Erlangen (Hauptbibliothek)** (für fachübergreifende Recherche, größerer Bestand)
+Schuhstraße 1a, 91052 Erlangen
+Mo–Fr 8:00–24:00, Sa–So 10:00–24:00
+[Navigation](https://www.google.com/maps/search/?api=1&query=Universitätsbibliothek+Erlangen+Schuhstraße+1a)
 
 ---
 

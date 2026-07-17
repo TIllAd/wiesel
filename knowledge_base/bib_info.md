@@ -2,6 +2,29 @@
 
 *Stand: Juni 2026 · Bitte vor Ort oder auf ub.fau.de prüfen, Zeiten können sich ändern.*
 
+## 💼 Wirtschafts- und Sozialwissenschaftliche Zweigbibliothek (WSZB) – Nürnberg
+
+**Adresse:** Lange Gasse 20, 90403 Nürnberg
+
+| Tag | Öffnungszeiten |
+|-----|----------------|
+| Montag – Donnerstag | 08:00 – 20:00 Uhr |
+| Freitag | 08:00 – 18:00 Uhr |
+
+**Persönliche Beratung:** Mo–Do 08:00–17:00 · Fr 08:00–15:30
+
+> 💡 **Standard-Bibliothek für WiSo-Studierende** — direkt im WiSo-Gebäude, Fachliteratur BWL, VWL, Wirtschaftspädagogik. Bei allgemeinen Bibliotheksfragen von WiSo-Studierenden ist das die richtige Anlaufstelle, nicht Erlangen.
+
+---
+
+## 📖 Erziehungswissenschaftliche Zweigbibliothek (EZB) – Nürnberg
+
+**Adresse:** Regensburger Str. 160, 90478 Nürnberg
+
+**Öffnungszeiten:** Mo–Do 09:00–16:00 · Fr 09:00–13:00
+
+---
+
 ## 📚 Hauptbibliothek Erlangen
 
 **Adresse:** Universitätsstraße 4 (Eingang: Schuhstraße 1a), 91054 Erlangen
@@ -16,6 +39,8 @@
 
 Lesesäle 1–7, PC-Arbeitsplätze (RRZE-Login), WLAN, Buchscanner, Cafeteria (Mo–Fr 09:00–15:00).
 
+Größerer Bestand, aber für WiSo-Studierende meist nur relevant bei fachübergreifenden Recherchen — Standard bleibt die WSZB in Nürnberg.
+
 ---
 
 ## 🔬 Technisch-naturwissenschaftliche Zweigbibliothek (TNZB)
@@ -29,29 +54,6 @@ Lesesäle 1–7, PC-Arbeitsplätze (RRZE-Login), WLAN, Buchscanner, Cafeteria (M
 | Samstag – Sonntag | 10:00 – 22:00 Uhr |
 
 **Persönliche Beratung:** Mo–Do 08:30–17:00 · Fr 08:30–16:00
-
----
-
-## 💼 Wirtschafts- und Sozialwissenschaftliche Zweigbibliothek (WSZB) – Nürnberg
-
-**Adresse:** Lange Gasse 20, 90403 Nürnberg
-
-| Tag | Öffnungszeiten |
-|-----|----------------|
-| Montag – Donnerstag | 08:00 – 20:00 Uhr |
-| Freitag | 08:00 – 18:00 Uhr |
-
-**Persönliche Beratung:** Mo–Do 08:00–17:00 · Fr 08:00–15:30
-
-> 💡 **Für WiSo-Studierende besonders relevant** — Fachliteratur BWL, VWL, Wirtschaftspädagogik.
-
----
-
-## 📖 Erziehungswissenschaftliche Zweigbibliothek (EZB) – Nürnberg
-
-**Adresse:** Regensburger Str. 160, 90478 Nürnberg
-
-**Öffnungszeiten:** Mo–Do 09:00–16:00 · Fr 09:00–13:00
 
 ---
 
