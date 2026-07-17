@@ -126,6 +126,11 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "").strip()
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
+# Leer = Anthropic-API-Default (1.0). Für reproduzierbarere Eval-Läufe z. B. LLM_TEMPERATURE=0.2 in .env setzen.
+LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE", "").strip()
+# Deterministische Output-Guards (unabhängig vom Modell): "0" zum Deaktivieren.
+SAFETY_110_GUARD = os.getenv("SAFETY_110_GUARD", "1").strip() != "0"
+FORMAT_GUARD = os.getenv("FORMAT_GUARD", "1").strip() != "0"
 JWT_TTL_HOURS = int(os.getenv("JWT_TTL_HOURS", "2"))
 DAILY_BUDGET_EUR = float(os.getenv("DAILY_BUDGET_EUR", "15"))
 RATE_LIMIT_CHAT_PER_MIN_SESSION = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_SESSION", "10"))
@@ -687,6 +692,7 @@ def build_system_prompt(kb_content: str = "") -> str:
 
 _STATIC_LEAK_MARKERS = [
     "Wiesel – System-Prompt",
+    "R2-D2 – System-Prompt",
     "Wiesel - System-Prompt",
     "Offen · Charakter-First",   # legacy prompt versions
     "## Wie ich bin",
@@ -741,6 +747,86 @@ def is_ambiguous_first_message(query: str, chat_history: list) -> bool:
         return True
 
     return False
+
+
+# ============================================================================
+# OUTPUT-GUARDS (deterministisch, modellunabhängig)
+# Hintergrund: Eval-Läufe 17.07.2026 — safety-kritische Regeln (110-Verweis)
+# und Formatdisziplin dürfen bei Haiku nicht von der Sampling-Temperatur
+# abhängen. Prompt-Regeln bleiben bestehen; das hier ist das Sicherheitsnetz.
+# ============================================================================
+
+_VIOLENCE_THREAT_PATTERNS = [
+    r"\bschlag\w*\s+ich\b",
+    r"\bhau\w*\s+ich\b.*\b(rein|um|weg)\b",
+    r"\bz[äa]hne\s+ein\b",
+    r"\bbring\w*\s+ich\s+(ihn|sie|den|die|dich)\b.*\bum\b",
+    r"\bmach\w*\s+ich\s+(ihn|sie|den|die|dich)\s+(fertig|kalt)\b",
+    r"\bverpr[üu]gel\w*",
+    r"\babstechen\b|\bsteche?\s+ich\b",
+    r"\bverm[öo]bel\w*",
+]
+_SAFETY_110_SENTENCE = (
+    "\n\nWichtig: Wenn das ernst gemeint ist und eine andere Person in Gefahr "
+    "sein könnte, ist die Polizei (110) die richtige Anlaufstelle."
+)
+
+# Emoji-Bereiche; bewusst OHNE Textpfeile (→, U+2192) und typografische Zeichen.
+# Ein Emoji inkl. optionalem Variation Selector (U+FE0F) zählt als eine Einheit.
+_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF⌚-⏿☀-⛿✀-➿⬀-⭕]️? ?"
+)
+
+
+def apply_safety_110_guard(user_text: str, reply: str) -> str:
+    """Konkrete Gewaltandrohung gegen eine Person in der User-Nachricht,
+    aber kein Polizei/110-Verweis in der Antwort → Standardsatz anhängen."""
+    low = (user_text or "").lower()
+    if not any(re.search(p, low) for p in _VIOLENCE_THREAT_PATTERNS):
+        return reply
+    if "110" in reply or "polizei" in reply.lower():
+        return reply
+    logger.warning("110-Guard ausgelöst: Gewaltandrohung ohne Polizei-Verweis in der Antwort")
+    return reply + _SAFETY_110_SENTENCE
+
+
+def apply_format_guard(reply: str) -> str:
+    """Erzwingt die harten Formatregeln des Prompts deterministisch:
+    keine #-Überschriften, keine Trennlinien, max. 1 Emoji pro Antwort."""
+    out_lines = []
+    for line in reply.split("\n"):
+        stripped = line.strip()
+        heading = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+        if heading:
+            content = heading.group(2).replace("**", "").strip()
+            if content:
+                out_lines.append(f"**{content}**")
+            continue
+        if re.fullmatch(r"[-_*]{3,}", stripped):
+            continue  # Trennlinien entfernen
+        out_lines.append(line)
+    text = "\n".join(out_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    seen = {"n": 0}
+
+    def _keep_first(match: re.Match) -> str:
+        seen["n"] += 1
+        return match.group(0) if seen["n"] == 1 else ""
+
+    text = _EMOJI_RE.sub(_keep_first, text)
+    if seen["n"] > 1:
+        logger.info(f"Format-Guard: {seen['n'] - 1} Emojis entfernt")
+    text = re.sub(r"[ \t]+(\n|$)", r"\1", text)  # durch Emoji-Entfernung entstandene Endleerzeichen
+    return text
+
+
+def apply_output_guards(user_text: str, reply: str) -> str:
+    if FORMAT_GUARD:
+        reply = apply_format_guard(reply)
+    if SAFETY_110_GUARD:
+        reply = apply_safety_110_guard(user_text, reply)
+    return reply
 
 
 def estimate_llm_cost_usd(
@@ -844,13 +930,16 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
 
     try:
         started_at = datetime.utcnow()
-        response = await client.messages.create(
+        llm_kwargs = dict(
             model=ANTHROPIC_MODEL,
             max_tokens=LLM_MAX_TOKENS,
             system=system_blocks,
             messages=messages,
             extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
+        if LLM_TEMPERATURE:
+            llm_kwargs["temperature"] = float(LLM_TEMPERATURE)
+        response = await client.messages.create(**llm_kwargs)
         latency_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
         record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, usage=response.usage, latency_ms=latency_ms)
         logger.info(f"LLM usage: input={response.usage.input_tokens} | output={response.usage.output_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)} | latency_ms={latency_ms} | stop={response.stop_reason}")
@@ -865,6 +954,7 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
             return SYSTEM_PROMPT_LEAK_FALLBACK
+        text = apply_output_guards(query, text)
         LLM_HEALTH.update({"ok": True, "last_success": json_timestamp(datetime.utcnow()), "last_error": None})
         return text
     except Exception as e:
