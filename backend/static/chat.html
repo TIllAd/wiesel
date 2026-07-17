@@ -344,6 +344,7 @@
   <div class="kchips">
     <button class="kchip" id="quick-exams" type="button"></button>
     <button class="kchip" id="quick-start" type="button"></button>
+    <button class="kchip" id="quick-planspiel" type="button"></button>
     <button class="kchip" id="quick-office" type="button"></button>
     <button class="kchip" id="quick-links" type="button"></button>
   </div>
@@ -494,6 +495,7 @@
     setText('quick-label', T.quickLabel);
     setText('quick-exams', T.quickExamsLabel);
     setText('quick-start', T.quickStartLabel);
+    setText('quick-planspiel', T.quickPlanspielLabel);
     setText('quick-office', T.quickOfficeLabel);
     setText('quick-links', T.quickLinksLabel);
     setText('drop-title', T.dropTitle);
@@ -523,6 +525,7 @@
   renderLangSwitch();
   document.getElementById('quick-exams').addEventListener('click', () => quickSend(T.quickExamsPrompt));
   document.getElementById('quick-start').addEventListener('click', () => quickSend(T.quickStartPrompt));
+  document.getElementById('quick-planspiel').addEventListener('click', () => quickSend(T.quickPlanspielPrompt));
   document.getElementById('quick-office').addEventListener('click', () => quickSend(T.quickOfficePrompt));
   document.getElementById('quick-links').addEventListener('click', () => quickSend(T.quickLinksPrompt));
 
