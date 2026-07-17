@@ -19,7 +19,7 @@ OUTPUT = Path(__file__).parent.parent / "knowledge_base" / "fau-aktuell.md"
 FAU_NEWS_RSS  = "https://www.fau.de/feed/"
 WISO_NEWS_RSS = "https://www.wiso.rw.fau.de/feed/"
 FEIERTAGE_URL = "https://feiertage-api.de/api/?jahr={year}&nur_land=BY"
-FAU_TERMINE_URL = "https://www.fau.de/studium/im-studium/vorlesungszeiten/"
+FAU_TERMINE_URL = "https://www.fau.de/studium/bewerbung-und-zulassung/alle-fristen-und-termine/"
 
 
 def fetch_text(url: str) -> str | None:
@@ -160,7 +160,7 @@ def build_markdown() -> str:
     if termine:
         for t in termine:
             lines.append(f"- {t}")
-        lines.append(f"\n*Quelle: [fau.de/studium/im-studium/vorlesungszeiten]({FAU_TERMINE_URL})*")
+        lines.append(f"\n*Quelle: [FAU Fristen und Termine]({FAU_TERMINE_URL})*")
     else:
         # Fallback: aktuelle Semesterdaten hardcoded (WiSo Erlangen)
         lines += [
@@ -174,7 +174,7 @@ def build_markdown() -> str:
             "- Vorlesungsbeginn: 20. April 2026",
             "- Vorlesungsende: 25. Juli 2026",
             "",
-            f"*Aktuelle Termine: [fau.de Vorlesungszeiten]({FAU_TERMINE_URL})*",
+            f"*Aktuelle Termine: [FAU Fristen und Termine]({FAU_TERMINE_URL})*",
         ]
     lines.append("")
 

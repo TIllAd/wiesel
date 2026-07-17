@@ -63,7 +63,7 @@
 ## Antragstellung & Fristen
 - Antrag möglichst **vor oder zu Semesterbeginn** stellen (rückwirkend nur für den Antragsmonat)
 - Frist für digitale Antragstellung: **30. November** (WiSe) / **31. Mai** (SoSe)
-- Online-Antrag: [mein-bafoeg.de](https://www.mein-bafoeg.de)
+- Online-Antrag: [BAföG Digital](https://bafoeg-digital.de)
 - BAföG wird **zur Hälfte als Zuschuss, zur Hälfte als zinsloses Darlehen** gewährt
 - Rückzahlung des Darlehensanteils beginnt 5 Jahre nach Ende der Förderungshöchstdauer
 
