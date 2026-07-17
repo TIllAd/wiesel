@@ -87,9 +87,11 @@ Mo–Do 9:00–16:00, Fr 9:00–14:00
 
 ---
 
-## FAUcard Validierung
+## FAUcard – Erhalt & Validierung
 
-Muss **einmal pro Semester** validiert werden — am Automaten.
+**Erhalt (erstmalig):** Die FAUcard wird nach erfolgreicher Immatrikulation **automatisch per Post zugeschickt** — sie wird **nicht** vor Ort abgeholt, auch nicht in der Infothek. Kommt sie nicht rechtzeitig an, ist die Studierendenverwaltung die richtige Anlaufstelle.
+
+**Validierung:** Muss **einmal pro Semester** validiert werden — am Automaten.
 Standorte:
 - **Lange Gasse 20, Nürnberg** — Erdgeschoss und 1. Untergeschoss (für WiSo-Studierende der kürzeste Weg; Angabe aus Mentoren-Feedback Juni 2026)
 - **Zentrale Universitätsverwaltung, Halbmondstraße 6–8, 91054 Erlangen** (Raum 1.056)
