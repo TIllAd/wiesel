@@ -64,7 +64,7 @@ window.STRINGS = {
     footerPrivacy: 'Datenschutz',
     footerA11y: 'Barrierefreiheit',
     langSwitchLabel: 'Sprache wählen',
-    greeting: 'Hey – ich bin Wiesel. Kenne mich an der Wiso ganz gut aus.',
+    greeting: 'Hey – ich bin kein Wiesel. Kenne mich an der Wiso ganz gut aus.',
     typingPhrases: ['Wo hab ich das nochmal hingelegt…', 'Moment, ich wühl kurz nach…', 'Irgendwo hier muss das sein…', 'Warte, ich kenn das Ding doch…'],
     readImage: 'Moment, ich les das kurz durch…',
     tooLong: 'Deine Nachricht ist zu lang. Kürz sie bitte auf maximal 2000 Zeichen.',
