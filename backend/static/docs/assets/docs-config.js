@@ -1,9 +1,9 @@
 window.WIESEL_DOCS = {
   publicDocs: [
-    { title: 'Weasel', path: 'public/weasel_roadmap.html' },
+    { title: 'Wisdom', path: 'public/wisdom_roadmap.html' },
     { title: 'Architecture', path: 'public/architecture.html' },
     { title: 'Tonalität', path: 'public/tonalitaet.html' },
-    { title: 'Weasel Hunt', path: 'public/gamification_landingpage.html' },
+    { title: 'Wisdom Hunt', path: 'public/gamification_landingpage.html' },
   ],
   internalDocs: [
     {
@@ -31,7 +31,7 @@ window.WIESEL_DOCS = {
       title: 'Wissensbasis',
       path: 'knowledge-base.html',
       kicker: 'Inhalt',
-      description: 'Was Wiesel kennt — und wo Lücken oder falsche Antworten gemeldet wurden.',
+      description: 'Was Wisdom kennt — und wo Lücken oder falsche Antworten gemeldet wurden.',
       foot: 'KB & Lücken',
     },
     {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wiesel · Architektur</title>
+<title>Wisdom · Architektur</title>
 <style>
   :root {
     --bg:#f4f1ea;
@@ -105,7 +105,7 @@
   <div class="topbar">
     <div>
       <p class="eyebrow">Technische Architektur</p>
-      <h1>Wiesel Query Loop</h1>
+      <h1>Wisdom Query Loop</h1>
       <p class="lead">Eine öffentliche Demo des Nachrichtenwegs: StudOn sendet, der Server baut Kontext, Claude antwortet, SQLite protokolliert intern. Kein Live-Dashboard, kein echter API-Call — nur die erklärbare Mechanik.</p>
     </div>
     <div class="pill">StudOn · Server · Wissen · Claude · Datenbank</div>
@@ -116,7 +116,7 @@
       <div class="pane">
         <div class="pane-label">query_loop()</div>
         <div class="diagram">
-          <svg viewBox="0 0 640 470" role="img" aria-label="Wiesel Query Loop als ruhiger linearer Ablauf">
+          <svg viewBox="0 0 640 470" role="img" aria-label="Wisdom Query Loop als ruhiger linearer Ablauf">
             <defs>
               <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
                 <path d="M0,0 L0,6 L8,3 z" fill="#b7aa98"></path>
@@ -230,7 +230,7 @@
     </article>
   </section>
 
-  <p class="status">Stand Juli 2026 · Öffentliche Kurzfassung der Wiesel-Architektur</p>
+  <p class="status">Stand Juli 2026 · Öffentliche Kurzfassung der Wisdom-Architektur</p>
 </main>
 
 <script>
@@ -242,7 +242,7 @@
     { node:'claude', edge:'e-server-claude', x:530, y:258, caption:'Claude bekommt nur das vorbereitete Kontextpaket.', log:'Claude formuliert Antwort aus begrenztem Kontext.', messages:4 },
     { node:'server', edge:'e-claude-server', x:320, y:116, caption:'Die Antwort geht erst zurück zum Server.', log:'assistant_message empfangen und geprüft.', cls:'ok', messages:4 },
     { node:'return', edge:'e-server-return', x:121, y:286, caption:'Der StudOn-Chat zeigt die fertige Antwort an.', log:'Antwort an StudOn-Chat zurückgegeben.', cls:'ok', messages:4 },
-    { node:'db', edge:'e-return-db', x:530, y:356, caption:'Erst danach speichert Wiesel Verlauf und Metadaten intern in SQLite.', log:'SQLite speichert Session, Nutzung und Feedback-Marker.', cls:'ok', messages:4 }
+    { node:'db', edge:'e-return-db', x:530, y:356, caption:'Erst danach speichert Wisdom Verlauf und Metadaten intern in SQLite.', log:'SQLite speichert Session, Nutzung und Feedback-Marker.', cls:'ok', messages:4 }
   ];
 
   const nodeIds = ['chat','server','kb','claude','db','return'];

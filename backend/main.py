@@ -64,7 +64,7 @@ def json_timestamp(value: datetime) -> str:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Wiesel Backend", description="LTI 1.1 Backend for Wiesel Chatbot (FAU WiSo)", version="0.1.0")
+app = FastAPI(title="Wisdom Backend", description="LTI 1.1 Backend for the Wisdom Chatbot (FAU WiSo)", version="0.1.0")
 
 
 @app.exception_handler(Exception)
@@ -95,7 +95,7 @@ JWT_ALGORITHM = "HS256"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wiesel.db")
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
-DEFAULT_GREETING = "Hey, ich bin Weasel, dein Uni-Buddy – ich begleite dich durch deinen Unistart. Wie kann ich dir helfen?"
+DEFAULT_GREETING = "Hi, ich bin Wisdom. Ich helfe dir, dich an der WiSo zurechtzufinden."
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
 TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
@@ -136,7 +136,7 @@ DAILY_BUDGET_EUR = float(os.getenv("DAILY_BUDGET_EUR", "15"))
 RATE_LIMIT_CHAT_PER_MIN_SESSION = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_SESSION", "10"))
 RATE_LIMIT_CHAT_PER_MIN_IP = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_IP", "30"))
 RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP = int(os.getenv("RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP", "20"))
-BUDGET_EXCEEDED_FALLBACK = "Wiesel macht gerade eine Zwangspause (Tagesbudget erreicht). Versuch es bitte morgen wieder — oder schreib ans Studienbüro: studienbuero@wiso.fau.de."
+BUDGET_EXCEEDED_FALLBACK = "Wisdom ist gerade nicht erreichbar. Versuch es bitte später noch einmal — oder schreib ans Studienbüro: studienbuero@wiso.fau.de."
 RATE_LIMITED_DETAIL = "Langsam — zu viele Anfragen. Warte kurz und versuch es dann nochmal."
 
 # ── Cloudflare Access (zweite Auth-Methode für Admin-Endpoints) ─────────────
@@ -687,7 +687,7 @@ def build_system_prompt(kb_content: str = "") -> str:
             if kb_content:
                 return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}"
             return base
-    return "Du bist Wiesel, ein Studienbegleiter für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
+    return "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
 
 
 _STATIC_LEAK_MARKERS = [

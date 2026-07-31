@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wiesel Nutzungszeiten</title>
+<title>Wisdom Nutzungszeiten</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
@@ -54,7 +54,7 @@
     <section class="detail-panel" aria-label="Weitere Nutzungskennzahlen">
       <h2>Weitere Kennzahlen</h2>
       <div class="detail-grid">
-        <div class="detail-item"><div class="k">Wiesel-Antworten</div><div class="v" id="d-assistant">–</div></div>
+        <div class="detail-item"><div class="k">Wisdom-Antworten</div><div class="v" id="d-assistant">–</div></div>
         <div class="detail-item"><div class="k">Neue Sessions</div><div class="v" id="d-new-sessions">–</div></div>
         <div class="detail-item"><div class="k">Ø Nutzer-Anfragen / Session</div><div class="v" id="d-user-per-session">–</div></div>
         <div class="detail-item"><div class="k">Ø Nutzer-Anfragen / Tag</div><div class="v" id="d-per-day">–</div></div>
@@ -198,11 +198,11 @@
     meta.textContent = `${labelForDate(start)} bis ${labelForDate(end)} · Linie: Anfragen · Balken: aktive Sessions · Peak: ${formatHourLabel(peakUserPoint?.timestamp)} (${peakUserCount} Anfragen, ${Number(peakUserPoint?.active_sessions || 0)} Sessions)`;
     status.textContent = `${userTotal} Nutzer-Anfrage(n), ${sessionTotal} Session(s) geladen.`;
     document.getElementById('m-total').textContent = userTotal;
-    document.getElementById('m-total-sub').textContent = `${assistantTotal} Wiesel-Antworten · Ø ${(userTotal / daysInView).toFixed(1).replace('.', ',')} Nutzer-Anfragen / Tag`;
+    document.getElementById('m-total-sub').textContent = `${assistantTotal} Wisdom-Antworten · Ø ${(userTotal / daysInView).toFixed(1).replace('.', ',')} Nutzer-Anfragen / Tag`;
     document.getElementById('m-sessions').textContent = sessionTotal;
     document.getElementById('m-sessions-sub').textContent = `${newSessions} neu gestartet · Peak ${peakSessionCount} gleichzeitig aktive Sessions`;
     document.getElementById('m-per-session').textContent = avgUserMessagesPerSession.toFixed(1).replace('.', ',');
-    document.getElementById('m-per-session-sub').textContent = `${total} technische Nachrichten inkl. Wiesel-Antworten`;
+    document.getElementById('m-per-session-sub').textContent = `${total} technische Nachrichten inkl. Wisdom-Antworten`;
     document.getElementById('m-gap').textContent = formatDuration(data.avg_gap_seconds);
     document.getElementById('m-gap-sub').textContent = 'Gemessen zwischen Nutzer-Anfragen; Abstände < 6h';
     document.getElementById('d-assistant').textContent = assistantTotal;

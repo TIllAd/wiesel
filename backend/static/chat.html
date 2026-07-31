@@ -318,7 +318,7 @@
 <div class="hbar">
   <a class="hlink" id="hlink" href="https://www.wiso.rw.fau.de/" target="_blank" rel="noopener noreferrer">
     <div class="hav">
-      <img id="header-wiesel-img" src="/static/wiesel_standing.png" alt="" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">
+      <img id="header-wisdom-img" src="/static/wisdom-compass.png" alt="" onerror="this.onerror=null;this.remove()">
     </div>
     <div>
       <div class="hname" id="hname"></div>
@@ -425,7 +425,7 @@
   const LANG_NAMES  = { de: 'Deutsch', en: 'English', es: 'Español', it: 'Italiano', zh: '中文' };
 
   function detectLang() {
-    const saved = localStorage.getItem('wieselLang');
+    const saved = localStorage.getItem('wisdomLang') || localStorage.getItem('wieselLang');
     if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
     const nav = (navigator.language || 'de').toLowerCase();
     return SUPPORTED_LANGS.find(l => nav.startsWith(l)) || 'de';
@@ -466,7 +466,7 @@
   function setLang(newLang) {
     if (!SUPPORTED_LANGS.includes(newLang) || newLang === LANG) return;
     LANG = newLang;
-    localStorage.setItem('wieselLang', LANG);
+    localStorage.setItem('wisdomLang', LANG);
     document.documentElement.lang = LANG;
     T = window.STRINGS[LANG];
     applyTranslations();
@@ -482,7 +482,7 @@
   function applyTranslations() {
     setText('no-session', T.noSession);
     document.title = T.pageTitle;
-    document.getElementById('header-wiesel-img').alt = T.wieselAlt;
+    document.getElementById('header-wisdom-img').alt = T.wisdomAlt;
     document.getElementById('hname').innerHTML = T.hname;
     setText('hbadge', T.hbadge);
     setText('hsub', T.hsub);
@@ -544,23 +544,13 @@
       .catch(() => {});
   }
 
-  const WIESEL_IMGS = {
-    idle:     '/static/wiesel_standing.png',
-    think:    '/static/wiesel_thinking.png',
-    found:    '/static/wiesel_happy.png',
-    dig:      '/static/wiesel_readingMHD.png',
-    confused: '/static/wiesel_confused.png',
-    talk:     '/static/wiesel_happy.png',
-  };
-  const DIG_VARIANTS = ['/static/wiesel_readingMHD.png'];
-  const WIESEL_FALLBACK = '/static/wiesel_standing.png';
+  const WISDOM_AVATAR = '/static/wisdom-compass.png';
 
-  function makeWieselSVG(state) {
+  function makeWisdomAvatar(state) {
     const wrap = document.createElement('div');
     wrap.className = `msg-avatar av-${state}`;
     wrap.setAttribute('aria-hidden', 'true');
-    let src = state === 'dig' ? DIG_VARIANTS[0] : (WIESEL_IMGS[state] || WIESEL_FALLBACK);
-    wrap.innerHTML = `<img src="${src}" alt="" onerror="this.onerror=null;this.src='/static/wiesel_standing.png'">`;
+    wrap.innerHTML = `<img src="${WISDOM_AVATAR}" alt="" onerror="this.onerror=null;this.remove()">`;
     return wrap;
   }
 
@@ -653,7 +643,7 @@
       bubble.insertAdjacentHTML('beforeend', marked.parse(text));
       bubble.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
       document.querySelectorAll('#messages .msg-avatar:not(.user-av)').forEach(av => { av.className = 'msg-avatar frozen'; });
-      row.appendChild(makeWieselSVG(avatarState));
+      row.appendChild(makeWisdomAvatar(avatarState));
       const col = document.createElement('div');
       col.className = 'msg-col';
       col.appendChild(bubble);
@@ -722,7 +712,7 @@
     row.setAttribute('aria-label', T.srTyping);
     announce(T.srTyping);
     const phrase = typingPhrases[Math.floor(Math.random() * typingPhrases.length)];
-    row.appendChild(makeWieselSVG('dig'));
+    row.appendChild(makeWisdomAvatar('dig'));
     const bub = document.createElement('div');
     bub.className = 'typing-bub';
     bub.innerHTML = '<div class="tdots"><span></span><span></span><span></span></div><span id="typing-txt">' + phrase + '</span>';

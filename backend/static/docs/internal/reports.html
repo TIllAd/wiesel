@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wiesel Auffälligkeiten</title>
+<title>Wisdom Auffälligkeiten</title>
 <link rel="stylesheet" href="../assets/docs-theme.css" />
 </head>
 <body>
@@ -113,7 +113,7 @@
 
   function renderMessage(message) {
     const role = message.role || '';
-    const label = role === 'user' ? '🎓 Student' : '🐾 Wiesel';
+    const label = role === 'user' ? '🎓 Student' : '🧭 Wisdom';
     const cls = role === 'user' ? 'msg-user' : 'msg-assistant';
     const ts = String(message.created_at || '').slice(0, 16).replace('T', ' ');
     return `<div class="msg ${cls}"><div class="msg-meta">${label} · ${escapeHtml(ts)}</div><div class="msg-body">${renderRichText(message.content)}</div></div>`;
@@ -122,7 +122,7 @@
   function renderReport(data) {
     setMode('report');
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-    const title = data.start === data.end ? `🚩 Wiesel Auffälligkeiten — ${labelForDate(data.start)}` : `🚩 Wiesel Auffälligkeiten — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
+    const title = data.start === data.end ? `🚩 Wisdom Auffälligkeiten — ${labelForDate(data.start)}` : `🚩 Wisdom Auffälligkeiten — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
 
     if (!sessions.length) {
       report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>Für diesen Zeitraum wurden keine Flags gefunden.</p></div>`;
