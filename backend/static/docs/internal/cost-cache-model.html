@@ -96,11 +96,6 @@
 
 <script>
 let DATA = null;
-let LATEST_DATA = null;
-let MONTHLY_DATA = [];
-let PREVIOUS_MONTHLY_DATA = [];
-let ALL_DATA = [];
-let TOTAL_DATA = null;
 let chart = null;
 const xs = Array.from({length: 100}, (_, i) => i + 1);
 
@@ -153,7 +148,7 @@ const PRICE_DEFAULTS = {
 };
 
 function usageValueFrom(data, ...keys) {
-  const usage = data?.llm_usage || {};
+  const usage = data || {};
   for (const key of keys) {
     if (usage[key] !== undefined && usage[key] !== null) return Number(usage[key]) || 0;
   }
@@ -161,115 +156,19 @@ function usageValueFrom(data, ...keys) {
 }
 
 function usageValue(...keys) {
-  return usageValueFrom(DATA, ...keys);
+  return usageValueFrom(DATA?.gesamt, ...keys);
 }
 
-function reportDate(data = DATA) {
-  const source = data?.periode || data?.exported_at || new Date().toISOString();
-  const match = String(source).match(/\d{4}-\d{2}-\d{2}/);
-  return match ? new Date(match[0] + 'T12:00:00') : new Date();
-}
-
-function dayKey(data) {
-  const source = data?.periode || data?.exported_at || '';
-  const match = String(source).match(/\d{4}-\d{2}-\d{2}/);
-  return match ? match[0] : null;
-}
-
-function collectMessageTimestamps(days) {
-  const timestamps = [];
-  for (const day of days || []) {
-    for (const session of day.sessions || []) {
-      for (const entry of session.verlauf || []) {
-        const t = Date.parse(entry.zeitpunkt);
-        if (!isNaN(t)) timestamps.push(t);
-      }
-    }
-  }
-  return timestamps.sort((a, b) => a - b);
-}
-
-function averageGapSeconds(days) {
-  const timestamps = collectMessageTimestamps(days);
-  if (timestamps.length < 2) return null;
-  let totalGap = 0;
-  let count = 0;
-  for (let i = 1; i < timestamps.length; i++) {
-    const gap = (timestamps[i] - timestamps[i - 1]) / 1000;
-    if (gap > 0 && gap < 6 * 3600) {
-      totalGap += gap;
-      count += 1;
-    }
-  }
-  return count ? totalGap / count : null;
-}
-
-function aggregateAnalytics(days, fallback) {
-  const uniq = new Map();
-  for (const day of days || []) {
-    const key = dayKey(day);
-    if (key) uniq.set(key, day);
-  }
-  const list = Array.from(uniq.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([, day]) => day);
-  if (!list.length) return fallback;
-
-  const numericUsageKeys = [
-    'requests_gesamt','requests_erfolgreich','requests_fehler','requests_total','requests_successful','requests_error',
-    'input_tokens','output_tokens','cache_creation_input_tokens','cache_read_input_tokens','cache_write_requests',
-    'tokens_gesamt','tokens_total','kosten_usd_geschaetzt','kosten_eur_geschaetzt','estimated_cost_usd','estimated_cost_eur'
-  ];
-  const llm_usage = {};
-  for (const key of numericUsageKeys) {
-    llm_usage[key] = list.reduce((sum, day) => sum + usageValueFrom(day, key), 0);
-  }
-  const models = new Set();
-  for (const day of list) {
-    for (const model of (day.llm_usage?.modelle || day.llm_usage?.models || [])) models.add(model);
-  }
-  llm_usage.modelle = Array.from(models).sort();
-  llm_usage.models = llm_usage.modelle;
-  llm_usage.kosten_eur_durchschnitt_erfolgreicher_request = llm_usage.requests_erfolgreich
-    ? llm_usage.kosten_eur_geschaetzt / llm_usage.requests_erfolgreich : 0;
-  llm_usage.avg_cost_eur_per_successful_request = llm_usage.requests_successful
-    ? llm_usage.estimated_cost_eur / llm_usage.requests_successful : llm_usage.kosten_eur_durchschnitt_erfolgreicher_request;
-
-  const sessions = list.reduce((sum, day) => sum + Number(day.statistik?.sessions_gesamt || day.total_sessions || 0), 0);
-  const messages = list.reduce((sum, day) => sum + Number(day.statistik?.nachrichten_gesamt || day.total_messages || 0), 0);
-  const first = dayKey(list[0]);
-  const last = dayKey(list[list.length - 1]);
-  return {
-    ...fallback,
-    exported_at: fallback?.exported_at || new Date().toISOString(),
-    periode: `${first?.slice(0, 7) !== last?.slice(0, 7) ? 'Gesamtstand' : 'Monatsstand ' + (first?.slice(0, 7) || '')}: ${first} bis ${last}`,
-    berichtszeitraum_start: first,
-    berichtszeitraum_ende: last,
-    statistik: {
-      sessions_gesamt: sessions,
-      nachrichten_gesamt: messages,
-      durchschnitt_pro_session: sessions ? Number((messages / sessions).toFixed(1)) : 0,
-    },
-    llm_usage,
-    sessions: list.flatMap(day => day.sessions || []),
-  };
-}
-
-function monthlyStats(daysArg = null) {
-  const hasExplicitDays = Array.isArray(daysArg);
-  const days = hasExplicitDays ? daysArg : (MONTHLY_DATA.length ? MONTHLY_DATA : (DATA ? [DATA] : []));
-  const knownDates = days.map(dayKey).filter(Boolean).sort();
-  const today = new Date();
-  const month = knownDates[knownDates.length - 1]?.slice(0, 7) || today.toISOString().slice(0, 7);
-  const [year, monthNo] = month.split('-').map(Number);
-  const daysInMonth = new Date(year, monthNo, 0).getDate();
-  const lastKnownDay = knownDates.length ? Number(knownDates[knownDates.length - 1].slice(8, 10)) : today.getDate();
-  const daysRemaining = Math.max(0, daysInMonth - lastKnownDay);
-  const daysKnown = Math.max(1, knownDates.length || 1);
-  const knownRequests = days.reduce((sum, day) => sum + usageValueFrom(day, 'requests_erfolgreich', 'requests_successful'), 0);
-  const knownCost = days.reduce((sum, day) => sum + usageValueFrom(day, 'kosten_eur_geschaetzt', 'estimated_cost_eur'), 0);
+function monthlyStats(period = DATA?.monat, project = period === DATA?.monat) {
+  const daysKnown = Math.max(1, Number(period?.tage_erfasst) || 0);
+  const daysInMonth = Number(period?.tage_im_monat) || daysKnown;
+  const daysRemaining = project ? Math.max(0, daysInMonth - daysKnown) : 0;
+  const knownRequests = usageValueFrom(period, 'requests_erfolgreich');
+  const knownCost = usageValueFrom(period, 'kosten_eur');
   const avgRequestsPerDay = knownRequests / daysKnown;
   const avgCostPerDay = knownCost / daysKnown;
   return {
-    tage_erfasst: knownDates.length || (!hasExplicitDays && DATA ? 1 : 0),
+    tage_erfasst: Number(period?.tage_erfasst) || 0,
     tage_verbleibend: daysRemaining,
     nachrichten_seit_monatsanfang: knownRequests,
     anfragen_pro_tag: avgRequestsPerDay,
@@ -283,11 +182,10 @@ function monthlyStats(daysArg = null) {
 }
 
 function buildCostModel() {
-  const legacy = DATA.kosten_modell || null;
-  const reqs = Math.max(1, usageValue('requests_erfolgreich', 'requests_successful'));
-  const costEur = usageValue('kosten_eur_geschaetzt', 'estimated_cost_eur');
-  const costUsd = usageValue('kosten_usd_geschaetzt', 'estimated_cost_usd');
-  const prices = {...PRICE_DEFAULTS, ...(legacy?.preise || {})};
+  const reqs = Math.max(1, usageValue('requests_erfolgreich'));
+  const costEur = usageValue('kosten_eur');
+  const costUsd = usageValue('kosten_usd');
+  const prices = {...PRICE_DEFAULTS, ...(DATA?.preise || {})};
   const usdEur = costUsd > 0 && costEur > 0 ? costEur / costUsd : prices.usd_per_eur;
 
   const cacheCreation = usageValue('cache_creation_input_tokens');
@@ -438,7 +336,7 @@ function updateSlider(n) {
   const c = costCt(n);
   const total1k = c * 10;
   const worst1k = km.worst_case_ct * 10;
-  const saving = (worst1k - total1k) / worst1k * 100;
+  const saving = worst1k > 0 ? (worst1k - total1k) / worst1k * 100 : 0;
   const savedEur = (worst1k - total1k) / 100;
   const isSnapped = n === MEASURED_N;
 
@@ -460,36 +358,31 @@ function updateSlider(n) {
 function populate() {
   const km = buildCostModel();
   MEASURED_N = Math.max(1, Math.min(100, Math.round(
-    usageValue('requests_erfolgreich', 'requests_successful') /
+    usageValue('requests_erfolgreich') /
     Math.max(usageValue('cache_write_requests'), 1)
   )));
 
-  const totalData = TOTAL_DATA || DATA;
-  const totalPeriodText = totalData.berichtszeitraum_start && totalData.berichtszeitraum_ende
-    ? fmtDateRange(totalData.berichtszeitraum_start, totalData.berichtszeitraum_ende)
-    : totalData.periode;
-  const monthPeriodText = DATA.berichtszeitraum_start && DATA.berichtszeitraum_ende
-    ? fmtDateRange(DATA.berichtszeitraum_start, DATA.berichtszeitraum_ende)
-    : DATA.periode;
+  const totalData = DATA.gesamt;
+  const totalPeriodText = totalData.start && totalData.ende
+    ? fmtDateRange(totalData.start, totalData.ende) : 'Keine Requests erfasst';
   document.getElementById('periode-label').textContent =
-    `Gesamtzeitraum: ${totalPeriodText} · Aktueller Monat: ${monthPeriodText} · Exportiert: ${fmtDateLong((LATEST_DATA || DATA).exported_at.slice(0, 10))}`;
+    `Gesamtzeitraum: ${totalPeriodText} · Aktualisiert: ${fmtDateLong(DATA.generated_at.slice(0, 10))}`;
 
-  const totalCost = usageValueFrom(totalData, 'kosten_eur_geschaetzt', 'estimated_cost_eur');
+  const totalCost = usageValueFrom(totalData, 'kosten_eur');
   document.getElementById('c-total-cost').textContent = fmt(totalCost);
-  const reqs = usageValueFrom(totalData, 'requests_erfolgreich', 'requests_successful');
-  const start = totalData.berichtszeitraum_start;
-  const ende = totalData.berichtszeitraum_ende;
-  const tageGesamt = start && ende ? Math.round((new Date(ende) - new Date(start)) / 86400000) + 1 : null;
+  const reqs = usageValueFrom(totalData, 'requests_erfolgreich');
+  const start = totalData.start;
+  const ende = totalData.ende;
+  const tageGesamt = totalData.tage;
   const zeitraumText = start && ende ? `${fmtDateRange(start, ende)} (${tageGesamt} Tag${tageGesamt === 1 ? '' : 'e'}) · ` : '';
-  const totalStats = totalData.statistik || {};
-  document.getElementById('c-total-sub').textContent = `${zeitraumText}${totalStats.sessions_gesamt || 0} Sitzungen, ${reqs} Anfragen`;
+  document.getElementById('c-total-sub').textContent = `${zeitraumText}${totalData.sessions || 0} Sitzungen, ${reqs} Anfragen`;
   document.getElementById('c-avg-cost').textContent = fmtCt(km.schnitt_ct_pro_request);
 
-  const todayData = LATEST_DATA || DATA;
-  const todayCost = usageValueFrom(todayData, 'kosten_eur_geschaetzt', 'estimated_cost_eur');
-  const todayRequests = usageValueFrom(todayData, 'requests_erfolgreich', 'requests_successful');
+  const todayData = DATA.heute;
+  const todayCost = usageValueFrom(todayData, 'kosten_eur');
+  const todayRequests = usageValueFrom(todayData, 'requests_erfolgreich');
   const pm = km.projektion_monat_eur;
-  const lastMonth = monthlyStats(PREVIOUS_MONTHLY_DATA);
+  const lastMonth = monthlyStats(DATA.vormonat, false);
 
   document.getElementById('c-today-cost').textContent = fmt(todayCost);
   document.getElementById('c-today-sub').textContent = `${todayRequests} Anfrage${todayRequests === 1 ? '' : 'n'} heute`;
@@ -534,7 +427,7 @@ function populate() {
     `Empfehlung: Für das Dashboard die Kaltstart-Kosten, Folgeanfrage-Kosten und Anfragen pro Kaltstart separat ausweisen. Der reine Durchschnittswert ist bei kleinen Stichproben durch den einmaligen Kaltstart-Aufwand verzerrt.`;
 
   document.getElementById('formula-text').textContent =
-    `Modell: ${(DATA.llm_usage.modelle || DATA.llm_usage.models || []).join(', ')} · Preisbasis Dashboard: Input $${km.preise.input_usd_per_mtok}/MTok · Output $${km.preise.output_usd_per_mtok}/MTok · Kaltstart-Laden $${km.preise.cache_write_usd_per_mtok}/MTok · Folgeanfrage $${km.preise.cache_read_usd_per_mtok}/MTok · USD/EUR ${km.usd_eur_kurs}`;
+    `Modell: ${(DATA.gesamt.modelle || []).join(', ')} · Preisbasis Dashboard: Input $${km.preise.input_usd_per_mtok}/MTok · Output $${km.preise.output_usd_per_mtok}/MTok · Kaltstart-Laden $${km.preise.cache_write_usd_per_mtok}/MTok · Folgeanfrage $${km.preise.cache_read_usd_per_mtok}/MTok · USD/EUR ${km.usd_eur_kurs}`;
 
   buildChart();
   document.getElementById('slider').value = MEASURED_N;
@@ -563,66 +456,13 @@ async function fetchJson(path) {
   return r.json();
 }
 
-function monthKeyFromDate(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function previousMonthKey(date = new Date()) {
-  return monthKeyFromDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
-}
-
-async function monthFileNames(month = null) {
-  const targetMonth = month || monthKeyFromDate(new Date());
-  try {
-    const index = await fetchJson('/api/analytics/month-files?month=' + encodeURIComponent(targetMonth));
-    if (Array.isArray(index.files)) return index.files;
-  } catch {
-  }
-  const [yyyy, mm] = targetMonth.split('-').map(Number);
-  const today = new Date();
-  const isCurrentMonth = targetMonth === monthKeyFromDate(today);
-  const maxDay = isCurrentMonth ? today.getDate() : new Date(yyyy, mm, 0).getDate();
-  return Array.from({length: maxDay}, (_, i) =>
-    `analytics_${targetMonth}-${String(i + 1).padStart(2, '0')}.json`
-  );
-}
-
-async function loadMonthlyData(latest, month = null, fallbackToLatest = true) {
-  const names = await monthFileNames(month);
-  const results = await Promise.allSettled(
-    names.map(name => fetchJson('/api/analytics/file/' + encodeURIComponent(name)))
-  );
-  const days = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-  return days.length ? days : (fallbackToLatest ? [latest] : []);
-}
-
-async function loadAllData(latest) {
-  try {
-    const index = await fetchJson('/api/analytics/files');
-    const names = Array.isArray(index.files) ? index.files : [];
-    const results = await Promise.allSettled(
-      names.map(name => fetchJson('/api/analytics/file/' + encodeURIComponent(name)))
-    );
-    const days = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-    return days.length ? days : [latest];
-  } catch {
-    return [latest];
-  }
-}
-
 async function loadData() {
   try {
-    const latest = await fetchJson('analytics_latest.json');
-    LATEST_DATA = latest;
-    MONTHLY_DATA = await loadMonthlyData(latest);
-    PREVIOUS_MONTHLY_DATA = await loadMonthlyData(latest, previousMonthKey(), false);
-    ALL_DATA = await loadAllData(latest);
-    DATA = aggregateAnalytics(MONTHLY_DATA, latest);
-    TOTAL_DATA = aggregateAnalytics(ALL_DATA, latest);
+    DATA = await fetchJson('/api/costs/summary');
     populate();
-  } catch {
+  } catch (e) {
     document.getElementById('chart-loading').textContent =
-      'Keine Datendatei gefunden — analytics_latest.json muss im gleichen Ordner liegen.';
+      'Kostendaten konnten nicht geladen werden.';
   }
 }
 

@@ -1185,7 +1185,7 @@ async def internal_docs(request: Request, path: str = "", key: Optional[str] = N
     Normalfall Team: Cloudflare Access schützt /internal/* (Policy "Team Wiso
     emails") → erster Seitenaufruf kommt mit gültigem Cf-Access-JWT an, wir
     setzen automatisch das Admin-Cookie (Auto-Mint) — damit funktionieren auch
-    die fetch()-Calls der Dashboards auf /api/analytics|logs|reports|usage,
+    die fetch()-Calls der Dashboards auf /api/costs|logs|reports|usage,
     die außerhalb der Access-Application liegen. Kein manueller Schritt nötig.
 
     Fallback ohne Cloudflare (lokal/Tests): einmalig /internal/?key=<ADMIN_API_KEY>
@@ -1273,60 +1273,112 @@ async def wiki_file_endpoint(path: str):
     return {"path": path, "content": content, "format": target.suffix.lstrip(".")}
 
 
-DEFAULT_ANALYTICS_DIR = Path(__file__).parent / "analytics"
+def _cost_period_bounds(start: datetime, end: datetime) -> tuple[datetime, datetime]:
+    """Translate app-local period bounds for the naive-UTC SQLite columns."""
+    return app_time_to_utc_naive(start), app_time_to_utc_naive(end)
 
 
-def analytics_dirs() -> list[Path]:
-    """Daily analytics exports live in backend/analytics; an env override may add another source."""
-    dirs: list[Path] = [DEFAULT_ANALYTICS_DIR]
-    configured = os.getenv("WIESEL_ANALYTICS_DIR")
-    if configured:
-        configured_dir = Path(configured)
-        if configured_dir not in dirs:
-            dirs.append(configured_dir)
-    return dirs
+def _cost_usage_summary(usage_rows: list[LLMUsage], sessions: int, messages: int) -> dict:
+    successful = [row for row in usage_rows if row.error_type is None]
+    return {
+        "sessions": sessions,
+        "nachrichten": messages,
+        "requests_erfolgreich": len(successful),
+        "requests_fehler": len(usage_rows) - len(successful),
+        "cache_write_requests": sum(1 for row in usage_rows if (row.cache_creation_input_tokens or 0) > 0),
+        "input_tokens": sum(row.input_tokens or 0 for row in usage_rows),
+        "output_tokens": sum(row.output_tokens or 0 for row in usage_rows),
+        "cache_creation_input_tokens": sum(row.cache_creation_input_tokens or 0 for row in usage_rows),
+        "cache_read_input_tokens": sum(row.cache_read_input_tokens or 0 for row in usage_rows),
+        "kosten_eur": sum(row.estimated_cost_eur or 0.0 for row in usage_rows),
+        "kosten_usd": sum(row.estimated_cost_usd or 0.0 for row in usage_rows),
+        "modelle": sorted({row.model for row in usage_rows if row.model}),
+    }
 
 
-def analytics_export_files(prefix: str = "analytics_") -> list[str]:
-    return sorted({
-        path.name
-        for analytics_dir in analytics_dirs()
-        for path in analytics_dir.glob(f"{prefix}*.json")
-        if path.is_file() and path.name != "analytics_latest.json"
-    })
+@app.get("/api/costs/summary", dependencies=[Depends(require_admin)])
+async def costs_summary():
+    """Database-backed cost aggregates for the internal operating-cost dashboard."""
+    now_app = datetime.now(APP_TIMEZONE)
+    today_start = now_app.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = today_start.replace(day=1)
+    next_month_start = (month_start + timedelta(days=32)).replace(day=1)
+    previous_month_end = month_start - timedelta(microseconds=1)
+    previous_month_start = previous_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    def period_summary(db: SQLSession, start: datetime, end: datetime) -> dict:
+        start_utc, end_utc = _cost_period_bounds(start, end)
+        usage_rows = db.query(LLMUsage).filter(
+            LLMUsage.created_at >= start_utc,
+            LLMUsage.created_at <= end_utc,
+        ).all()
+        sessions = db.query(SessionRecord).filter(
+            SessionRecord.created_at >= start_utc,
+            SessionRecord.created_at <= end_utc,
+        ).count()
+        messages = db.query(ChatMessage).filter(
+            ChatMessage.created_at >= start_utc,
+            ChatMessage.created_at <= end_utc,
+        ).count()
+        return _cost_usage_summary(usage_rows, sessions, messages)
 
-@app.get("/api/analytics/files", dependencies=[Depends(require_admin)])
-async def analytics_files():
-    return {"files": analytics_export_files()}
-
-
-@app.get("/api/analytics/month-files", dependencies=[Depends(require_admin)])
-async def analytics_month_files(month: Optional[str] = None):
-    if month is None:
-        month = datetime.now().strftime("%Y-%m")
-    elif not re.fullmatch(r"\d{4}-\d{2}", month):
-        raise HTTPException(status_code=400, detail="Invalid month format; expected YYYY-MM")
-
-    prefix = f"analytics_{month}-"
-    files = analytics_export_files(prefix)
-    return {"month": month, "files": files}
-
-
-@app.get("/api/analytics/file/{filename}", dependencies=[Depends(require_admin)])
-async def analytics_file(filename: str):
-    if not re.fullmatch(r"analytics_\d{4}-\d{2}-\d{2}\.json", filename):
-        raise HTTPException(status_code=400, detail="Invalid analytics filename")
-
-    path = next((analytics_dir / filename for analytics_dir in analytics_dirs() if (analytics_dir / filename).is_file()), None)
-    if path is None:
-        raise HTTPException(status_code=404, detail="Analytics file not found")
-
+    db = SessionLocal()
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        logger.error("Invalid analytics JSON file: %s", path, exc_info=True)
-        raise HTTPException(status_code=500, detail="Invalid analytics JSON")
+        all_usage = db.query(LLMUsage).order_by(LLMUsage.created_at.asc()).all()
+        total = _cost_usage_summary(
+            all_usage,
+            db.query(SessionRecord).count(),
+            db.query(ChatMessage).count(),
+        )
+        app_dates = [utc_naive_to_app_time(row.created_at).date() for row in all_usage if row.created_at]
+        if app_dates:
+            total_start, total_end = min(app_dates), max(app_dates)
+            total.update({
+                "start": total_start.isoformat(),
+                "ende": total_end.isoformat(),
+                "tage": (total_end - total_start).days + 1,
+            })
+        else:
+            total.update({"start": None, "ende": None, "tage": 0})
+
+        today = period_summary(db, today_start, now_app)
+        month = period_summary(db, month_start, now_app)
+        month.update({
+            "monat": month_start.strftime("%Y-%m"),
+            "tage_erfasst": len({
+                utc_naive_to_app_time(row.created_at).date()
+                for row in all_usage
+                if row.created_at and month_start <= utc_naive_to_app_time(row.created_at) <= now_app
+            }),
+            "tage_im_monat": (next_month_start.date() - month_start.date()).days,
+        })
+        previous_month = period_summary(db, previous_month_start, previous_month_end)
+        previous_month.update({
+            "monat": previous_month_start.strftime("%Y-%m"),
+            "tage_erfasst": len({
+                utc_naive_to_app_time(row.created_at).date()
+                for row in all_usage
+                if row.created_at and previous_month_start <= utc_naive_to_app_time(row.created_at) <= previous_month_end
+            }),
+            "tage_im_monat": (month_start.date() - previous_month_start.date()).days,
+        })
+        return {
+            "generated_at": now_app.isoformat(),
+            "timezone": APP_TIMEZONE.key,
+            "preise": {
+                "input_usd_per_mtok": LLM_INPUT_USD_PER_MTOK,
+                "output_usd_per_mtok": LLM_OUTPUT_USD_PER_MTOK,
+                "cache_write_usd_per_mtok": LLM_CACHE_WRITE_USD_PER_MTOK,
+                "cache_read_usd_per_mtok": LLM_CACHE_READ_USD_PER_MTOK,
+                "usd_per_eur": USD_PER_EUR,
+            },
+            "gesamt": total,
+            "heute": today,
+            "monat": month,
+            "vormonat": previous_month,
+        }
+    finally:
+        db.close()
 
 
 @app.get("/api/reports/range", dependencies=[Depends(require_admin)])
