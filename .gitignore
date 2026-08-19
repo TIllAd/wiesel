@@ -80,3 +80,6 @@ backend/analytics/
 *.db-shm
 *.db-wal
 *.json
+
+#Sonstiges 
+*.ps1
