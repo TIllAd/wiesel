@@ -32,6 +32,17 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('Wichtige Informationen bitte immer in offiziellen Quellen prüfen.', chat)
         self.assertIn('Wisdom kann Fehler machen', chat)
 
+    def test_language_switch_offers_only_german_and_english_ui_copy(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertIn("const SUPPORTED_LANGS = ['de', 'en'];", chat)
+        self.assertIn("const LANG_LABELS = { de: 'DE', en: 'EN' };", chat)
+        self.assertIn("const LANG_NAMES  = { de: 'Deutsch', en: 'English' };", chat)
+        self.assertNotIn("\n  es: {", strings)
+        self.assertNotIn("\n  it: {", strings)
+        self.assertNotIn("\n  zh: {", strings)
+
     def test_system_prompt_introduces_wisdom_as_navigator(self):
         prompt = (ROOT / "system-prompt.md").read_text(encoding="utf-8")
 

@@ -471,9 +471,9 @@
   const MAX_IMAGE_DIMENSION = 1600;
   const MAX_QUERY_CHARS = 2000;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-  const SUPPORTED_LANGS = ['de', 'en', 'es', 'it', 'zh'];
-  const LANG_LABELS = { de: 'DE', en: 'EN', es: 'ES', it: 'IT', zh: '中文' };
-  const LANG_NAMES  = { de: 'Deutsch', en: 'English', es: 'Español', it: 'Italiano', zh: '中文' };
+  const SUPPORTED_LANGS = ['de', 'en'];
+  const LANG_LABELS = { de: 'DE', en: 'EN' };
+  const LANG_NAMES  = { de: 'Deutsch', en: 'English' };
 
   function detectLang() {
     const saved = localStorage.getItem('wisdomLang') || localStorage.getItem('wieselLang');
