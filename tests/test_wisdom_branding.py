@@ -22,11 +22,22 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Wisdom", strings)
         self.assertNotIn("Wiesel", strings)
 
+    def test_first_visit_disclaimer_requires_acknowledgement_and_persists_it(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="wisdom-disclaimer"', chat)
+        self.assertIn('id="wisdom-disclaimer-accept"', chat)
+        self.assertIn('wisdom_disclaimer_acknowledged', chat)
+        self.assertIn('document.cookie', chat)
+        self.assertIn('Wichtige Informationen bitte immer in offiziellen Quellen prüfen.', chat)
+        self.assertIn('Wisdom kann Fehler machen', chat)
+
     def test_system_prompt_introduces_wisdom_as_navigator(self):
         prompt = (ROOT / "system-prompt.md").read_text(encoding="utf-8")
 
         self.assertIn("Ich bin Wisdom", prompt)
         self.assertIn("Navigator", prompt)
+
         self.assertNotIn("R2-D2", prompt)
 
     def test_backend_metadata_and_public_fallback_use_wisdom(self):

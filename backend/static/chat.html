@@ -303,6 +303,19 @@
 
     .voice-state { align-self:center; min-width:72px; color:var(--wiesel-text-muted); font-size:.65rem; font-weight:800; }
 
+    #wisdom-disclaimer[hidden] { display:none; }
+    #wisdom-disclaimer { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:rgba(59,10,24,.58); backdrop-filter:blur(3px); }
+    .disclaimer-card { width:min(520px, 100%); background:var(--wiesel-surface); border:1px solid var(--wiesel-border); border-radius:18px; padding:24px; box-shadow:0 22px 60px rgba(0,0,0,.3); }
+    .disclaimer-eyebrow { color:var(--wiesel-primary); font-size:.68rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px; }
+    .disclaimer-card h1 { color:var(--wiesel-primary-text); font-size:1.35rem; line-height:1.2; margin-bottom:12px; }
+    .disclaimer-card p { color:var(--wiesel-text); font-size:.93rem; line-height:1.55; margin:0 0 10px; }
+    .disclaimer-card ul { margin:12px 0 18px 1.2em; color:var(--wiesel-text); font-size:.9rem; line-height:1.5; }
+    .disclaimer-card li + li { margin-top:7px; }
+    .disclaimer-card a { color:var(--wiesel-primary); text-underline-offset:2px; }
+    .disclaimer-card button { width:100%; border:0; border-radius:10px; background:var(--wiesel-primary); color:#fff; cursor:pointer; font:800 .9rem var(--font); padding:11px 14px; }
+    .disclaimer-card button:hover { background:var(--wiesel-primary-text); }
+    .disclaimer-card button:focus-visible { outline:3px solid #e2a0a9; outline-offset:3px; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition:none !important; }
       .av-idle, .av-think, .av-found, .av-talk, .av-dig, .av-confused, .msg-row, .typing-row, .flag-toast.show { animation:none !important; transform:none !important; }
@@ -311,6 +324,21 @@
   </style>
 </head>
 <body>
+
+<div id="wisdom-disclaimer" role="dialog" aria-modal="true" aria-labelledby="wisdom-disclaimer-title" aria-describedby="wisdom-disclaimer-text">
+  <div class="disclaimer-card">
+    <div class="disclaimer-eyebrow">Hinweis vor dem Start</div>
+    <h1 id="wisdom-disclaimer-title">Willkommen bei Wisdom</h1>
+    <p id="wisdom-disclaimer-text">Wisdom ist ein digitaler Navigator für den WiSo-Alltag. Er ersetzt keine Beratung oder verbindliche Auskunft durch die FAU, das Prüfungsamt, StudOn, Campo oder andere zuständige Stellen.</p>
+    <ul>
+      <li>Wisdom kann Fehler machen oder Informationen unvollständig wiedergeben.</li>
+      <li>Wichtige Informationen bitte immer in offiziellen Quellen prüfen.</li>
+      <li>Bei Fristen, Prüfungen, rechtlichen oder persönlichen Notfällen wende dich direkt an die zuständige Stelle.</li>
+    </ul>
+    <p>Mit „Verstanden“ speichert dein Browser nur, dass du diesen Hinweis gesehen hast. Details findest du in der <a href="/static/legal/datenschutz.html" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.</p>
+    <button id="wisdom-disclaimer-accept" type="button">Verstanden</button>
+  </div>
+</div>
 
 <div id="sr-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <div id="no-session"></div>
@@ -401,7 +429,30 @@
   const sessionId = params.get('session_id') || null;
   const isDebugSession = params.get('debug') === '1' || params.get('debug') === 'true' || (sessionId || '').startsWith('debug_session_wiesel_');
   const canMintDebugSession = location.protocol !== 'file:';
+  const DISCLAIMER_COOKIE = 'wisdom_disclaimer_acknowledged';
   window._userName = decodeURIComponent(params.get('user') || '');
+
+  function hasCookie(name) {
+    return document.cookie.split(';').some(cookie => cookie.trim().startsWith(`${name}=`));
+  }
+
+  function setupDisclaimer() {
+    const modal = document.getElementById('wisdom-disclaimer');
+    const accept = document.getElementById('wisdom-disclaimer-accept');
+    if (!modal || !accept) return;
+    if (hasCookie(DISCLAIMER_COOKIE)) {
+      modal.hidden = true;
+      return;
+    }
+    accept.addEventListener('click', () => {
+      document.cookie = `${DISCLAIMER_COOKIE}=1; Path=/; Max-Age=31536000; SameSite=Lax`;
+      modal.hidden = true;
+    });
+    requestAnimationFrame(() => accept.focus());
+  }
+
+  setupDisclaimer();
+
   if (!token && params.get('mock') !== '1') {
     const noSessionEl = document.getElementById('no-session');
     noSessionEl.style.display = 'block';
