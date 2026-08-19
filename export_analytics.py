@@ -19,9 +19,8 @@ except ImportError:
 
 # ── Konfiguration ──────────────────────────────────────────────
 DB_PATH = Path(os.getenv("WIESEL_DB_PATH", r"C:\Users\tillt\wiesel\backend\wiesel.db"))
-OUTPUT_DIR = Path(os.getenv("WIESEL_ANALYTICS_DIR", str(Path(__file__).parent / "backend" / "analytics")))
+OUTPUT_DIR = Path(__file__).parent / "backend" / "analytics"
 TARGET_DATE = os.getenv("WIESEL_ANALYTICS_DATE")
-UPDATE_DOCS = os.getenv("WIESEL_ANALYTICS_UPDATE_DOCS", "1").lower() not in {"0", "false", "no"}
 
 # ──────────────────────────────────────────────────────────────
 
@@ -205,16 +204,6 @@ def export():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
-
-    if UPDATE_DOCS:
-        # ── analytics_latest.json in backend/static/docs/internal/ für schnellen Erstaufruf ──
-        # Historische Tagesdateien bleiben ausschließlich in OUTPUT_DIR/WIESEL_ANALYTICS_DIR.
-        docs_internal_dir = Path(__file__).parent / "backend" / "static" / "docs" / "internal"
-        docs_internal_dir.mkdir(parents=True, exist_ok=True)
-        docs_json = docs_internal_dir / "analytics_latest.json"
-        with open(docs_json, "w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
-        print(f"  analytics_latest.json → {docs_json}")
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Export fertig: {out_path}")
     print(f"  {len(sessions)} Sessions | {total_messages} Nachrichten | Tagesexport: {target_day.isoformat()}")

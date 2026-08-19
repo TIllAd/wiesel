@@ -268,24 +268,6 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as e:
         print(f"⚠ Git push fehlgeschlagen: {e}")
 
-    # analytics_latest.json für schnellen Erstaufruf; historische Tagesdateien liegen in WIESEL_ANALYTICS_DIR.
-    docs_internal_dir = Path(__file__).parent / "static" / "docs" / "internal"
-    docs_json = docs_internal_dir / "analytics_latest.json"
-    try:
-        payload = {
-            "exported_at": datetime.now().isoformat(),
-            "periode": f"Tagesbericht {target}",
-            "statistik": {"sessions_gesamt": result["total_sessions"], "nachrichten_gesamt": result["total_messages"], "durchschnitt_pro_session": result["avg_session_len"]},
-            "llm_usage": {**result["llm_usage"], "kosten_eur_geschaetzt": result["llm_usage"]["estimated_cost_eur"], "kosten_usd_geschaetzt": result["llm_usage"]["estimated_cost_usd"], "kosten_eur_durchschnitt_erfolgreicher_request": result["llm_usage"]["avg_cost_eur_per_successful_request"], "modelle": result["llm_usage"]["models"], "cache_write_requests": result["llm_usage"]["cache_write_requests"]},
-            "sessions": [],
-        }
-        docs_internal_dir.mkdir(parents=True, exist_ok=True)
-        with open(docs_json, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-        print(f"✅ analytics_latest.json aktualisiert")
-    except Exception as e:
-        print(f"⚠ analytics JSON fehlgeschlagen: {e}")
-
     send_email(
         subject=email_subject(result),
         body=email_summary(result),
