@@ -73,7 +73,7 @@ Auch eine einzige Beobachtung ist wertvoll.
 
 # Wiesel ausprobieren
 
-**Link:** https://wiesel.chatbot-wiso.de/chat
+**Link:** https://wisdom.chatbot-wiso.de/chat
 
 Funktioniert im Browser, kein Login nötig.
 

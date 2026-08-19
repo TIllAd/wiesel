@@ -64,7 +64,13 @@ def json_timestamp(value: datetime) -> str:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Wisdom Backend", description="LTI 1.1 Backend for the Wisdom Chatbot (FAU WiSo)", version="0.1.0")
+app = FastAPI(
+    title="Wisdom Backend",
+    description="LTI 1.1 Backend for the Wisdom Chatbot (FAU WiSo)",
+    version="0.1.0",
+    docs_url="/api/docs",
+    redoc_url=None,
+)
 
 
 @app.exception_handler(Exception)
@@ -124,7 +130,9 @@ LLM_CACHE_READ_USD_PER_MTOK = float(os.getenv("LLM_CACHE_READ_USD_PER_MTOK", "0.
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "").strip()
-ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
+# Wisdom is the canonical public host. Keep Wiesel temporarily for existing LTI
+# launches and bookmarked sessions during the domain migration.
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wisdom.chatbot-wiso.de,https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
 # Leer = Anthropic-API-Default (1.0). Für reproduzierbarere Eval-Läufe z. B. LLM_TEMPERATURE=0.2 in .env setzen.
 LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE", "").strip()
@@ -1017,20 +1025,33 @@ if _static_dir.exists():
 # ============================================================================
 
 @app.get("/")
-async def docs_landing_page():
+async def root_landing_page(request: Request):
+    """Docs keep their own hostname; the Wisdom hostname starts the chatbot."""
+    docs_index = _static_dir / "docs" / "index.html"
+    if request.url.hostname == "docs.chatbot-wiso.de" and docs_index.exists():
+        return FileResponse(str(docs_index))
+    return RedirectResponse(url="/chat", status_code=302)
+
+
+@app.get("/docs")
+async def public_docs_page():
+    """Public documentation remains available without competing with the chat entry point."""
     docs_index = _static_dir / "docs" / "index.html"
     if docs_index.exists():
         return FileResponse(str(docs_index))
-    return RedirectResponse(url="/chat?debug=true")
+    raise HTTPException(status_code=404, detail="Dokumentation nicht gefunden")
 
 
 @app.get("/chat")
 async def chat_page(request: Request, debug: str | None = None):
-    # Only the explicit entry URL /chat?debug=true should mint a fresh debug
-    # session. The rendered chat page uses debug=1 only as a frontend marker;
-    # treating every truthy debug value as a launch request causes an infinite
-    # redirect loop: debug=true -> debug=1 -> new token -> debug=1 -> ...
-    if debug == "true":
+    # A direct public chat URL must be usable: create a test session when no
+    # launch credentials were supplied. The rendered session URL always has
+    # token and session_id plus debug=1, so it cannot loop back into this path.
+    has_launch_credentials = bool(
+        request.query_params.get("token") and request.query_params.get("session_id")
+    )
+    should_mint_debug_session = debug == "true" or not has_launch_credentials
+    if should_mint_debug_session:
         if rate_limit_exceeded(f"debugsess:ip:{client_ip(request)}", RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP, window_seconds=86400.0):
             raise HTTPException(status_code=429, detail=RATE_LIMITED_DETAIL)
         db = SessionLocal()
