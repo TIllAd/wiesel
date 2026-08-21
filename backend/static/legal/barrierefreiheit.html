@@ -1,58 +1,43 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Barrierefreiheit · Wisdom</title>
 <style>
-  :root {
-    --bg:#f4f1ea; --panel:#fffaf0; --line:#e2ddce;
-    --text:#2c2c2a; --muted:#7a7669; --accent:#8B1F2F;
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:'Nunito','Inter',system-ui,sans-serif; line-height:1.55; }
-  main { max-width:680px; margin:0 auto; padding:40px 20px 60px; }
-  a { color:var(--accent); }
-  a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  h1 { font-size:26px; margin:0 0 6px; }
-  h2 { font-size:16px; margin:28px 0 6px; color:var(--accent); }
-  .back { display:inline-block; margin-bottom:18px; font-size:13px; }
-  .draft-notice { background:#fff7ed; border:1px solid #b8500f; color:#7a3200; border-radius:10px; padding:12px 14px; font-size:13px; margin:14px 0 26px; }
-  .draft-notice strong { display:block; margin-bottom:3px; }
-  p { font-size:14px; color:var(--muted); }
-  p b { color:var(--text); }
-  ul { font-size:14px; color:var(--muted); padding-left:20px; }
+:root{--bg:#f4f1ea;--text:#2c2c2a;--muted:#625e55;--accent:#8b1f2f;--warn-bg:#fff7ed;--warn-line:#b8500f;--warn-text:#7a3200}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,Inter,system-ui,sans-serif;line-height:1.55}main{max-width:720px;margin:auto;padding:40px 20px 60px}a{color:var(--accent)}a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}h1{font-size:26px;margin:0 0 8px}h2{font-size:17px;margin:28px 0 7px;color:var(--accent)}p,li{font-size:14px;color:var(--muted)}ul{padding-left:20px}.back{display:inline-block;margin-bottom:18px;font-size:13px}.notice{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;color:var(--warn-text);padding:13px 15px;font-size:13px;margin:14px 0 24px}.notice strong{display:block;margin-bottom:4px}
 </style>
 </head>
 <body>
 <main>
-  <a class="back" href="/chat">&larr; Zurück zum Chat</a>
-  <h1>Erklärung zur Barrierefreiheit</h1>
+<a class="back" href="/chat">← Zurück zum Chat</a>
+<h1>Erklärung zur Barrierefreiheit</h1>
+<div class="notice"><strong>Arbeitsfassung – vor öffentlicher Freigabe durch einen Selbsttest vervollständigen</strong>Diese Seite ist die Struktur für die projektspezifische Erklärung. Der Konformitätsstatus und die Liste bekannter Barrieren dürfen erst nach einem dokumentierten Test veröffentlicht werden.</div>
 
-  <div class="draft-notice">
-    <strong>Entwurf – Pflichtangaben nach Art. 13 BayBGG / Richtlinie (EU) 2016/2102</strong>
-    Platzhalter. Muss jährlich aktualisiert werden und ist verpflichtend, sobald Wisdom öffentlich (StudOn/LTI) live geht.
-  </div>
+<h2>Geltungsbereich</h2>
+<p>Diese Erklärung betrifft den Chat-Assistenten Wisdom unter <strong>wisdom.chatbot-wiso.de</strong>, einschließlich der dort verlinkten Rechteseiten. Sie ergänzt die <a href="https://www.fau.de/barrierefreiheit/" target="_blank" rel="noopener noreferrer">Erklärung zur Barrierefreiheit der FAU</a>, deren Geltungsbereich diese Projekt-Domain nicht ausdrücklich umfasst.</p>
 
-  <h2>Geltungsbereich</h2>
-  <p>Diese Erklärung gilt für den Chat-Assistenten „Wisdom" (chatbot-wiso.de) der Friedrich-Alexander-Universität Erlangen-Nürnberg, WiSo-Fakultät.</p>
+<h2>Stand der Vereinbarkeit</h2>
+<p><strong>Teilweise vereinbar</strong> mit den Anforderungen der BayDiV in Verbindung mit der BITV 2.0. Die Bewertung nach WCAG 2.2, Konformitätsstufe AA, ist vor der Veröffentlichung dieser Erklärung durch eine Selbstbewertung zu dokumentieren.</p>
 
-  <h2>Stand der Vereinbarkeit</h2>
-  <p><b>Teilweise vereinbar</b> mit EN 301 549 / WCAG 2.1, Stufe AA. Die Umsetzung (Tastaturbedienbarkeit, Screenreader-Kompatibilität, farbunabhängige Statusanzeigen, reduzierte Bewegung) ist in Arbeit — Stand [Datum bei Veröffentlichung einsetzen].</p>
+<h2>Bekannte und noch zu prüfende Barrieren</h2>
+<ul>
+<li>Die vollständige Tastaturbedienung des Chatverlaufs, des Disclaimer-Dialogs, der Datei-Anhänge und der Feedback-Funktion ist noch nicht dokumentiert geprüft.</li>
+<li>Die sinnvolle Ausgabe neu eintreffender Chatnachrichten und Statusmeldungen mit Screenreadern ist noch nicht mit NVDA oder VoiceOver getestet.</li>
+<li>Kontraste, sichtbare Fokusmarkierungen und Zoom/Reflow sind noch nicht für alle Zustände und Bildschirmgrößen gemessen.</li>
+<li>Die Spracheingabe hängt von Funktionen des jeweiligen Browsers ab; ihre Zugänglichkeit kann nicht auf allen Endgeräten garantiert werden.</li>
+</ul>
+<p>Nach dem Selbsttest sind bestätigte Mängel, Alternativen und ein realistischer Zeitplan an dieser Stelle konkret zu benennen. Platzhalter als Erklärung auszugeben wäre zwar traditionsreich, aber nutzlos.</p>
 
-  <h2>Nicht barrierefreie Inhalte</h2>
-  <p>[Nach Abschluss der Accessibility-Arbeiten und einem Test mit Screenreader (NVDA/VoiceOver) konkret auflisten, was noch nicht erfüllt ist.]</p>
+<h2>Feedback und Kontakt</h2>
+<p>Wenn dir Inhalte oder Funktionen nicht barrierefrei zugänglich sind, melde das bitte an <a href="mailto:lehre-digital@fau.de">lehre-digital@fau.de</a>. Gib möglichst die betroffene Seite oder Funktion, deinen Browser und die Art der Einschränkung an.</p>
 
-  <h2>Feedback-Mechanismus</h2>
-  <p>Wenn Inhalte oder Funktionen von Wisdom für Sie nicht barrierefrei zugänglich sind, kontaktieren Sie uns bitte:</p>
-  <p>E-Mail: <b>studienbuero@wiso.fau.de</b></p>
-  <p>Wir bearbeiten Meldungen innerhalb von 6 Wochen (§ 3 Abs. 2 BayBITV).</p>
+<h2>Durchsetzungsverfahren</h2>
+<p>Bleibt eine Anfrage über den genannten Kontakt innerhalb von sechs Wochen ganz oder teilweise unbeantwortet, kann die Durchsetzungs- und Überwachungsstelle für barrierefreie Informationstechnik beim Landesamt für Digitalisierung, Breitband und Vermessung eingeschaltet werden:</p>
+<p>Landesamt für Digitalisierung, Breitband und Vermessung<br>IT-Dienstleistungszentrum des Freistaats Bayern – Durchsetzungs- und Überwachungsstelle für barrierefreie Informationstechnik<br>St.-Martin-Straße 47, 81541 München<br>E-Mail: <a href="mailto:bitv@bayern.de">bitv@bayern.de</a><br><a href="https://www.ldbv.bayern.de/digitalisierung/bitv/" target="_blank" rel="noopener noreferrer">www.ldbv.bayern.de/digitalisierung/bitv/</a></p>
 
-  <h2>Durchsetzungsverfahren</h2>
-  <p>Wenn Sie mit der Antwort nicht zufrieden sind, können Sie sich an die zuständige Überwachungsstelle wenden: <b>Landesamt für Digitalisierung, Breitband und Vermessung (LDBV)</b>.</p>
-
-  <h2>Erstellung dieser Erklärung</h2>
-  <p>Erstellt am [Datum einsetzen], zuletzt geprüft am [Datum einsetzen].</p>
+<h2>Erstellung und Überprüfung</h2>
+<p>Arbeitsfassung erstellt am 20. August 2026. Prüfmethode für die finale Fassung: Selbstbewertung mit Tastaturtest, Prüfung bei 200 % Zoom und mindestens einem Screenreader-Test. Die Erklärung ist mindestens jährlich sowie bei wesentlichen Änderungen zu überprüfen.</p>
 </main>
 </body>
 </html>

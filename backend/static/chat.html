@@ -329,13 +329,13 @@
   <div class="disclaimer-card">
     <div class="disclaimer-eyebrow">Hinweis vor dem Start</div>
     <h1 id="wisdom-disclaimer-title">Willkommen bei Wisdom</h1>
-    <p id="wisdom-disclaimer-text">Wisdom ist ein digitaler Navigator für den WiSo-Alltag. Er ersetzt keine Beratung oder verbindliche Auskunft durch die FAU, das Prüfungsamt, StudOn, Campo oder andere zuständige Stellen.</p>
+    <p id="wisdom-disclaimer-text">Wisdom ist ein KI-gestützter digitaler Navigator für den WiSo-Alltag. Er ersetzt keine Beratung oder verbindliche Auskunft durch die FAU, das Prüfungsamt, StudOn, Campo oder andere zuständige Stellen.</p>
     <ul>
       <li>Wisdom kann Fehler machen oder Informationen unvollständig wiedergeben.</li>
       <li>Wichtige Informationen bitte immer in offiziellen Quellen prüfen.</li>
       <li>Bei Fristen, Prüfungen, rechtlichen oder persönlichen Notfällen wende dich direkt an die zuständige Stelle.</li>
     </ul>
-    <p>Mit „Verstanden“ speichert dein Browser nur, dass du diesen Hinweis gesehen hast. Details findest du in der <a href="/static/legal/datenschutz.html" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.</p>
+    <p>Mit „Verstanden“ speichert dein Browser nur, dass du diesen Hinweis gesehen hast. Details findest du unter <a href="/static/legal/ueber-wisdom.html" target="_blank" rel="noopener noreferrer">Über Wisdom</a> und in der <a href="/static/legal/datenschutz.html" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.</p>
     <button id="wisdom-disclaimer-accept" type="button">Verstanden</button>
   </div>
 </div>
@@ -418,11 +418,11 @@
 <div id="char-limit-hint" role="status" aria-live="polite"></div>
 <div class="fnote" id="footer-note"></div>
 <div class="flinks" id="footer-links">
-  <a href="/static/legal/impressum.html" id="link-impressum"></a><a href="/static/legal/datenschutz.html" id="link-datenschutz"></a><a href="/static/legal/barrierefreiheit.html" id="link-a11y"></a>
+  <a href="/static/legal/ueber-wisdom.html" id="link-about"></a><a href="/static/legal/impressum.html" id="link-impressum"></a><a href="/static/legal/datenschutz.html" id="link-datenschutz"></a><a href="/static/legal/barrierefreiheit.html" id="link-a11y"></a>
 </div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=6"></script>
+<script src="/static/strings.js?v=7"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -568,6 +568,7 @@
     setText('voice-state', T.voiceIdle);
     setTitle('send', T.send);
     setText('footer-note', T.footer);
+    setText('link-about', T.footerAbout);
     setText('link-impressum', T.footerImpressum);
     setText('link-datenschutz', T.footerPrivacy);
     setText('link-a11y', T.footerA11y);
