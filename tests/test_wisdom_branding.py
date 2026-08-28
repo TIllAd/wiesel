@@ -9,10 +9,12 @@ STATIC = ROOT / "backend" / "static"
 
 
 class WisdomBrandingTests(unittest.TestCase):
-    def test_chat_ui_uses_wisdom_avatar(self):
+    def test_chat_ui_uses_robot_favicon_for_wisdom_message_avatar(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
 
-        self.assertIn("wisdom-compass.png", chat)
+        self.assertIn("const WISDOM_AVATAR = '/static/brand/favicon-180.png';", chat)
+        self.assertNotIn("wisdom-label-quadrat.svg", chat)
+        self.assertNotIn("wisdom-compass.png", chat)
         self.assertNotIn("wiesel_standing.png", chat)
         self.assertNotIn("makeWieselSVG", chat)
 
@@ -31,6 +33,56 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('document.cookie', chat)
         self.assertIn('Wichtige Informationen bitte immer in offiziellen Quellen prüfen.', chat)
         self.assertIn('Wisdom kann Fehler machen', chat)
+
+    def test_final_brand_assets_replace_placeholder_and_supply_link_metadata(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        brand = STATIC / "brand"
+
+        self.assertIn('/static/brand/wisdom-logo.svg', chat)
+        self.assertNotIn('wisdom-lockup-placeholder.svg', chat)
+        self.assertIn('rel="icon"', chat)
+        self.assertIn('apple-touch-icon', chat)
+        self.assertIn('property="og:image"', chat)
+        self.assertIn('/static/brand/og-image.png', chat)
+
+        for filename in (
+            "wisdom-logo.svg",
+            "wisdom-logo-weiss.svg",
+            "wisdom-label-quadrat.svg",
+            "favicon.ico",
+            "favicon-32.png",
+            "favicon-180.png",
+            "favicon-512.png",
+            "og-image.png",
+        ):
+            self.assertTrue((brand / filename).is_file(), filename)
+
+    def test_ki_transparency_page_and_legal_links_are_shipped(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+        transparency = (STATIC / "legal" / "ueber-wisdom.html").read_text(encoding="utf-8")
+
+        self.assertIn('/static/legal/ueber-wisdom.html', chat)
+        self.assertIn('id="link-about"', chat)
+        self.assertIn("footerAbout: 'Über Wisdom'", strings)
+        self.assertIn("Wisdom ist eine KI und kann Fehler machen", strings)
+        self.assertIn("Kann Wisdom sich irren?", transparency)
+        self.assertIn("Datenschutzerklärung", transparency)
+
+    def test_legal_pages_are_concrete_and_privacy_draft_does_not_hide_lti_data(self):
+        legal = STATIC / "legal"
+        impressum = (legal / "impressum.html").read_text(encoding="utf-8")
+        privacy = (legal / "datenschutz.html").read_text(encoding="utf-8")
+        accessibility = (legal / "barrierefreiheit.html").read_text(encoding="utf-8")
+
+        self.assertIn("Freyeslebenstraße 1", impressum)
+        self.assertIn("DE 132507686", impressum)
+        self.assertIn("wisdom.chatbot-wiso.de", impressum)
+        self.assertIn("LTI-Schnittstelle", privacy)
+        self.assertIn("vollständiger Name", privacy)
+        self.assertIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
+        self.assertNotIn("[Datum", accessibility)
+        self.assertIn("bitv@bayern.de", accessibility)
 
     def test_language_switch_offers_only_german_and_english_ui_copy(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
