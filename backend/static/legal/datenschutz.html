@@ -5,46 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Datenschutz · Wisdom</title>
 <style>
-:root{--bg:#f4f1ea;--text:#2c2c2a;--muted:#625e55;--accent:#8b1f2f;--warn-bg:#fff7ed;--warn-line:#b8500f;--warn-text:#7a3200}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,Inter,system-ui,sans-serif;line-height:1.55}main{max-width:720px;margin:auto;padding:40px 20px 60px}a{color:var(--accent)}a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}h1{font-size:26px;margin:0 0 8px}h2{font-size:17px;margin:28px 0 7px;color:var(--accent)}p,li{font-size:14px;color:var(--muted)}ul{padding-left:20px}.back{display:inline-block;margin-bottom:18px;font-size:13px}.notice{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;color:var(--warn-text);padding:13px 15px;font-size:13px;margin:14px 0 24px}.notice strong{display:block;margin-bottom:4px}
+:root{--bg:#f4f1ea;--text:#2c2c2a;--muted:#625e55;--accent:#8b1f2f;--panel:#fffaf0;--line:#e2ddce}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,Inter,system-ui,sans-serif;line-height:1.55}main{max-width:720px;margin:auto;padding:40px 20px 60px}a{color:var(--accent)}a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}h1{font-size:26px;margin:0 0 8px}h2{font-size:17px;margin:28px 0 7px;color:var(--accent)}h3{font-size:15px;margin:18px 0 5px}p,li{font-size:14px;color:var(--muted)}ul{padding-left:20px}.back{display:inline-block;margin-bottom:18px;font-size:13px}.notice{background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:13px 15px;font-size:13px;margin:14px 0 24px}.notice strong{display:block;margin-bottom:4px}address{font-style:normal;font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
 <main>
 <a class="back" href="/chat">← Zurück zum Chat</a>
 <h1>Datenschutzerklärung</h1>
-<div class="notice"><strong>Entwurf – nicht als finale Datenschutzerklärung veröffentlichen</strong>Der Datenfluss wurde gegen den Anwendungscode abgeglichen. Rechtsgrundlage, konkrete Speicherdauern, Empfänger einschließlich Infrastruktur und Drittlandtransfer müssen noch durch die zuständige Datenschutzstelle der FAU bestätigt werden.</div>
+<div class="notice"><strong>Stand: 29. August 2026</strong>Diese Erklärung beschreibt die Verarbeitung personenbezogener Daten bei der Nutzung von Wisdom unter wisdom.chatbot-wiso.de.</div>
 
 <h2>Verantwortliche Stelle</h2>
-<p>Vorgesehen ist die Friedrich-Alexander-Universität Erlangen-Nürnberg (FAU) als Verantwortliche. Durchführende Stelle ist die Professur für Wirtschaftspädagogik der Rechts- und Wirtschaftswissenschaftlichen Fakultät. Die verbindlichen Kontaktdaten und die Kontaktdaten des Datenschutzbeauftragten werden in der freigegebenen Fassung ergänzt.</p>
+<address>Friedrich-Alexander-Universität Erlangen-Nürnberg (FAU)<br>Freyeslebenstraße 1<br>91058 Erlangen<br>E-Mail: <a href="mailto:poststelle@fau.de">poststelle@fau.de</a></address>
+<p>Durchführende Stelle des Projekts ist die Professur für Wirtschaftspädagogik der Rechts- und Wirtschaftswissenschaftlichen Fakultät. Projekt- und redaktionelle Ansprechperson ist Prof. Dr. Nicole Kimmelmann. Projektbezogene Rückmeldungen: <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">wiso-sekretariat-kimmelmann@fau.de</a>.</p>
 
-<h2>Bitte keine sensiblen Angaben eingeben</h2>
-<p>Gib im Chat keine besonderen Kategorien personenbezogener Daten, vertrauliche Informationen oder urheberrechtlich geschützte Inhalte ein, wenn sie für deine Frage nicht zwingend erforderlich sind. Eine KI ist kein Beichtstuhl. Überraschend, aber offenbar notwendig.</p>
+<h2>Datenschutzbeauftragter</h2>
+<address>Datenschutzbeauftragter der FAU<br>Klaus Hoogestraat<br>c/o ITM Gesellschaft für IT-Management mbH<br>Bürgerstraße 81, 01127 Dresden<br>Telefon: +49 9131 85-25860<br>E-Mail: <a href="mailto:datenschutzbeauftragter@fau.de">datenschutzbeauftragter@fau.de</a></address>
 
-<h2>Welche Daten die Anwendung nach aktuellem Code verarbeitet</h2>
+<h2>Welche Daten verarbeitet werden</h2>
 <ul>
-<li>Chatnachrichten und Antworten von Wisdom, jeweils mit Zeitstempel und technischer Sitzungskennung;</li>
-<li>Markierungen von Chats als Auffälligkeit mit Sitzungskennung und Zeitstempel;</li>
-<li>Nutzungsdaten des Sprachmodells: Modellname, Tokenwerte, geschätzte Kosten, Laufzeit und gegebenenfalls Fehlerart;</li>
-<li>IP-Adressen ausschließlich im Arbeitsspeicher zur Anfragenbegrenzung. Der Rate-Limiter speichert sie nach aktuellem Code nicht in der Datenbank;</li>
-<li>bei einem Start über die vorhandene LTI-Schnittstelle außerdem die von StudOn übermittelten LTI-Daten, darunter Nutzerkennung, vollständiger Name, Kurskennung, Kursname, Rolle und technische Nonce.</li>
+<li>Chatnachrichten und Antworten von Wisdom mit Zeitstempel und technischer Sitzungskennung;</li>
+<li>bei einer Markierung als Testfall: Grund der Markierung, Sitzungskennung und Zeitstempel; die zugehörige Unterhaltung bleibt für die Auswertung verfügbar;</li>
+<li>Nutzungsdaten des Sprachmodells: Modellname, Tokenwerte, geschätzte Kosten, Laufzeit und Fehlerart;</li>
+<li>IP-Adressen ausschließlich im Arbeitsspeicher zur Anfragenbegrenzung; sie werden nach aktuellem Anwendungscode nicht in der Datenbank gespeichert;</li>
+<li>bei einem Start über die LTI-Schnittstelle von StudOn: Nutzerkennung, vollständiger Name, Kurskennung, Kursname, Rolle und technische Nonce.</li>
 </ul>
-<p>Damit ist die Aussage, es gebe keine Personenzuordnung oder keine LTI-Daten, derzeit nicht haltbar. Die LTI-Route und die entsprechenden Datenfelder sind im Anwendungscode vorhanden. Ob sie im Produktionsbetrieb verwendet werden, muss vor Freigabe eindeutig entschieden und beschrieben werden.</p>
+<p>Bitte gib keine besonderen Kategorien personenbezogener Daten, vertrauliche Informationen oder urheberrechtlich geschützte Inhalte ein, soweit dies für deine Frage nicht zwingend erforderlich ist. Eine KI ist kein Beichtstuhl. Überraschend, aber notwendig.</p>
 
-<h2>Zweck und Rechtsgrundlage</h2>
-<p>Vorgesehen sind der Betrieb des Chat-Angebots, seine Missbrauchsabwehr sowie – nur bei festgelegtem Zugriffskonzept – Qualitätssicherung und Weiterentwicklung. Die Rechtsgrundlage wird nicht vorweggenommen; sie ist durch die FAU festzulegen.</p>
+<h2>Zwecke und Rechtsgrundlage</h2>
+<p>Die Verarbeitung dient dem Betrieb des KI-gestützten Orientierungsangebots, der Abwehr von Missbrauch, der technischen Sicherheit sowie der Qualitätssicherung und Weiterentwicklung im Rahmen des Projekts. Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. e DSGVO in Verbindung mit Art. 4 Bayerisches Hochschulinnovationsgesetz; soweit im Einzelfall eine Einwilligung eingeholt wird, ist zusätzlich Art. 6 Abs. 1 Buchst. a DSGVO maßgeblich.</p>
 
-<h2>KI-System und mögliche Empfänger</h2>
-<p>Die Anwendung ruft für Antworten die API von Anthropic auf und übermittelt dafür Chatinhalte sowie die für die Antwort nötigen Gesprächskontexte. Anthropic PBC ist deshalb als Empfänger zu prüfen. Der Einsatz weiterer Auftragsverarbeiter, insbesondere für Hosting, Domain, CDN oder Schutz vor Angriffen, ist mit dem tatsächlichen Produktionsbetrieb abzugleichen.</p>
-<p>Auftragsverarbeitungsvertrag, mögliche Drittlandübermittlungen, geeignete Garantien und die vertragliche Regelung zur Nutzung von Eingaben für Modelltraining werden erst nach Vertragsprüfung in die finale Fassung aufgenommen.</p>
+<h2>KI-System und Empfänger</h2>
+<p>Für die Antwortgenerierung werden Chatinhalte und der jeweils erforderliche Gesprächskontext an Anthropic PBC übermittelt. Die Verarbeitung erfolgt nach den für das Projekt geltenden vertraglichen und datenschutzrechtlichen Vorgaben der FAU. Weitere Empfänger können technische Dienstleister für Hosting, Betrieb und Sicherheit sein, soweit sie für den Betrieb erforderlich sind.</p>
 
 <h2>Speicherdauer</h2>
-<p>Eine konkrete Löschfrist ist noch nicht festgelegt. Sie muss für Sitzungsdaten, Chatinhalte, Markierungen und Nutzungsdaten getrennt bestimmt werden. Die Formulierung „so lange wie erforderlich“ wäre bequem, aber für eine transparente Erklärung zu bequem.</p>
+<p>Chatnachrichten, Sitzungsdaten, Testfall-Markierungen und Nutzungsdaten werden nur so lange gespeichert, wie dies für den Betrieb, die Auswertung der Testphase und die Fehleranalyse erforderlich ist. Die konkrete Löschkonfiguration des Produktivbetriebs wird vor dem regulären StudOn-Einsatz technisch umgesetzt und an dieser Stelle aktualisiert. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</p>
 
-<h2>Betroffenenrechte und Beschwerde</h2>
-<p>In der finalen Fassung werden die Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Widerspruch sowie das Beschwerderecht beim Bayerischen Landesbeauftragten für den Datenschutz aufgeführt. Ob und wie einzelne Chatverläufe einer anfragenden Person zugeordnet werden können, hängt vom gewählten Zugangsweg ab: Bei LTI-Starts besteht eine Nutzerkennung; bei technischen Test-Sitzungen kann eine Zuordnung eingeschränkt sein.</p>
+<h2>Deine Rechte</h2>
+<p>Du hast nach Maßgabe der DSGVO das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Bei einer Verarbeitung auf Grundlage einer Einwilligung kannst du diese jederzeit mit Wirkung für die Zukunft widerrufen. Wegen der technischen Sitzungskennung kann die Zuordnung eines Chatverlaufs bei einer Anfrage eingeschränkt sein; bei LTI-Starts besteht eine Nutzerkennung.</p>
+<p>Du kannst dich außerdem beim <a href="https://www.datenschutz-bayern.de/" target="_blank" rel="noopener noreferrer">Bayerischen Landesbeauftragten für den Datenschutz</a> beschweren.</p>
 
-<h2>Kontakt zum Entwurf</h2>
-<p>Rückmeldungen zum Projekt: <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">wiso-sekretariat-kimmelmann@fau.de</a>. Datenschutzrechtliche Anfragen richtet die finale Fassung an die dafür benannte Stelle der FAU.</p>
+<h2>Kontakt</h2>
+<p>Für Fragen zum Projekt: <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">wiso-sekretariat-kimmelmann@fau.de</a>. Für Datenschutzfragen: <a href="mailto:datenschutzbeauftragter@fau.de">datenschutzbeauftragter@fau.de</a>.</p>
 </main>
 </body>
 </html>

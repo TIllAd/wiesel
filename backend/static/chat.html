@@ -251,7 +251,9 @@
     #char-limit-hint { display:none; text-align:center; font-size:.65rem; color:var(--state-error-fg); background:var(--state-error-bg); border-top:1px dashed var(--state-error-border); padding:4px 14px; flex-shrink:0; }
 
     .fnote { text-align:center; font-size:.68rem; color:var(--fau-blue-light); padding:7px 12px 1px; font-weight:600; letter-spacing:.01em; text-transform:none; background:var(--fau-blue); flex-shrink:0; }
-    .flinks { text-align:center; font-size:.68rem; padding:2px 0 8px; background:var(--fau-blue); flex-shrink:0; }
+    .flinks { text-align:center; font-size:.68rem; padding:2px 0 4px; background:var(--fau-blue); flex-shrink:0; }
+    .fcredit { text-align:center; font-size:.68rem; color:var(--fau-blue-light); padding:3px 12px 8px; background:var(--fau-blue); flex-shrink:0; }
+    .fcredit a { color:#fff; text-decoration:underline; text-underline-offset:2px; }
     .flinks a { color:#fff; text-decoration:underline; text-underline-offset:2px; margin:0 7px; }
     .flinks a:hover, .flinks a:focus-visible { color:var(--fau-blue-light); }
     .flinks a:focus-visible { outline:2px solid var(--wiesel-primary); outline-offset:2px; border-radius:3px; }
@@ -448,6 +450,7 @@
 <div class="flinks" id="footer-links">
   <a href="/static/legal/ueber-wisdom.html" id="link-about"></a><a href="/static/legal/impressum.html" id="link-impressum"></a><a href="/static/legal/datenschutz.html" id="link-datenschutz"></a><a href="/static/legal/barrierefreiheit.html" id="link-a11y"></a>
 </div>
+<div class="fcredit" id="footer-credit">♡ Made with love in Nuremberg ♡ — <a href="https://www.professur-wirtschaftspaedagogik.rw.fau.de" target="_blank" rel="noopener noreferrer">Professur für Wirtschaftspädagogik</a> · <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">Kontakt</a></div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
 <script src="/static/strings.js?v=11"></script>

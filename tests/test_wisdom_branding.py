@@ -78,7 +78,7 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Kann Wisdom sich irren?", transparency)
         self.assertIn("Datenschutzerklärung", transparency)
 
-    def test_legal_pages_are_concrete_and_privacy_draft_does_not_hide_lti_data(self):
+    def test_legal_pages_are_concrete_and_privacy_does_not_hide_lti_data(self):
         legal = STATIC / "legal"
         impressum = (legal / "impressum.html").read_text(encoding="utf-8")
         privacy = (legal / "datenschutz.html").read_text(encoding="utf-8")
@@ -89,13 +89,39 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("wisdom.chatbot-wiso.de", impressum)
         self.assertIn("LTI-Schnittstelle", privacy)
         self.assertIn("vollständiger Name", privacy)
-        self.assertIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
+        self.assertIn("Datenschutzerklärung", privacy)
+        self.assertNotIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
         transparency = (legal / "ueber-wisdom.html").read_text(encoding="utf-8")
         for page in (impressum, privacy, transparency):
             self.assertIn("Professur für Wirtschaftspädagogik", page)
             self.assertNotIn("Lehrstuhl für Wirtschaftspädagogik", page)
         self.assertNotIn("[Datum", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
+
+    def test_final_legal_pages_name_responsible_contacts_and_no_longer_present_drafts(self):
+        legal = STATIC / "legal"
+        privacy = (legal / "datenschutz.html").read_text(encoding="utf-8")
+        accessibility = (legal / "barrierefreiheit.html").read_text(encoding="utf-8")
+        impressum = (legal / "impressum.html").read_text(encoding="utf-8")
+
+        for page in (privacy, accessibility):
+            self.assertNotIn("Arbeitsfassung", page)
+            self.assertNotIn("Entwurf", page)
+        self.assertIn("datenschutzbeauftragter@fau.de", privacy)
+        self.assertIn("Bayerischen Landesbeauftragten für den Datenschutz", privacy)
+        self.assertIn("Speicherdauer", privacy)
+        self.assertIn("Prof. Dr. Nicole Kimmelmann", impressum)
+        self.assertIn("wiso-sekretariat-kimmelmann@fau.de", impressum)
+        self.assertIn("Selbstbewertung", accessibility)
+        self.assertIn("bitv@bayern.de", accessibility)
+
+    def test_footer_credits_nuremberg_and_links_to_the_professorship_contacts(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="footer-credit"', chat)
+        self.assertIn("♡ Made with love in Nuremberg ♡", chat)
+        self.assertIn('href="mailto:wiso-sekretariat-kimmelmann@fau.de"', chat)
+        self.assertIn('href="https://www.professur-wirtschaftspaedagogik.rw.fau.de"', chat)
 
     def test_legal_contact_uses_the_professorship_email_and_website(self):
         legal = STATIC / "legal"
