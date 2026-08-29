@@ -97,6 +97,24 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertNotIn("[Datum", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
 
+    def test_legal_contact_uses_the_professorship_email_and_website(self):
+        legal = STATIC / "legal"
+        impressum = (legal / "impressum.html").read_text(encoding="utf-8")
+
+        for filename in (
+            "ueber-wisdom.html",
+            "impressum.html",
+            "datenschutz.html",
+            "barrierefreiheit.html",
+        ):
+            page = (legal / filename).read_text(encoding="utf-8")
+            self.assertIn("wiso-sekretariat-kimmelmann@fau.de", page)
+            self.assertNotIn("lehre-digital@fau.de", page)
+
+        self.assertIn("<h2>Professur für Wirtschaftspädagogik</h2>", impressum)
+        self.assertNotIn("Projekt und redaktionelle Verantwortung", impressum)
+        self.assertIn("https://www.professur-wirtschaftspaedagogik.rw.fau.de", impressum)
+
     def test_language_switch_offers_only_german_and_english_ui_copy(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
         strings = (STATIC / "strings.js").read_text(encoding="utf-8")
