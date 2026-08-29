@@ -95,6 +95,17 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertNotIn("\n  it: {", strings)
         self.assertNotIn("\n  zh: {", strings)
 
+    def test_mentor_flagging_control_is_explanatory_and_visible_in_the_utility_bar(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertIn('class="chat-flag-label" id="chat-flag-label"', chat)
+        self.assertIn('class="sr-only chat-flag-hint" id="chat-flag-hint"', chat)
+        self.assertIn('aria-describedby="chat-flag-hint"', chat)
+        self.assertIn('min-height:36px', chat)
+        self.assertIn("flagBtn: 'Testfall markieren'", strings)
+        self.assertIn("flagHint: 'Für Mentor:innen: auffällige oder unklare Antworten für die Auswertung markieren.'", strings)
+
     def test_system_prompt_introduces_wisdom_as_navigator(self):
         prompt = (ROOT / "system-prompt.md").read_text(encoding="utf-8")
 
