@@ -363,6 +363,7 @@
       <li>Wichtige Informationen bitte immer in offiziellen Quellen prüfen.</li>
       <li>Bei Fristen, Prüfungen, rechtlichen oder persönlichen Notfällen wende dich direkt an die zuständige Stelle.</li>
     </ul>
+    <p>Wenn du persönliche Unterstützung oder Orientierung brauchst, hilft dir die <a href="https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/zentrale-studienberatung/" target="_blank" rel="noopener noreferrer">Zentrale Studienberatung</a> weiter.</p>
     <p>Mit „Verstanden“ speichert dein Browser nur, dass du diesen Hinweis gesehen hast. Details findest du unter <a href="/static/legal/ueber-wisdom.html" target="_blank" rel="noopener noreferrer">Über Wisdom</a> und in der <a href="/static/legal/datenschutz.html" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.</p>
     <button id="wisdom-disclaimer-accept" type="button">Verstanden</button>
   </div>
@@ -660,9 +661,13 @@
     const wrap = document.getElementById('chat-flag');
     const btn = document.getElementById('chat-flag-btn');
     const options = document.querySelectorAll('[data-flag-reason]');
+    let flagRequestPending = false;
     wrap.style.display = 'block';
     btn.addEventListener('click', (e) => { e.stopPropagation(); wrap.classList.toggle('open'); });
     options.forEach(opt => opt.addEventListener('click', async (e) => {
+      if (flagRequestPending || btn.classList.contains('flagged')) return;
+      flagRequestPending = true;
+      options.forEach(option => { option.disabled = true; });
       const reason = opt.dataset.flagReason;
       e.stopPropagation();
       wrap.classList.remove('open');
@@ -678,6 +683,8 @@
         showFlagToast();
         announce(T.flagToastTitle);
       } catch {
+        flagRequestPending = false;
+        options.forEach(option => { option.disabled = false; });
         btn.disabled = false;
         btn.title = T.flagBtnFailed;
         announce(T.flagBtnFailed);

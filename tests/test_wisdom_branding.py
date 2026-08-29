@@ -34,6 +34,15 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('Wichtige Informationen bitte immer in offiziellen Quellen prüfen.', chat)
         self.assertIn('Wisdom kann Fehler machen', chat)
 
+    def test_first_visit_disclaimer_links_to_central_student_advisory_service(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+
+        self.assertIn(
+            'https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/zentrale-studienberatung/',
+            chat,
+        )
+        self.assertIn('Zentrale Studienberatung', chat)
+
     def test_final_brand_assets_replace_placeholder_and_supply_link_metadata(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
         brand = STATIC / "brand"
@@ -115,6 +124,9 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('id="flag-reasons"', chat)
         self.assertIn('data-flag-reason', chat)
         self.assertIn("tag: reason", chat)
+        self.assertIn("let flagRequestPending = false;", chat)
+        self.assertIn("if (flagRequestPending || btn.classList.contains('flagged')) return;", chat)
+        self.assertIn("options.forEach(option => { option.disabled = true; });", chat)
         self.assertIn("flagReasonPrompt: 'Was ist auffällig?'", strings)
         self.assertIn("flagReasonIncorrect: 'Falsche Information'", strings)
         self.assertIn("flagReasonTechnical: 'Technisches Problem'", strings)
