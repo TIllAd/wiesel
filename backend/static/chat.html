@@ -582,7 +582,8 @@
     setText('flag-toast-text', T.flagToastText);
     setText('flag-toast-close', T.flagToastClose);
     setText('flag-toast-new', T.flagToastNew);
-    document.getElementById('img-thumb').alt = T.previewAlt;
+    const imageThumb = document.getElementById('img-thumb');
+    if (imageThumb) imageThumb.alt = T.previewAlt;
     setTitle('img-remove-btn', T.removeImage);
     setText('file-input-label', T.fileInputLabel);
     setText('query-label', T.queryLabel);

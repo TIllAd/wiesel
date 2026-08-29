@@ -242,6 +242,11 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert', privacy)
         self.assertIn('Anthropic PBC', privacy)
 
+    def test_public_mode_initializes_without_removed_upload_elements(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+
+        self.assertIn("if (imageThumb) imageThumb.alt = T.previewAlt;", chat)
+
 
 if __name__ == "__main__":
     unittest.main()
