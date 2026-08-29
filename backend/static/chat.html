@@ -903,7 +903,13 @@
       if (token) body.token = token;
       const res = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) {
-        addMessage('error', '⚠️ ' + (res.status === 401 ? T.sessionRequired : T.genericError));
+        const errorBody = await res.json().catch(() => null);
+        const errorMessage = res.status === 401
+          ? T.sessionRequired
+          : res.status === 429 && errorBody?.detail
+            ? errorBody.detail
+            : T.genericError;
+        addMessage('error', '⚠️ ' + errorMessage);
         return;
       }
       const data = await res.json();

@@ -253,6 +253,13 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("focusables.at(-1).focus()", chat)
         self.assertIn(":focus-visible { outline:3px solid var(--fau-blue-deep);", chat)
 
+    def test_rate_limit_response_is_shown_to_the_user_instead_of_a_generic_technical_error(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+
+        self.assertIn("res.status === 429", chat)
+        self.assertIn("await res.json()", chat)
+        self.assertIn("errorBody.detail", chat)
+
 
 if __name__ == "__main__":
     unittest.main()
