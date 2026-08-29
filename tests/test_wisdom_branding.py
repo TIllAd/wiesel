@@ -78,7 +78,7 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Kann Wisdom sich irren?", transparency)
         self.assertIn("Datenschutzerklärung", transparency)
 
-    def test_legal_pages_are_concrete_and_privacy_does_not_hide_lti_data(self):
+    def test_legal_pages_describe_the_current_public_website_without_lti_data(self):
         legal = STATIC / "legal"
         impressum = (legal / "impressum.html").read_text(encoding="utf-8")
         privacy = (legal / "datenschutz.html").read_text(encoding="utf-8")
@@ -87,8 +87,10 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Freyeslebenstraße 1", impressum)
         self.assertIn("DE 132507686", impressum)
         self.assertIn("wisdom.chatbot-wiso.de", impressum)
-        self.assertIn("LTI-Schnittstelle", privacy)
-        self.assertIn("vollständiger Name", privacy)
+        self.assertIn("öffentliche Website", privacy)
+        self.assertNotIn("LTI", privacy)
+        self.assertIn("keine Nutzerkennungen, Namen oder Kursdaten aus StudOn", privacy)
+        self.assertNotIn("vollständiger Name", privacy)
         self.assertIn("Datenschutzerklärung", privacy)
         self.assertNotIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
         transparency = (legal / "ueber-wisdom.html").read_text(encoding="utf-8")
@@ -97,6 +99,13 @@ class WisdomBrandingTests(unittest.TestCase):
             self.assertNotIn("Lehrstuhl für Wirtschaftspädagogik", page)
         self.assertNotIn("[Datum", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
+
+    def test_public_architecture_starts_with_the_external_website_not_studon(self):
+        architecture = (STATIC / "docs" / "public" / "architecture.html").read_text(encoding="utf-8")
+
+        self.assertIn("Öffentliche Website", architecture)
+        self.assertNotIn("StudOn Chat", architecture)
+        self.assertNotIn("LTI-Fenster", architecture)
 
     def test_final_legal_pages_name_responsible_contacts_and_no_longer_present_drafts(self):
         legal = STATIC / "legal"

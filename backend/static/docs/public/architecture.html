@@ -106,9 +106,9 @@
     <div>
       <p class="eyebrow">Technische Architektur</p>
       <h1>Wisdom Query Loop</h1>
-      <p class="lead">Eine öffentliche Demo des Nachrichtenwegs: StudOn sendet, der Server baut Kontext, Claude antwortet, SQLite protokolliert intern. Kein Live-Dashboard, kein echter API-Call — nur die erklärbare Mechanik.</p>
+      <p class="lead">Eine öffentliche Demo des Nachrichtenwegs: Die Website sendet, der Server baut Kontext, Claude antwortet, SQLite protokolliert intern. Kein Live-Dashboard, kein echter API-Call — nur die erklärbare Mechanik.</p>
     </div>
-    <div class="pill">StudOn · Server · Wissen · Claude · Datenbank</div>
+    <div class="pill">Öffentliche Website · Server · Wissen · Claude · Datenbank</div>
   </div>
 
   <section class="loop-card" aria-label="Interaktive Architektur-Demo">
@@ -150,8 +150,8 @@
 
             <g class="node active" id="n-chat">
               <rect x="52" y="91" width="138" height="50" rx="8"></rect>
-              <text x="121" y="112" text-anchor="middle">StudOn Chat</text>
-              <text class="sub" x="121" y="128" text-anchor="middle">LTI-Fenster</text>
+              <text x="121" y="112" text-anchor="middle">Öffentliche Website</text>
+              <text class="sub" x="121" y="128" text-anchor="middle">Chat-Oberfläche</text>
             </g>
 
             <g class="node" id="n-server">
@@ -197,7 +197,7 @@
         <div>
           <div class="state-line" id="state-line">messages[]: 1 Eintrag · Schritt 1/7</div>
           <div class="readout">
-            <div class="terminal" id="terminal"><span class="active">1. StudOn Chat: Nutzerfrage gesendet.</span></div>
+            <div class="terminal" id="terminal"><span class="active">1. Öffentliche Website: Nutzerfrage gesendet.</span></div>
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@
       </div>
       <div class="progress"><div class="dots" id="dots"></div><span id="step-count">1/7</span></div>
     </div>
-    <div class="caption" id="caption"><b>1/7:</b> Eine Nachricht startet im StudOn-Chatfenster.</div>
+    <div class="caption" id="caption"><b>1/7:</b> Eine Nachricht startet auf der öffentlichen Website.</div>
   </section>
 
   <section class="explain" aria-label="Architektur in Kurzform">
@@ -222,7 +222,7 @@
     </article>
     <article class="card">
       <h2>Begrenzter Kontext</h2>
-      <p>Claude bekommt nur Nachricht, System-Prompt und relevante Wissensbasis. Kein Zugriff auf StudOn oder interne Tabellen.</p>
+      <p>Claude bekommt nur Nachricht, System-Prompt und relevante Wissensbasis. Kein Zugriff auf interne Tabellen oder Systeme.</p>
     </article>
     <article class="card">
       <h2>Interne Auswertung</h2>
@@ -236,12 +236,12 @@
 <script>
 (() => {
   const steps = [
-    { node:'chat', edge:null, x:121, y:116, caption:'Eine Nachricht startet im StudOn-Chatfenster.', log:'StudOn Chat: Nutzerfrage gesendet.', messages:1 },
+    { node:'chat', edge:null, x:121, y:116, caption:'Eine Nachricht startet auf der öffentlichen Website.', log:'Öffentliche Website: Nutzerfrage gesendet.', messages:1 },
     { node:'server', edge:'e-chat-server', x:320, y:116, caption:'Der FastAPI-Server nimmt die Anfrage an und bleibt die Schleuse.', log:'POST /api/chat · Anfrage validiert.', messages:2 },
     { node:'kb', edges:['e-server-kb','e-kb-server'], x:530, y:174, caption:'Der Server ruft die Wissensbasis ab; der Kontext kommt zurück zum Server.', log:'system-prompt.md + knowledge_base/*.md als Kontext geladen.', cls:'warn', messages:3 },
     { node:'claude', edge:'e-server-claude', x:530, y:258, caption:'Claude bekommt nur das vorbereitete Kontextpaket.', log:'Claude formuliert Antwort aus begrenztem Kontext.', messages:4 },
     { node:'server', edge:'e-claude-server', x:320, y:116, caption:'Die Antwort geht erst zurück zum Server.', log:'assistant_message empfangen und geprüft.', cls:'ok', messages:4 },
-    { node:'return', edge:'e-server-return', x:121, y:286, caption:'Der StudOn-Chat zeigt die fertige Antwort an.', log:'Antwort an StudOn-Chat zurückgegeben.', cls:'ok', messages:4 },
+    { node:'return', edge:'e-server-return', x:121, y:286, caption:'Die öffentliche Website zeigt die fertige Antwort an.', log:'Antwort an die öffentliche Website zurückgegeben.', cls:'ok', messages:4 },
     { node:'db', edge:'e-return-db', x:530, y:356, caption:'Erst danach speichert Wisdom Verlauf und Metadaten intern in SQLite.', log:'SQLite speichert Session, Nutzung und Feedback-Marker.', cls:'ok', messages:4 }
   ];
 
