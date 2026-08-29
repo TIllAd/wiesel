@@ -90,6 +90,10 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("LTI-Schnittstelle", privacy)
         self.assertIn("vollständiger Name", privacy)
         self.assertIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
+        transparency = (legal / "ueber-wisdom.html").read_text(encoding="utf-8")
+        for page in (impressum, privacy, transparency):
+            self.assertIn("Professur für Wirtschaftspädagogik", page)
+            self.assertNotIn("Lehrstuhl für Wirtschaftspädagogik", page)
         self.assertNotIn("[Datum", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
 
