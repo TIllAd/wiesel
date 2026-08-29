@@ -124,6 +124,15 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Selbstbewertung", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
 
+    def test_accessibility_statement_is_final_and_transparent_about_its_self_assessment_basis(self):
+        accessibility = (STATIC / "legal" / "barrierefreiheit.html").read_text(encoding="utf-8")
+
+        self.assertIn("Prüfgrundlage der Selbstbewertung", accessibility)
+        self.assertIn("Selbstbewertung nach BITV 2.0 und WCAG 2.2", accessibility)
+        self.assertIn("Prüfdatum: 29. August 2026", accessibility)
+        self.assertIn("bekannten Einschränkungen", accessibility)
+        self.assertNotIn("vollständig barrierefrei", accessibility)
+
     def test_footer_credits_nuremberg_and_links_to_the_professorship_contacts(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
 
