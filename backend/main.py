@@ -1611,7 +1611,7 @@ async def usage_timeseries(start: str, end: str, granularity: str = "hour", sinc
 @app.post("/api/chat/flag")
 async def flag_chat_session(request: ChatFlagRequest):
     tag = request.tag.strip().lower() if request.tag else "auffaelligkeit"
-    if tag not in {"auffaelligkeit"}:
+    if tag not in {"auffaelligkeit", "falsche_information", "unklare_antwort", "fehlende_information", "technisches_problem", "sonstiges"}:
         raise HTTPException(status_code=400, detail="Unknown flag tag")
 
     db = SessionLocal()

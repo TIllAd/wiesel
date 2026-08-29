@@ -106,12 +106,25 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("flagBtn: 'Testfall markieren'", strings)
         self.assertIn("flagHint: 'Für Mentor:innen: auffällige oder unklare Antworten für die Auswertung markieren.'", strings)
 
+    def test_mentor_flagging_collects_a_reason_without_a_github_contribution_link(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertNotIn("github.com/TIllAd/wiesel/issues/new", chat)
+        self.assertNotIn('id="knowledge-link"', chat)
+        self.assertIn('id="flag-reasons"', chat)
+        self.assertIn('data-flag-reason', chat)
+        self.assertIn("tag: reason", chat)
+        self.assertIn("flagReasonPrompt: 'Was ist auffällig?'", strings)
+        self.assertIn("flagReasonIncorrect: 'Falsche Information'", strings)
+        self.assertIn("flagReasonTechnical: 'Technisches Problem'", strings)
+        self.assertNotIn("knowledgeContribute:", strings)
+
     def test_system_prompt_introduces_wisdom_as_navigator(self):
         prompt = (ROOT / "system-prompt.md").read_text(encoding="utf-8")
 
         self.assertIn("Ich bin Wisdom", prompt)
         self.assertIn("Navigator", prompt)
-
         self.assertNotIn("R2-D2", prompt)
 
     def test_backend_metadata_and_public_fallback_use_wisdom(self):
