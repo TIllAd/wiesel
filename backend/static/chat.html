@@ -75,6 +75,8 @@
     }
 
     .sr-only { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
+    /* Einheitlicher sichtbarer Tastaturfokus; Bereichsregeln darunter dürfen ihn gezielt kontraststärker setzen. */
+    :focus-visible { outline:3px solid var(--fau-blue-deep); outline-offset:3px; }
 
     #no-session {
       display: none;
@@ -256,7 +258,7 @@
     .fcredit a { color:#fff; text-decoration:underline; text-underline-offset:2px; }
     .flinks a { color:#fff; text-decoration:underline; text-underline-offset:2px; margin:0 7px; }
     .flinks a:hover, .flinks a:focus-visible { color:var(--fau-blue-light); }
-    .flinks a:focus-visible { outline:2px solid var(--wiesel-primary); outline-offset:2px; border-radius:3px; }
+    .flinks a:focus-visible { outline:2px solid #fff; outline-offset:2px; border-radius:3px; }
 
     #attach-btn {
       background:var(--wiesel-surface); border:1px solid var(--wiesel-border-input); cursor:pointer;
@@ -466,6 +468,19 @@
     accept.addEventListener('click', () => {
       document.cookie = `${DISCLAIMER_COOKIE}=1; Path=/; Max-Age=31536000; SameSite=Lax`;
       modal.hidden = true;
+    });
+    // Der Hinweis ist modal: Tab bleibt innerhalb seiner drei Links und des Bestätigungsbuttons.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab' || modal.hidden) return;
+      const focusables = [...modal.querySelectorAll('a[href], button:not([disabled])')];
+      const current = focusables.indexOf(document.activeElement);
+      if (event.shiftKey && current <= 0) {
+        event.preventDefault();
+        focusables.at(-1).focus();
+      } else if (!event.shiftKey && current === focusables.length - 1) {
+        event.preventDefault();
+        focusables[0].focus();
+      }
     });
     requestAnimationFrame(() => accept.focus());
   }

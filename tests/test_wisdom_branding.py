@@ -122,6 +122,9 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Prof. Dr. Nicole Kimmelmann", impressum)
         self.assertIn("wiso-sekretariat-kimmelmann@fau.de", impressum)
         self.assertIn("Selbstbewertung", accessibility)
+        self.assertIn("Tastatur-, Fokus-, Kontrast- und Reflow-Tests", accessibility)
+        self.assertIn("NVDA, JAWS und VoiceOver", accessibility)
+        self.assertNotIn("Datei-Anhänge", accessibility)
         self.assertIn("bitv@bayern.de", accessibility)
 
     def test_accessibility_statement_is_final_and_transparent_about_its_self_assessment_basis(self):
@@ -246,6 +249,9 @@ class WisdomBrandingTests(unittest.TestCase):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
 
         self.assertIn("if (imageThumb) imageThumb.alt = T.previewAlt;", chat)
+        self.assertIn("document.addEventListener('keydown'", chat)
+        self.assertIn("focusables.at(-1).focus()", chat)
+        self.assertIn(":focus-visible { outline:3px solid var(--fau-blue-deep);", chat)
 
 
 if __name__ == "__main__":
