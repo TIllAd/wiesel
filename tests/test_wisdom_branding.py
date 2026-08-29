@@ -136,6 +136,14 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("flagReasonTechnical: 'Technisches Problem'", strings)
         self.assertNotIn("knowledgeContribute:", strings)
 
+    def test_quick_question_bar_does_not_offer_the_planspiel(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertNotIn('id="quick-planspiel"', chat)
+        self.assertNotIn("quickPlanspielLabel:", strings)
+        self.assertNotIn("quickPlanspielPrompt:", strings)
+
     def test_system_prompt_introduces_wisdom_as_navigator(self):
         prompt = (ROOT / "system-prompt.md").read_text(encoding="utf-8")
 
