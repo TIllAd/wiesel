@@ -88,8 +88,8 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("DE 132507686", impressum)
         self.assertIn("wisdom.chatbot-wiso.de", impressum)
         self.assertIn("öffentliche Website", privacy)
-        self.assertNotIn("LTI", privacy)
-        self.assertIn("keine Nutzerkennungen, Namen oder Kursdaten aus StudOn", privacy)
+        self.assertIn("LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert", privacy)
+        self.assertNotIn("Nutzerkennungen, Namen oder Kursdaten aus StudOn übernommen werden", privacy)
         self.assertNotIn("vollständiger Name", privacy)
         self.assertIn("Datenschutzerklärung", privacy)
         self.assertNotIn("Entwurf – nicht als finale Datenschutzerklärung veröffentlichen", privacy)
@@ -220,6 +220,27 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('BUDGET_EXCEEDED_FALLBACK = "Wisdom ist gerade nicht erreichbar.', backend)
         self.assertNotIn('Wiesel macht gerade eine Zwangspause', backend)
         self.assertNotIn('Du bist Wiesel, ein Studienbegleiter', backend)
+
+    def test_public_mode_disables_lti_and_image_uploads_and_enforces_documented_retention(self):
+        backend = (ROOT / "backend" / "main.py").read_text(encoding="utf-8")
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        privacy = (STATIC / "legal" / "datenschutz.html").read_text(encoding="utf-8")
+
+        self.assertIn('LTI_ENABLED = os.getenv("LTI_ENABLED", "false").lower() == "true"', backend)
+        self.assertIn('if not LTI_ENABLED:', backend)
+        self.assertIn('IMAGE_UPLOAD_ENABLED = os.getenv("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"', backend)
+        self.assertIn('Bild-Uploads sind derzeit deaktiviert.', backend)
+        self.assertIn('CHAT_RETENTION_DAYS = int(os.getenv("CHAT_RETENTION_DAYS", "30"))', backend)
+        self.assertIn('FLAGGED_CHAT_RETENTION_DAYS = int(os.getenv("FLAGGED_CHAT_RETENTION_DAYS", "90"))', backend)
+        self.assertIn('USAGE_RETENTION_DAYS = int(os.getenv("USAGE_RETENTION_DAYS", "90"))', backend)
+        self.assertIn('def cleanup_expired_data()', backend)
+        self.assertNotIn('id="file-input"', chat)
+        self.assertNotIn('id="attach-btn"', chat)
+        self.assertIn('Bild-Uploads sind deaktiviert', privacy)
+        self.assertIn('30 Tage', privacy)
+        self.assertIn('90 Tage', privacy)
+        self.assertIn('LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert', privacy)
+        self.assertIn('Anthropic PBC', privacy)
 
 
 if __name__ == "__main__":

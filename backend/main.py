@@ -100,6 +100,12 @@ JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wiesel.db")
 MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
+# Wisdom is currently a public website, not a StudOn/LTI integration. Keep the
+# implementation behind an explicit opt-in so it cannot process LTI data by accident.
+LTI_ENABLED = os.getenv("LTI_ENABLED", "false").lower() == "true"
+# Image input is unnecessary for the mentor test phase and would transmit image
+# data to the LLM provider. It remains disabled unless formally approved.
+IMAGE_UPLOAD_ENABLED = os.getenv("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 DEFAULT_GREETING = "Hi, ich bin Wisdom. Ich helfe dir, dich an der WiSo zurechtzufinden."
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
@@ -144,6 +150,12 @@ DAILY_BUDGET_EUR = float(os.getenv("DAILY_BUDGET_EUR", "15"))
 RATE_LIMIT_CHAT_PER_MIN_SESSION = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_SESSION", "10"))
 RATE_LIMIT_CHAT_PER_MIN_IP = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_IP", "30"))
 RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP = int(os.getenv("RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP", "20"))
+# Retention is enforced locally on start-up and while the public chat is used.
+# Flagged chats get a longer window for the mentor review; all other chat data
+# is purged after 30 days.
+CHAT_RETENTION_DAYS = int(os.getenv("CHAT_RETENTION_DAYS", "30"))
+FLAGGED_CHAT_RETENTION_DAYS = int(os.getenv("FLAGGED_CHAT_RETENTION_DAYS", "90"))
+USAGE_RETENTION_DAYS = int(os.getenv("USAGE_RETENTION_DAYS", "90"))
 BUDGET_EXCEEDED_FALLBACK = "Wisdom ist gerade nicht erreichbar. Versuch es bitte später noch einmal — oder schreib ans Studienbüro: studienbuero@wiso.fau.de."
 RATE_LIMITED_DETAIL = "Langsam — zu viele Anfragen. Warte kurz und versuch es dann nochmal."
 
@@ -259,6 +271,41 @@ class LLMUsage(Base):
 
 
 Base.metadata.create_all(bind=engine)
+
+
+def cleanup_expired_data() -> None:
+    """Delete locally stored public-chat data according to the documented policy."""
+    now = datetime.utcnow()
+    chat_cutoff = now - timedelta(days=CHAT_RETENTION_DAYS)
+    flagged_cutoff = now - timedelta(days=FLAGGED_CHAT_RETENTION_DAYS)
+    usage_cutoff = now - timedelta(days=USAGE_RETENTION_DAYS)
+    db = SessionLocal()
+    try:
+        # Once the extended mentor-review period elapsed, the flag no longer
+        # protects its session from the normal chat cleanup.
+        db.query(ChatFlag).filter(ChatFlag.created_at < flagged_cutoff).delete(synchronize_session=False)
+        flagged_session_ids = {
+            session_id
+            for (session_id,) in db.query(ChatFlag.session_id).distinct().all()
+        }
+        expired_session_ids = [
+            session_id
+            for (session_id,) in db.query(SessionRecord.id).filter(
+                SessionRecord.last_accessed < chat_cutoff
+            ).all()
+            if session_id not in flagged_session_ids
+        ]
+        if expired_session_ids:
+            db.query(ChatMessage).filter(ChatMessage.session_id.in_(expired_session_ids)).delete(synchronize_session=False)
+            db.query(ChatFlag).filter(ChatFlag.session_id.in_(expired_session_ids)).delete(synchronize_session=False)
+            db.query(SessionRecord).filter(SessionRecord.id.in_(expired_session_ids)).delete(synchronize_session=False)
+        db.query(LLMUsage).filter(LLMUsage.created_at < usage_cutoff).delete(synchronize_session=False)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.error("Retention cleanup failed", exc_info=True)
+    finally:
+        db.close()
 
 # ============================================================================
 # LTI 1.1 SIGNATURE VALIDATION
@@ -1080,6 +1127,8 @@ async def chat_page(request: Request, debug: str | None = None):
 
 @app.post("/lti/launch")
 async def lti_launch(request: Request):
+    if not LTI_ENABLED:
+        raise HTTPException(status_code=404, detail="Not found")
     db = SessionLocal()
     try:
         raw_body = await request.body()
@@ -1117,6 +1166,9 @@ async def lti_launch(request: Request):
 async def chat_endpoint(request: ChatRequest, http_request: Request):
     db = SessionLocal()
     try:
+        cleanup_expired_data()
+        if request.image_base64 and not IMAGE_UPLOAD_ENABLED:
+            raise HTTPException(status_code=400, detail="Bild-Uploads sind derzeit deaktiviert.")
         if len(request.query or "") > MAX_QUERY_CHARS_HARD:
             raise HTTPException(status_code=400, detail=f"Deine Nachricht ist zu lang. Kürz sie bitte auf maximal {MAX_QUERY_CHARS_HARD} Zeichen.")
 
@@ -1715,6 +1767,7 @@ async def get_daily_logs(date: Optional[str] = None):
 @app.on_event("startup")
 async def startup_event():
     logger.info("Wiesel Backend starting...")
+    cleanup_expired_data()
     logger.info(f"Environment: {ENVIRONMENT}")
     logger.info(f"LTI Consumer Key: {LTI_CONSUMER_KEY}")
     logger.info(f"Database: {DATABASE_URL}")

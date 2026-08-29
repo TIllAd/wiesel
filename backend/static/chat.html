@@ -426,21 +426,9 @@
   </div>
 </div>
 
-<label class="sr-only" id="file-input-label" for="file-input"></label>
-<input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" aria-labelledby="file-input-label">
-<div id="img-preview" style="display:none" class="img-preview-wrap">
-  <img id="img-thumb" src="" alt="">
-  <span class="img-preview-label" id="img-name"></span>
-  <button class="img-remove-btn" id="img-remove-btn" type="button">✕</button>
-</div>
 <div id="input-area">
   <label class="sr-only" id="query-label" for="query"></label>
   <textarea id="query" rows="1" maxlength="2000" aria-labelledby="query-label" aria-describedby="char-limit-hint footer-note"></textarea>
-  <button id="attach-btn" type="button">
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M16.5 6.5 8.1 14.9a3 3 0 0 0 4.2 4.2l8.1-8.1a5 5 0 0 0-7.1-7.1L5.2 12a7 7 0 0 0 9.9 9.9l7.2-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
   <button id="mic-btn" type="button" aria-pressed="false">🎤</button>
   <span id="voice-state" class="voice-state"></span>
   <button id="send" type="button" disabled>↑</button>
@@ -968,50 +956,9 @@
     }
   }
 
-  document.getElementById('attach-btn').addEventListener('click', () => document.getElementById('file-input').click());
-  document.getElementById('img-remove-btn').addEventListener('click', removeImage);
-
-  document.getElementById('file-input').addEventListener('change', async function() {
-    const file = this.files[0];
-    this.value = '';
-    if (!file) return;
-    await handleImageFile(file);
-  });
-
-  function isFileDrag(event) {
-    return Array.from(event.dataTransfer?.types || []).includes('Files');
-  }
-
-  messagesEl.addEventListener('dragover', (event) => {
-    if (!isFileDrag(event)) return;
-    event.preventDefault();
-    messagesEl.classList.add('drag-over');
-    document.body.classList.add('file-drag-active');
-  });
-
-  messagesEl.addEventListener('dragleave', (event) => {
-    if (!messagesEl.contains(event.relatedTarget)) {
-      messagesEl.classList.remove('drag-over');
-      document.body.classList.remove('file-drag-active');
-    }
-  });
-
-  messagesEl.addEventListener('drop', async (event) => {
-    if (!isFileDrag(event)) return;
-    event.preventDefault();
-    messagesEl.classList.remove('drag-over');
-    document.body.classList.remove('file-drag-active');
-    const file = event.dataTransfer.files?.[0];
-    if (!file) return;
-    await handleImageFile(file);
-  });
-
   function removeImage() {
-    pendingImageBase64 = null; pendingImageType = null;
-    document.getElementById('img-preview').style.display = 'none';
-    document.getElementById('img-thumb').src = '';
-    document.getElementById('img-thumb').alt = T.previewAlt;
-    sendBtn.disabled = queryEl.value.trim().length === 0 && !pendingImageBase64;
+    pendingImageBase64 = null;
+    pendingImageType = null;
   }
 
   let recognition = null, isRecording = false, isVoiceStarting = false, silenceTimer = null, timeoutUiTimer = null, voiceStartGuardTimer = null, voicePulseTimer = null, voiceTimedOut = false;

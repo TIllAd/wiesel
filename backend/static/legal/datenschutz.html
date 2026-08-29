@@ -27,7 +27,8 @@
 <li>bei einer Markierung als Testfall: Grund der Markierung, Sitzungskennung und Zeitstempel; die zugehörige Unterhaltung bleibt für die Auswertung verfügbar;</li>
 <li>Nutzungsdaten des Sprachmodells: Modellname, Tokenwerte, geschätzte Kosten, Laufzeit und Fehlerart;</li>
 <li>IP-Adressen ausschließlich im Arbeitsspeicher zur Anfragenbegrenzung; sie werden nach aktuellem Anwendungscode nicht in der Datenbank gespeichert;</li>
-<li>Wisdom wird derzeit ausschließlich über die öffentliche Website genutzt; es werden keine Nutzerkennungen, Namen oder Kursdaten aus StudOn übernommen.</li>
+<li>Wisdom wird derzeit ausschließlich über die öffentliche Website genutzt. Die LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert; es werden keine Nutzerkennungen, Namen oder Kursdaten aus StudOn übernommen.</li>
+<li>Datei- und Bild-Uploads sind deaktiviert. Bitte übermittle daher keine Dokumente oder Bilder über Wisdom.</li>
 </ul>
 <p>Bitte gib keine besonderen Kategorien personenbezogener Daten, vertrauliche Informationen oder urheberrechtlich geschützte Inhalte ein, soweit dies für deine Frage nicht zwingend erforderlich ist. Eine KI ist kein Beichtstuhl. Überraschend, aber notwendig.</p>
 
@@ -35,10 +36,11 @@
 <p>Die Verarbeitung dient dem Betrieb des KI-gestützten Orientierungsangebots, der Abwehr von Missbrauch, der technischen Sicherheit sowie der Qualitätssicherung und Weiterentwicklung im Rahmen des Projekts. Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. e DSGVO in Verbindung mit Art. 4 Bayerisches Hochschulinnovationsgesetz; soweit im Einzelfall eine Einwilligung eingeholt wird, ist zusätzlich Art. 6 Abs. 1 Buchst. a DSGVO maßgeblich.</p>
 
 <h2>KI-System und Empfänger</h2>
-<p>Für die Antwortgenerierung werden Chatinhalte und der jeweils erforderliche Gesprächskontext an Anthropic PBC übermittelt. Die Verarbeitung erfolgt nach den für das Projekt geltenden vertraglichen und datenschutzrechtlichen Vorgaben der FAU. Weitere Empfänger können technische Dienstleister für Hosting, Betrieb und Sicherheit sein, soweit sie für den Betrieb erforderlich sind.</p>
+<p>Für die Antwortgenerierung werden Chatinhalte und der jeweils erforderliche Gesprächskontext an Anthropic PBC übermittelt. Anthropic verarbeitet diese Daten als Auftragsverarbeiter nach Art. 28 DSGVO. Eine Verarbeitung in den USA kann nicht ausgeschlossen werden; dafür müssen ein Auftragsverarbeitungsvertrag und geeignete Garantien nach Art. 46 DSGVO, insbesondere EU-Standardvertragsklauseln, gelten. Eine Kopie bzw. nähere Informationen zu den Garantien erhältst du auf Anfrage über den Datenschutzbeauftragten.</p>
+<p>Für Hosting, Betrieb und Schutz vor Angriffen dürfen nur die im tatsächlichen Produktivbetrieb eingesetzten technischen Auftragsverarbeiter eingesetzt werden. Die verbindliche Liste dieser Dienstleister wird von der FAU-Betriebsverantwortung geführt und muss vor dem Livegang mit dieser Erklärung abgeglichen werden.</p>
 
 <h2>Speicherdauer</h2>
-<p>Chatnachrichten, Sitzungsdaten, Testfall-Markierungen und Nutzungsdaten werden nur so lange gespeichert, wie dies für den Betrieb, die Auswertung der Testphase und die Fehleranalyse erforderlich ist. Die konkrete Löschkonfiguration des Produktivbetriebs wird technisch umgesetzt und an dieser Stelle aktualisiert. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</p>
+<p>Sitzungsdaten und nicht markierte Chatnachrichten werden spätestens 30 Tage nach der letzten Nutzung gelöscht. Als Testfall markierte Unterhaltungen einschließlich Markierungsgrund werden für die Mentor:innen-Auswertung höchstens 90 Tage gespeichert und danach gelöscht. Nutzungsdaten des Sprachmodells werden höchstens 90 Tage gespeichert. IP-Adressen werden nur flüchtig zur Anfragenbegrenzung verarbeitet und nicht in der Datenbank gespeichert. Die Löschung wird beim Start und während des Betriebs technisch ausgeführt. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</p>
 
 <h2>Deine Rechte</h2>
 <p>Du hast nach Maßgabe der DSGVO das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Bei einer Verarbeitung auf Grundlage einer Einwilligung kannst du diese jederzeit mit Wirkung für die Zukunft widerrufen. Wegen der technischen Sitzungskennung kann die Zuordnung eines Chatverlaufs bei einer Anfrage eingeschränkt sein.</p>
