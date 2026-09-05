@@ -155,6 +155,15 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('href="mailto:wiso-sekretariat-kimmelmann@fau.de"', chat)
         self.assertIn('href="https://www.professur-wirtschaftspaedagogik.rw.fau.de"', chat)
 
+    def test_footer_contact_label_is_translated_with_the_selected_language(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="footer-contact"', chat)
+        self.assertIn("setText('footer-contact', T.footerContact);", chat)
+        self.assertIn("footerContact: 'Kontakt'", strings)
+        self.assertIn("footerContact: 'Contact'", strings)
+
     def test_legal_contact_uses_the_professorship_email_and_website(self):
         legal = STATIC / "legal"
         impressum = (legal / "impressum.html").read_text(encoding="utf-8")

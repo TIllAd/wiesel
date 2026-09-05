@@ -440,10 +440,10 @@
 <div class="flinks" id="footer-links">
   <a href="/static/legal/ueber-wisdom.html" id="link-about"></a><a href="/static/legal/impressum.html" id="link-impressum"></a><a href="/static/legal/datenschutz.html" id="link-datenschutz"></a><a href="/static/legal/barrierefreiheit.html" id="link-a11y"></a>
 </div>
-<div class="fcredit" id="footer-credit">♡ Made with love in Nuremberg ♡ — <a href="https://www.professur-wirtschaftspaedagogik.rw.fau.de" target="_blank" rel="noopener noreferrer">Professur für Wirtschaftspädagogik</a> · <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">Kontakt</a></div>
+<div class="fcredit" id="footer-credit">♡ Made with love in Nuremberg ♡ — <a href="https://www.professur-wirtschaftspaedagogik.rw.fau.de" target="_blank" rel="noopener noreferrer">Professur für Wirtschaftspädagogik</a> · <a href="mailto:wiso-sekretariat-kimmelmann@fau.de" id="footer-contact">Kontakt</a></div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=12"></script>
+<script src="/static/strings.js?v=13"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
@@ -602,6 +602,7 @@
     setText('link-impressum', T.footerImpressum);
     setText('link-datenschutz', T.footerPrivacy);
     setText('link-a11y', T.footerA11y);
+    setText('footer-contact', T.footerContact);
     const lswitchEl = document.getElementById('lswitch');
     if (lswitchEl) lswitchEl.setAttribute('aria-label', T.langSwitchLabel);
   }
