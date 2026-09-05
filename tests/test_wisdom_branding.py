@@ -44,11 +44,12 @@ class WisdomBrandingTests(unittest.TestCase):
         )
         self.assertIn('Zentrale Studienberatung', chat)
 
-    def test_final_brand_assets_replace_placeholder_and_supply_link_metadata(self):
+    def test_header_uses_the_readable_wisdom_wordmark_on_the_red_bar(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
         brand = STATIC / "brand"
 
-        self.assertIn('/static/brand/wisdom-logo.svg', chat)
+        self.assertIn('/static/brand/wisdom-logo-weiss.svg', chat)
+        self.assertNotIn('/static/brand/wisdom-logo.svg" alt="FAU WiSo Wisdom"', chat)
         self.assertNotIn('wisdom-lockup-placeholder.svg', chat)
         self.assertIn('rel="icon"', chat)
         self.assertIn('apple-touch-icon', chat)
@@ -66,6 +67,15 @@ class WisdomBrandingTests(unittest.TestCase):
             "og-image.png",
         ):
             self.assertTrue((brand / filename).is_file(), filename)
+
+    def test_quick_link_heading_uses_normal_case_and_direct_wording(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        strings = (STATIC / "strings.js").read_text(encoding="utf-8")
+
+        self.assertIn("quickLabel: 'Direkt zu'", strings)
+        self.assertNotIn("quickLabel: 'Schnellfragen'", strings)
+        self.assertIn('.klabel { font-size:.74rem;', chat)
+        self.assertNotIn('text-transform:uppercase; margin:0; white-space:nowrap; }', chat)
 
     def test_ki_transparency_page_and_legal_links_are_shipped(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")

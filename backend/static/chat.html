@@ -112,7 +112,7 @@
     .quick-lockup { display:block; width:220px; height:44px; flex:0 0 auto; }
     .quick-lockup img { display:block; width:100%; height:100%; object-fit:contain; object-position:left center; }
     .quick-links-group { display:flex; align-items:center; justify-content:flex-end; gap:18px; }
-    .klabel { font-size:.68rem; color:#fff; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin:0; white-space:nowrap; }
+    .klabel { font-size:.74rem; color:#fff; font-weight:800; letter-spacing:.02em; margin:0; white-space:nowrap; }
     .kchips { display:flex; justify-content:flex-end; gap:15px; flex-wrap:wrap; }
     .kchip { display:inline-flex; flex-direction:row; align-items:center; gap:4px; background:transparent; border:0; color:#fff; font-size:.86rem; font-weight:700; padding:1px 0; border-radius:0; cursor:pointer; transition:color .15s; font-family:var(--font); }
     .kchip:hover { color:var(--fau-blue-light); transform:none; }
@@ -397,7 +397,7 @@
 </div>
 <div class="kbar">
   <a class="quick-lockup" href="https://www.wiso.rw.fau.de/" target="_blank" rel="noopener noreferrer" aria-label="Zur WiSo-Startseite">
-    <img src="/static/brand/wisdom-logo.svg" alt="FAU WiSo Wisdom">
+    <img src="/static/brand/wisdom-logo-weiss.svg" alt="Wisdom">
   </a>
   <div class="quick-links-group">
     <div class="klabel" id="quick-label"></div>
@@ -443,7 +443,7 @@
 <div class="fcredit" id="footer-credit">♡ Made with love in Nuremberg ♡ — <a href="https://www.professur-wirtschaftspaedagogik.rw.fau.de" target="_blank" rel="noopener noreferrer">Professur für Wirtschaftspädagogik</a> · <a href="mailto:wiso-sekretariat-kimmelmann@fau.de">Kontakt</a></div>
 
 <!-- Bump ?v= whenever strings.js changes, so browsers/CDN don't serve a stale cached copy -->
-<script src="/static/strings.js?v=11"></script>
+<script src="/static/strings.js?v=12"></script>
 <script>
   const params    = new URLSearchParams(location.search);
   const token     = params.get('token');
