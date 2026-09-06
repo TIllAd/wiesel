@@ -149,7 +149,7 @@ JWT_TTL_HOURS = int(os.getenv("JWT_TTL_HOURS", "2"))
 DAILY_BUDGET_EUR = float(os.getenv("DAILY_BUDGET_EUR", "15"))
 RATE_LIMIT_CHAT_PER_MIN_SESSION = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_SESSION", "10"))
 RATE_LIMIT_CHAT_PER_MIN_IP = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN_IP", "30"))
-RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP = int(os.getenv("RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP", "20"))
+RATE_LIMIT_PUBLIC_SESSIONS_PER_DAY_IP = int(os.getenv("RATE_LIMIT_PUBLIC_SESSIONS_PER_DAY_IP", "20"))
 # Retention is enforced locally on start-up and while the public chat is used.
 # Flagged chats get a longer window for the mentor review; all other chat data
 # is purged after 30 days.
@@ -1090,37 +1090,44 @@ async def public_docs_page():
 
 
 @app.get("/chat")
-async def chat_page(request: Request, debug: str | None = None):
-    # A direct public chat URL must be usable: create a test session when no
-    # launch credentials were supplied. The rendered session URL always has
-    # token and session_id plus debug=1, so it cannot loop back into this path.
-    has_launch_credentials = bool(
+async def chat_page(request: Request):
+    """Open the public chat with a short-lived anonymous session when needed."""
+    has_session = bool(
         request.query_params.get("token") and request.query_params.get("session_id")
     )
-    should_mint_debug_session = debug == "true" or not has_launch_credentials
-    if should_mint_debug_session:
-        if rate_limit_exceeded(f"debugsess:ip:{client_ip(request)}", RATE_LIMIT_DEBUG_SESSIONS_PER_DAY_IP, window_seconds=86400.0):
+    if not has_session:
+        if rate_limit_exceeded(
+            f"publicsess:ip:{client_ip(request)}",
+            RATE_LIMIT_PUBLIC_SESSIONS_PER_DAY_IP,
+            window_seconds=86400.0,
+        ):
             raise HTTPException(status_code=429, detail=RATE_LIMITED_DETAIL)
         db = SessionLocal()
         try:
-            debug_session_id = f"debug_session_wiesel_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-            token = jwt.encode({"user": "debug_user", "session_id": debug_session_id, "debug": True}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+            session_id = f"public_session_wisdom_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            token = jwt.encode(
+                {"user": "public_user", "session_id": session_id},
+                JWT_SECRET,
+                algorithm=JWT_ALGORITHM,
+            )
             now = datetime.utcnow()
-            debug_session = SessionRecord(
-                id=debug_session_id,
-                user_id="debug_user",
-                course_id="debug_course",
+            db.add(SessionRecord(
+                id=session_id,
+                user_id="public_user",
+                course_id="public_website",
                 user_role="Learner",
-                user_name="Debug Student",
-                course_name="Debug Mode – kein StudOn",
-                nonce=f"debug_{uuid.uuid4().hex}",
+                user_name="Anonymer Website-Besuch",
+                course_name="Wisdom öffentliche Website",
+                nonce=None,
                 created_at=now,
                 last_accessed=now,
-            )
-            db.add(debug_session)
+            ))
             db.commit()
             from urllib.parse import quote
-            return RedirectResponse(url=f"/chat?token={quote(token, safe='')}&session_id={debug_session_id}&debug=1", status_code=302)
+            return RedirectResponse(
+                url=f"/chat?token={quote(token, safe='')}&session_id={session_id}",
+                status_code=302,
+            )
         finally:
             db.close()
     return FileResponse(str(_static_dir / "chat.html"))
