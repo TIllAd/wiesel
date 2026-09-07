@@ -29,6 +29,13 @@
         <label>Ende <input type="date" id="end-date" /></label>
         <button type="submit">Zeitraum laden</button>
       </form>
+
+      <label>Sortierung
+        <select id="sort-order">
+          <option value="newest">Neueste zuerst</option>
+          <option value="oldest">Älteste zuerst</option>
+        </select>
+      </label>
     </div>
 
     <p class="status" id="status">Wähle einen Zeitraum.</p>
@@ -59,9 +66,19 @@
   const startInput = document.getElementById('start-date');
   const endInput = document.getElementById('end-date');
   const dayStrip = document.getElementById('day-strip');
+  const sortOrder = document.getElementById('sort-order');
   let currentRange = null;
+  let lastReportData = null;
+  let activeFlagFilter = 'all';
 
-  const FLAG_LABELS = { auffaelligkeit: 'Auffälligkeit' };
+  const FLAG_LABELS = {
+    auffaelligkeit: 'Auffälligkeit',
+    falsche_information: 'Falsche Information',
+    unklare_antwort: 'Unklare Antwort',
+    fehlende_information: 'Fehlende Information',
+    technisches_problem: 'Technisches Problem',
+    sonstiges: 'Sonstiges',
+  };
   const pad = (value) => String(value).padStart(2, '0');
   const toDateString = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const labelForDate = (dateString) => {
@@ -119,23 +136,60 @@
     return `<div class="msg ${cls}"><div class="msg-meta">${label} · ${escapeHtml(ts)}</div><div class="msg-body">${renderRichText(message.content)}</div></div>`;
   }
 
+  function visibleSessions(sessions) {
+    if (activeFlagFilter === 'all') return sessions;
+    return sessions.filter((session) => (session.flags || []).some((flag) => flag.tag === activeFlagFilter));
+  }
+
+  function sortSessions(sessions) {
+    const direction = sortOrder.value === 'oldest' ? 1 : -1;
+    return [...sessions].sort((a, b) => {
+      const aTime = (a.flags || []).map((flag) => flag.created_at || '').sort().at(-1) || '';
+      const bTime = (b.flags || []).map((flag) => flag.created_at || '').sort().at(-1) || '';
+      return aTime.localeCompare(bTime) * direction;
+    });
+  }
+
+  function renderFlagFilter(sessions) {
+    const counts = new Map();
+    sessions.forEach((session) => (session.flags || []).forEach((flag) => {
+      counts.set(flag.tag, (counts.get(flag.tag) || 0) + 1);
+    }));
+    const filters = [{ tag: 'all', label: 'Alle' }, ...Object.entries(FLAG_LABELS).map(([tag, label]) => ({ tag, label }))];
+    return `<div class="report-filter" id="flag-filter" aria-label="Nach Markierungsgrund filtern">
+      <div class="report-filter-label">Markierungsgrund</div>
+      ${filters.map(({ tag, label }) => `<button type="button" class="flag-filter ${tag === activeFlagFilter ? 'active' : ''}" data-flag-filter="${tag}">${escapeHtml(label)} <span>${tag === 'all' ? sessions.length : (counts.get(tag) || 0)}</span></button>`).join('')}
+    </div>`;
+  }
+
+  function bindFlagFilters() {
+    report.querySelectorAll('[data-flag-filter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeFlagFilter = button.dataset.flagFilter;
+        if (lastReportData) renderReport(lastReportData);
+      });
+    });
+  }
+
   function renderReport(data) {
     setMode('report');
-    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    lastReportData = data;
+    const allSessions = Array.isArray(data.sessions) ? data.sessions : [];
+    const sessions = sortSessions(visibleSessions(allSessions));
     const title = data.start === data.end ? `🚩 Wisdom Auffälligkeiten — ${labelForDate(data.start)}` : `🚩 Wisdom Auffälligkeiten — ${labelForDate(data.start)} bis ${labelForDate(data.end)}`;
 
     if (!sessions.length) {
-      report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>Für diesen Zeitraum wurden keine Flags gefunden.</p></div>`;
+      const message = allSessions.length ? 'Für diesen Markierungsgrund wurden keine Sessions gefunden.' : 'Für diesen Zeitraum wurden keine Flags gefunden.';
+      report.innerHTML = `<h2>${escapeHtml(title)}</h2><p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)}</p><div class="chat-layout"><div class="chat-sidebar">${renderFlagFilter(allSessions)}</div><div class="chat-main"><div class="empty-card"><h2>Keine geflaggten Sessions</h2><p>${message}</p></div></div></div>`;
+      bindFlagFilters();
       status.textContent = `0 geflaggte Sessions für ${data.start} bis ${data.end}. Aktualisiert ${refreshLabel()} Uhr.`;
       return;
     }
 
-    let lastDate = '';
     const nav = [];
     const panels = [];
     sessions.forEach((session, index) => {
       const panelId = `s${index + 1}`;
-      const date = session.date || 'unbekannt';
       const flag = (session.flags && session.flags[0]) || {};
       const flagLabel = FLAG_LABELS[flag.tag] || flag.tag || 'Flag';
       const flagTime = String(flag.created_at || '').slice(11, 16);
@@ -143,16 +197,11 @@
       const previewRaw = firstUser ? firstUser.content || '' : '';
       const preview = previewRaw.length > 60 ? `${previewRaw.slice(0, 60)}…` : previewRaw;
 
-      if (date !== lastDate) {
-        nav.push(`<div class="day-label">${escapeHtml(labelForDate(date))}</div>`);
-        lastDate = date;
-      }
-
       nav.push(`<button type="button" class="si ${index === 0 ? 'active' : ''}" data-panel="${panelId}">
         <span class="si-num">#${index + 1}</span>
         <span class="si-body">
           <span class="si-flag">⚠️ ${escapeHtml(flagLabel)} · ${escapeHtml(flagTime)} Uhr</span>
-          <span class="si-msgs">${Number(session.message_count || 0)} Nachrichten · ${escapeHtml(labelForDate(date))}</span>
+          <span class="si-msgs">${Number(session.message_count || 0)} Nachrichten · ${escapeHtml(labelForDate(session.date || ''))}</span>
           <span class="si-preview">${escapeHtml(preview)}</span>
         </span>
       </button>`);
@@ -163,12 +212,13 @@
 
     report.innerHTML = `
       <h2>${escapeHtml(title)}</h2>
-      <p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)} · ${sessions.length} geflaggte Session(s), ${Number(data.total_flags || 0)} Flag(s)</p>
+      <p class="report-meta">${escapeHtml(data.start)} bis ${escapeHtml(data.end)} · ${sessions.length} von ${allSessions.length} geflaggten Session(s), ${Number(data.total_flags || 0)} Flag(s)</p>
       <div class="chat-layout">
-        <div class="chat-sidebar">${nav.join('')}</div>
+        <div class="chat-sidebar">${renderFlagFilter(allSessions)}${nav.join('')}</div>
         <div class="chat-main">${panels.join('')}</div>
       </div>`;
 
+    bindFlagFilters();
     report.querySelectorAll('.si').forEach((item) => {
       item.addEventListener('click', () => showPanel(item.dataset.panel));
     });
@@ -295,6 +345,10 @@
     loadRange(startInput.value, endInput.value).catch((error) => {
       status.textContent = `Zeitraum konnte nicht geladen werden: ${error.message}`;
     });
+  });
+
+  sortOrder.addEventListener('change', () => {
+    if (lastReportData) renderReport(lastReportData);
   });
 
   document.addEventListener('visibilitychange', () => {

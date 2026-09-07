@@ -75,7 +75,7 @@ button:hover { border-color:var(--accent); background:var(--panel-2); }
 button.active { background:var(--accent-soft); border-color:var(--accent); color:var(--accent-2); }
 .range-form { display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
 label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
-input[type="date"] { color-scheme:light; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
+input[type="date"], select { color-scheme:light; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); font:inherit; font-size:13px; padding:7px 9px; }
 .status { color:var(--muted); font-size:13px; margin:16px 0 0; }
 .content.page-content, .page > .content { min-width:0; min-height:0; padding:24px; overflow:auto; }
 
@@ -173,6 +173,11 @@ td { color:var(--muted-2); }
 .report-meta { color:var(--muted); font-size:13px; margin:0 0 18px; }
 .chat-layout { display:flex; height:calc(100vh - 330px); min-height:560px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel); }
 .chat-sidebar { width:320px; flex-shrink:0; border-right:1px solid var(--line); overflow-y:auto; background:var(--panel-3); }
+.report-filter { padding:12px 14px 10px; border-bottom:1px solid var(--line); background:var(--panel-2); }
+.report-filter-label { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
+.flag-filter { width:100%; display:flex; justify-content:space-between; align-items:center; border:0; border-radius:6px; padding:6px 8px; background:transparent; text-align:left; }
+.flag-filter span { color:var(--muted); font-size:11px; }
+.flag-filter.active { background:var(--accent-soft); color:var(--accent-2); }
 .day-label { position:sticky; top:0; z-index:1; padding:8px 14px; background:var(--panel-2); border-bottom:1px solid var(--line); color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .si { width:100%; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:12px 14px; background:transparent; display:flex; gap:8px; text-align:left; color:var(--text); cursor:pointer; }
 .si:hover { background:rgba(184,80,15,.06); }
