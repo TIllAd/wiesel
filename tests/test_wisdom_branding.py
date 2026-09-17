@@ -89,6 +89,12 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Kann Wisdom sich irren?", transparency)
         self.assertIn("Datenschutzerklärung", transparency)
 
+    def test_about_page_describes_wisdom_as_an_development_project_not_a_research_project(self):
+        transparency = (STATIC / "legal" / "ueber-wisdom.html").read_text(encoding="utf-8")
+
+        self.assertIn("Wisdom ist ein Entwicklungsprojekt", transparency)
+        self.assertNotIn("Forschungs- und Entwicklungsprojekt", transparency)
+
     def test_legal_pages_describe_the_current_public_website_without_lti_data(self):
         legal = STATIC / "legal"
         impressum = (legal / "impressum.html").read_text(encoding="utf-8")
@@ -131,7 +137,8 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("Bayerischen Landesbeauftragten für den Datenschutz", privacy)
         self.assertIn("Speicherdauer", privacy)
         self.assertIn("Prof. Dr. Nicole Kimmelmann", impressum)
-        self.assertIn("wiso-sekretariat-kimmelmann@fau.de", impressum)
+        self.assertIn("wiso-team-kimmelmann@fau.de", impressum)
+        self.assertNotIn("wiso-sekretariat-kimmelmann@fau.de", impressum)
         self.assertIn("Selbstbewertung", accessibility)
         self.assertIn("Tastatur-, Fokus-, Kontrast- und Reflow-Tests", accessibility)
         self.assertIn("NVDA, JAWS und VoiceOver", accessibility)
@@ -152,7 +159,8 @@ class WisdomBrandingTests(unittest.TestCase):
 
         self.assertIn('id="footer-credit"', chat)
         self.assertIn("♡ Made with love in Nuremberg ♡", chat)
-        self.assertIn('href="mailto:wiso-sekretariat-kimmelmann@fau.de"', chat)
+        self.assertIn('href="mailto:wiso-team-kimmelmann@fau.de"', chat)
+        self.assertNotIn('wiso-sekretariat-kimmelmann@fau.de', chat)
         self.assertIn('href="https://www.professur-wirtschaftspaedagogik.rw.fau.de"', chat)
 
     def test_footer_contact_label_is_translated_with_the_selected_language(self):
@@ -175,7 +183,8 @@ class WisdomBrandingTests(unittest.TestCase):
             "barrierefreiheit.html",
         ):
             page = (legal / filename).read_text(encoding="utf-8")
-            self.assertIn("wiso-sekretariat-kimmelmann@fau.de", page)
+            self.assertIn("wiso-team-kimmelmann@fau.de", page)
+            self.assertNotIn("wiso-sekretariat-kimmelmann@fau.de", page)
             self.assertNotIn("lehre-digital@fau.de", page)
 
         self.assertIn("<h2>Professur für Wirtschaftspädagogik</h2>", impressum)
