@@ -14,7 +14,7 @@ Raumnummern findest du über:
 ## Mensen
 
 **Mensa Insel Schütt** (nächste reguläre Mensa zum WiSo-Campus, Nürnberg)
-Insel Schütt 8, 90403 Nürnberg
+Andreij-Sacharow-Platz 1, 90403 Nürnberg
 Reguläre Mensazeiten Mo–Fr — aktuelle Zeiten auf [werkswelt.de](https://www.werkswelt.de/index.php?id=mensen-cafeterien-cafebars) prüfen
 [Navigation](https://www.google.com/maps/search/?api=1&query=Mensa+Insel+Schütt+Nürnberg)
 

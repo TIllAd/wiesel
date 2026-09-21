@@ -23,7 +23,7 @@ SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; WieselBot/1.0)"}
 MENSEN = {
     "suedmensa":     ("Südmensa Erlangen",          "Erwin-Rommel-Str. 60, Erlangen"),
     "lmp":           ("Mensa Langemarckplatz",       "Langemarckplatz 6, Erlangen"),
-    "insel_schuett": ("Mensa Insel Schütt",          "Insel Schütt 8, Nürnberg"),
+    "insel_schuett": ("Mensa Insel Schütt",          "Andreij-Sacharow-Platz 1, 90403 Nürnberg"),
     "reg_str":       ("Mensa Regensburger Straße",   "Regensburger Str. 160, Nürnberg"),
     "n_ohm":         ("Mensateria Ohm",              "Keßlerplatz 12, Nürnberg"),
     "n_veilh":       ("Cafeteria Veilhofstraße",     "Veilhofstr. 9, Nürnberg"),

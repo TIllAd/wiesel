@@ -1,6 +1,6 @@
 # Erstsemesterbegrüßung & Einführungsveranstaltungen: Zeit- und Raumplan (Montag, 12.10.2026, WS 26/27)
 
-Quelle: Team-Dokument „Informationen für Kategorie G" (Fachbereich WiSo)
+Quelle: Team-Dokument „Informationen zum Studienstart" (Fachbereich WiSo)
 Stand: 2026-07-17 — bei Abweichungen von älteren Angaben gilt diese Datei.
 Alle Räume in der Langen Gasse 20, Nürnberg (H = Hörsaal, LG = Lange Gasse Raumnummer).
 

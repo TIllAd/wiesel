@@ -26,8 +26,8 @@
     },
     {
       "code": "E",
-      "name": "Exam & Prüfung",
-      "beschreibung": "Prüfungsformen, Anmeldung, Bestehensregeln, Noten",
+      "name": "Anlaufstellen & Ansprechpersonen",
+      "beschreibung": "Beratungsstellen, Fachstudienberatung, Prüfungsamt und zuständige Personen",
       "farbe": "#FFEAA7"
     },
     {
@@ -38,8 +38,8 @@
     },
     {
       "code": "G",
-      "name": "Grundlagen",
-      "beschreibung": "Mathematik, VWL-Basis, Wirtschaftliche Grundkonzepte",
+      "name": "Einführungsveranstaltungen an der WiSo",
+      "beschreibung": "Studiengangsspezifische Einführungen, Anmeldung, Termine und Ansprechpersonen zum Studienstart",
       "farbe": "#A29BFE"
     }
   ]

@@ -1,5 +1,5 @@
 """
-Wiesel Scraper – Kategorie G: Planspiel – BizzTrainer
+Wiesel Scraper – Einführungsveranstaltungen an der WiSo
 Speichert gecrawlte Inhalte nach: knowledge_base/planspiel/<seite>.md
 Aufruf: python planspiel_scraper.py
 Windows Task Scheduler: wöchentlich

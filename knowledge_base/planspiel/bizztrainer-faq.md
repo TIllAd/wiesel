@@ -1,6 +1,6 @@
 # bizz.trainer – FAQ zur Einführungsveranstaltung „Perspektiven der Wirtschaftswissenschaften" (WS 26/27)
 
-Quelle: Team-Dokument „Informationen für Kategorie G" (eigenständig formuliert auf Basis interner Materialien: Vorlesungsfolien Übung, Hospitationsdokumentation, Kompaktübersicht)
+Quelle: Team-Dokument zur Einführung „Perspektiven der Wirtschaftswissenschaften" (eigenständig formuliert auf Basis interner Materialien: Vorlesungsfolien Übung, Hospitationsdokumentation, Kompaktübersicht)
 Stand: 2026-07-17
 Weitere Infos: https://www.digitalisierung.rw.fau.de/lehre/bachelor/perspektiven-der-wirtschaftswissenschaften/unternehmensplanspiel/
 
