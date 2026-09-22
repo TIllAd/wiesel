@@ -1,21 +1,17 @@
 # Semesterbeitrag & Rückmeldung
-Erstellt am: 2026-07-04 · Status: Betrag für WS 26/27 noch nicht verifiziert
+Quelle: https://www.fau.de/studium/bewerbung-und-zulassung/alle-fristen-und-termine/
+Gecrawlt am: 2026-09-21
 
 ---
 
 ## Rückmeldung
 
-- Wer weiterstudieren will, muss sich jedes Semester **rückmelden** — das passiert automatisch durch **Überweisung des Semesterbeitrags** innerhalb der Rückmeldefrist.
-- Fristen und Details: https://www.fau.de/studium/studienorganisation/semestertermine/ (Abschnitt „Rückmeldung und Semesterbeitrag")
-- Wer die Frist verpasst, riskiert die Exmatrikulation — bei Problemen sofort die Studierendenverwaltung kontaktieren.
+Wer weiterstudieren will, muss sich jedes Semester durch die Überweisung des Semesterbeitrags rückmelden. Für das Sommersemester 2027 ist die Rückmeldefrist nach dem Stand der Quelle voraussichtlich in der ersten Februarwoche; die endgültige Frist steht in der FAU-Mail und in Campo. Eine verpasste Frist kann zur Exmatrikulation führen.
 
-## Semesterbeitrag — Höhe
+Die Studierendenverwaltung informiert im Januar beziehungsweise Juni über die FAU-Mail. Überwiesen wird auf das dort genannte Universitätskonto, mit Matrikelnummer ohne Leerzeichen sowie Name und Vorname. Fehlende oder falsche Angaben können die Zuordnung verhindern. Betrag und Überweisungsträger stehen in Campo unter „Studienservice“ im Register „Bescheinigungen“.
 
-- Der Semesterbeitrag an der FAU besteht im Wesentlichen aus dem **Studierendenwerksbeitrag**. Ein klassisches Semesterticket ist seit der Umstellung aufs ermäßigte Deutschlandticket (43 €/Monat, separat und freiwillig) **nicht** mehr enthalten.
-- **Konkrete Höhe für das WS 26/27: noch nicht in dieser Wissensbasis verifiziert.** Keine Schätzung ausgeben, auch nicht auf Nachfrage. Verbindlich: offizielle FAU-Seite oben bzw. der Rückmelde-Bescheid in Campo.
+## Betrag und Beurlaubung
 
-## Empfohlene Bot-Antwort auf „Wie hoch ist der Semesterbeitrag?"
+Der Semesterbeitrag beträgt laut Quelle 82 Euro und besteht dort aus dem Studierendenwerksbeitrag. Vor jeder Überweisung Campo beziehungsweise die aktuelle FAU-Information prüfen, denn Beträge und Fristen können sich ändern.
 
-„Die genaue Höhe steht nicht verifiziert in meiner Wissensbasis. Verbindlich findest du den Betrag bei deiner Rückmeldung in Campo oder auf der FAU-Seite zu Semesterterminen [Link]. Er besteht im Kern aus dem Studierendenwerksbeitrag; ein Semesterticket ist nicht mehr dabei — dafür gibt's das ermäßigte Deutschlandticket für 43 €/Monat."
-
-*Für das Team: Betrag von der offiziellen Seite verifizieren, eintragen und diesen Status-Block entfernen.*
+Eine Beurlaubung muss bei vorhersehbaren Gründen rechtzeitig vor Vorlesungsbeginn beantragt werden. Auch dann ist die Rückmeldung fristgerecht erforderlich. Details zu Voraussetzungen und Verfahren stehen bei der FAU unter Beurlaubung.
