@@ -24,7 +24,7 @@ Keßlerplatz 12, 90489 Nürnberg
 
 **Cafeteria Lange Gasse** (direkt im WiSo-Gebäude, Nürnberg — begrenzte Auswahl, kein volles Mittagessen)
 Lange Gasse 20, 90403 Nürnberg (Erdgeschoss)
-Mo–Do 8:00–17:00, Fr 8:00–15:00
+Reguläre Öffnungszeiten, nicht tagesaktuell: Mo–Do 8:00–17:00, Fr 8:00–15:00. Nicht aus den regulären Zeiten ableiten, ob heute geöffnet ist. In der vorlesungsfreien Zeit und bei Sonderzeiten können sie abweichen. Den Tagesstatus nur über die aktuelle Bekanntmachung des Studierendenwerks prüfen.
 [Navigation](https://www.google.com/maps/search/?api=1&query=Cafeteria+Lange+Gasse+20+Nürnberg)
 
 **Südmensa** (Erlangen — volle Auswahl, ca. 10–15 Min. von der Langen Gasse)

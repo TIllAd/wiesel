@@ -121,6 +121,47 @@ def fetch_mensa(slug: str) -> list[dict]:
     return parse_mensa_html(resp.text, slug)
 
 
+LANGE_GASSE_URL = "https://www.werkswelt.de/index.php?id=cafeteria-langegasse"
+
+
+def parse_closure_notice(text: str, target_date: date) -> str | None:
+    """Return the active published closure period, if the notice contains one."""
+    for match in re.finditer(
+        r"(\d{1,2}\.\d{1,2}\.)\s*bis\s*(\d{1,2}\.\d{1,2}\.)\s*:?\s*geschlossen",
+        text,
+        re.IGNORECASE,
+    ):
+        start_raw, end_raw = match.groups()
+        start = datetime.strptime(f"{start_raw}{target_date.year}", "%d.%m.%Y").date()
+        end = datetime.strptime(f"{end_raw}{target_date.year}", "%d.%m.%Y").date()
+        if end < start:
+            if target_date <= end:
+                start = start.replace(year=start.year - 1)
+            else:
+                end = end.replace(year=end.year + 1)
+        if start <= target_date <= end:
+            return f"{start_raw} bis {end_raw}"
+    return None
+
+
+def fetch_lange_gasse_status(today: date | None = None) -> dict:
+    """Fetch special opening hours; normal hours must never be treated as live."""
+    today = today or date.today()
+    resp = SESSION.get(LANGE_GASSE_URL, timeout=15)
+    resp.raise_for_status()
+    closure = parse_closure_notice(clean_text(resp.text), today)
+    return {
+        "name": "Cafeteria Lange Gasse",
+        "address": "Lange Gasse 20, 90403 Nürnberg",
+        "days": [],
+        "current_status": (
+            f"heute geschlossen (veröffentlichte Sonderöffnungszeit: {closure})"
+            if closure else "heutiger Status nicht als Sonderöffnung veröffentlicht"
+        ),
+        "source": LANGE_GASSE_URL,
+    }
+
+
 def crawl_all() -> dict:
     submit_filter_form()
     results = {}
@@ -130,6 +171,15 @@ def crawl_all() -> dict:
             results[slug] = {"name": name, "address": address, "days": days}
         except Exception as e:
             results[slug] = {"name": name, "address": address, "days": [], "error": str(e)}
+    try:
+        results["lange_gasse"] = fetch_lange_gasse_status()
+    except Exception as e:
+        results["lange_gasse"] = {
+            "name": "Cafeteria Lange Gasse",
+            "address": "Lange Gasse 20, 90403 Nürnberg",
+            "days": [],
+            "error": str(e),
+        }
     return results
 
 
@@ -174,6 +224,34 @@ def generate_markdown(data: dict) -> str:
         "Bezahlung überall bargeldlos mit FAUcard.",
         "",
     ]
+
+    special_statuses = [
+        v for v in data.values()
+        if v.get("current_status")
+    ]
+    if special_statuses:
+        lines.extend([
+            "## Tagesstatus",
+            *[f"- {v['name']}: {v['current_status']}." for v in special_statuses],
+            "",
+        ])
+
+    # Das Menüportal listet nur Tage mit Betrieb. Fehlt heute bei einer Mensa
+    # ohne Abruffehler, ist sie heute geschlossen; gerade in der vorlesungsfreien
+    # Zeit wären reguläre Öffnungszeiten hier irreführend.
+    closed_today = [
+        v["name"]
+        for v in data.values()
+        if "error" not in v
+        and not v.get("current_status")
+        and not any(day["date"] == today.isoformat() and day["meals"] for day in v.get("days", []))
+    ]
+    if closed_today:
+        lines.extend([
+            "## Heute geschlossen",
+            *[f"- {name}: heute geschlossen (kein Speiseplan veröffentlicht)." for name in closed_today],
+            "",
+        ])
 
     for iso_date in all_dates:
         d = date.fromisoformat(iso_date)
