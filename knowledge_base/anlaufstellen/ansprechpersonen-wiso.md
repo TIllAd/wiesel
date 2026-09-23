@@ -1,6 +1,6 @@
 # Anlaufstellen & Ansprechpersonen an der FAU WiSo
 Kategorie E – kuratierte Orientierung für die Suche nach der richtigen Person.
-Stand: 2026-09-21. Primärquellen: offizielle WiSo-Webseiten.
+Stand: 2026-09-23. Primärquellen: offizielle WiSo-Webseiten.
 
 ## Erst die richtige Stelle wählen
 - Allgemeine Studienorganisation, Bewerbung, Studiengangwechsel oder Studienzweifel: Zentrale Studienberatung WiSo, offene Sprechstunde Mi/Do 9–12 Uhr oder zsb-rewi@fau.de. Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/zentrale-studienberatung/
@@ -50,63 +50,63 @@ Für konkrete Fragen zu Lehrveranstaltungen ist zuerst StudOn bzw. die Veranstal
 
 ## Professorinnen und Professoren: Fachgebiete und Profile
 Diese Liste hilft bei der fachlichen Zuordnung. Sie ersetzt keine Prüfungs- oder Studienberatung; eine Professur ist nicht automatisch die richtige Adresse für individuelle Verwaltungsfragen.
-- Prof. Bernd Fitzenberger ( Ph.D. ): Arbeitsökonomik, Ökonometrie, Ungleichheit, Arbeitsmarktpolitik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-bernd-fitzenberger-ph-d/.
-- Prof. Dr. Adrian Meier-Ernst: Digitale Kommunikation, Arbeitswelt, Gesundheit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-adrian-meier/.
-- Prof. Dr. Almut Schilling-Vacaflor del Carpio: Nachhaltigkeitsgovernance, Menschenrechte, Lateinamerika. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-almut-schilling-vacaflor/.
-- Prof. Dr. Andreas Fürst: Vertriebs-, Produkt-, Kundenbeziehungsmanagement. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-andreas-fuerst/.
-- Prof. Dr. Andreas Harth: Dezentrale Informationssysteme, Semantik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-andreas-harth/.
-- Prof. Dr. Benedikt Downar: Unternehmensberichterstattung, Finanz- & Nachhaltigkeitsprüfung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-benedikt-downar/.
-- Prof. Dr. Christian Merkl: Makroökonomik, Arbeitsmarktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-christian-merkl/.
-- Prof. Dr. Christoph Moser: Internationale Ökonomie, politische Ökonomie. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-christoph-moser/.
-- Prof. Dr. Claus Schnabel: Arbeitsmarkt, Tarifpolitik, Mitbestimmung, Löhne. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-claus-schnabel/.
-- Prof. Dr. Devrimi Kaya: Unternehmensberichterstattung, Business Analytics. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-devrimi-kaya/.
-- Prof. Dr. Dirk Holtbrügge: Emerging Markets, CSR, Personalmanagement. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-dirk-holtbruegge/.
-- Prof. Dr. Dr. Lorenz Graf-Vlachy: Strategie, Führung, Innovation, Entrepreneurship. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-lorenz-graf-vlachy/.
-- Prof. Dr. Frank Hechtner: Steuerwirkungsanalyse, ökonon. Analyse des Steuerrechts. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-frank-hechtner/.
-- Prof. Dr. Friedrich Sommer: Anreiz- und Kontrollsysteme, Nachhaltigkeit, M&A. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-friedrich-sommer/.
+- Prof. Bernd Fitzenberger ( Ph.D. ): Arbeitsökonomik, Ökonometrie, Ungleichheit, Arbeitsmarktpolitik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-bernd-fitzenberger-ph-d/. E-Mail: bernd.fitzenberger@fau.de.
+- Prof. Dr. Adrian Meier-Ernst: Digitale Kommunikation, Arbeitswelt, Gesundheit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-adrian-meier-ernst/. E-Mail: adrian.meier-ernst@fau.de. Telefon: +49 911 5302-95670.
+- Prof. Dr. Almut Schilling-Vacaflor del Carpio: Nachhaltigkeitsgovernance, Menschenrechte, Lateinamerika. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-almut-schilling-vacaflor/. E-Mail: almut.schilling-vacaflor@fau.de.
+- Prof. Dr. Andreas Fürst: Vertriebs-, Produkt-, Kundenbeziehungsmanagement. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-andreas-fuerst/. E-Mail: andreas.fuerst@fau.de.
+- Prof. Dr. Andreas Harth: Dezentrale Informationssysteme, Semantik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-andreas-harth/. E-Mail: andreas.harth@fau.de.
+- Prof. Dr. Benedikt Downar: Unternehmensberichterstattung, Finanz- & Nachhaltigkeitsprüfung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-benedikt-downar/. E-Mail: benedikt.downar@fau.de.
+- Prof. Dr. Christian Merkl: Makroökonomik, Arbeitsmarktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-christian-merkl/. E-Mail: christian.merkl@fau.de.
+- Prof. Dr. Christoph Moser: Internationale Ökonomie, politische Ökonomie. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-christoph-moser/. E-Mail: christoph.moser@fau.de.
+- Prof. Dr. Claus Schnabel: Arbeitsmarkt, Tarifpolitik, Mitbestimmung, Löhne. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-claus-schnabel/. E-Mail: claus.schnabel@fau.de.
+- Prof. Dr. Devrimi Kaya: Unternehmensberichterstattung, Business Analytics. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-devrimi-kaya/. E-Mail: devrimi.kaya@fau.de.
+- Prof. Dr. Dirk Holtbrügge: Emerging Markets, CSR, Personalmanagement. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-dirk-holtbruegge/. E-Mail: dirk.holtbruegge@fau.de.
+- Prof. Dr. Dr. Lorenz Graf-Vlachy: Strategie, Führung, Innovation, Entrepreneurship. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-lorenz-graf-vlachy/. E-Mail: lorenz.graf-vlachy@fau.de.
+- Prof. Dr. Frank Hechtner: Steuerwirkungsanalyse, ökonon. Analyse des Steuerrechts. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-frank-hechtner/. E-Mail: frank.hechtner@fau.de.
+- Prof. Dr. Friedrich Sommer: Anreiz- und Kontrollsysteme, Nachhaltigkeit, M&A. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-friedrich-sommer/. E-Mail: friedrich.sommer@fau.de.
 - Prof. Dr. Gatzert (†): Enterprise Risk Management, Lebensversicherung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-nadine-gatzert/. Nicht als aktuelle Ansprechpartnerin verwenden; die offizielle Seite kennzeichnet sie als verstorben/ehemalig.
-- Prof. Dr. Gesine Stephan: Arbeitsmarktpolitik, Evaluation, Beschäftigung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-gesine-stephan/.
-- Prof. Dr. Harald Tauchmann: Gesundheitsverhalten, Krankenkassen, Effizienz. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-harald-tauchmann/.
-- Prof. Dr. Hendrik Scholz: Portfoliomanagement, Kapitalmarktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-hendrik-scholz/.
+- Prof. Dr. Gesine Stephan: Arbeitsmarktpolitik, Evaluation, Beschäftigung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-gesine-stephan/. E-Mail: gesine.stephan@fau.de.
+- Prof. Dr. Harald Tauchmann: Gesundheitsverhalten, Krankenkassen, Effizienz. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-harald-tauchmann/. E-Mail: harald.tauchmann@fau.de.
+- Prof. Dr. Hendrik Scholz: Portfoliomanagement, Kapitalmarktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-hendrik-scholz/. E-Mail: hendrik.scholz@fau.de.
 - Prof. Dr. Hummel: Steuer-, insb. Mehrwertsteuerrecht und Beihilferecht. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-david-hummel-2/.
-- Prof. Dr. Jochen Hoffmann: Wirtschafts- und Bankrecht, Gleichstellungsrecht. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-jochen-hoffmann/.
-- Prof. Dr. Johan Lilliestam: Sustainability Transition Policy. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-johan-lilliestam/.
-- Prof. Dr. Johannes Rincke: Steuern, Öffentliche Güter, Korruption. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-johannes-rincke/.
-- Prof. Dr. Jonas Dovern: Zeitreihenökonometrie, empirische Makroökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-jonas-dovern/.
-- Prof. Dr. Julian Müller: Industrie 4.0, Produktion, SCM, Nachhaltigkeit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-julian-mueller/.
-- Prof. Dr. Kai-Ingo Voigt: Industrie 4.0, Innovation, Geschäftsmodelle. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-kai-ingo-voigt/.
-- Prof. Dr. Karl Gregor Zöttl: Industrieökonomik, Energiemärkte. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-gregor-zoettl/.
-- Prof. Dr. Karl Wilbers: Berufsbildung, Didaktik, Personalentwicklung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-karl-wilbers/.
-- Prof. Dr. Kathrin Möslein: Arbeit, Innovation, Wertschöpfung, Digitalisierung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-kathrin-m-moeslein/.
-- Prof. Dr. Klaus Moser: Personalauswahl, Training, Stress, Werbewirkung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-klaus-moser/.
+- Prof. Dr. Jochen Hoffmann: Wirtschafts- und Bankrecht, Gleichstellungsrecht. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-jochen-hoffmann/. E-Mail: jochen.hoffmann@fau.de.
+- Prof. Dr. Johan Lilliestam: Sustainability Transition Policy. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-johan-lilliestam/. E-Mail: johan.lilliestam@fau.de.
+- Prof. Dr. Johannes Rincke: Steuern, Öffentliche Güter, Korruption. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-johannes-rincke/. E-Mail: johannes.rincke@fau.de.
+- Prof. Dr. Jonas Dovern: Zeitreihenökonometrie, empirische Makroökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-jonas-dovern/. E-Mail: jonas.dovern@fau.de.
+- Prof. Dr. Julian Müller: Industrie 4.0, Produktion, SCM, Nachhaltigkeit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-julian-mueller/. E-Mail: julian.mueller@fau.de.
+- Prof. Dr. Kai-Ingo Voigt: Industrie 4.0, Innovation, Geschäftsmodelle. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-kai-ingo-voigt/. E-Mail: kai-ingo.voigt@fau.de.
+- Prof. Dr. Karl Gregor Zöttl: Industrieökonomik, Energiemärkte. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-gregor-zoettl/. E-Mail: gregor.zoettl@fau.de. Telefon: +49 911 5302-95688.
+- Prof. Dr. Karl Wilbers: Berufsbildung, Didaktik, Personalentwicklung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-karl-wilbers/. E-Mail: karl.wilbers@fau.de.
+- Prof. Dr. Kathrin Möslein: Arbeit, Innovation, Wertschöpfung, Digitalisierung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-kathrin-m-moeslein/. E-Mail: kathrin.moeslein@fau.de.
+- Prof. Dr. Klaus Moser: Personalauswahl, Training, Stress, Werbewirkung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-klaus-moser/. E-Mail: klaus.moser@fau.de.
 - Prof. Dr. Liebensteiner: Energie-, Umwelt- & Regulierungsökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-mario-liebensteiner/.
-- Prof. Dr. Lisa Handke: Teamarbeit, Digitalisierung, Arbeitsgestaltung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-lisa-handke/.
-- Prof. Dr. Malte Reichelt: Computational Social Science, Arbeitsmarkt, Organisationen. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-malte-reichelt/.
-- Prof. Dr. Markus Beckmann: Nachhaltigkeitsmanagement, CSR, Unternehmensethik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-markus-beckmann/.
-- Prof. Dr. Markus Nagler: Arbeitsmarktökonomik, Innovationsökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-markus-nagler/.
-- Prof. Dr. Martin Abraham: Arbeitsmarkt, Ungleichheit, Mobilität, Beruf. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martin-abraham/.
-- Prof. Dr. Martin Matzner: Geschäftsprozessmanagement, IT-gestützte Dienstleistungen. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martin-matzner/.
-- Prof. Dr. Martina Steul-Fischer: Dienstleistungsmarketing, Konsumentenverhalten. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martina-steul-fischer/.
-- Prof. Dr. Marvin Nipper: Nachhaltigkeit, Berichterstattung, Governance. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-marvin-nipper/.
-- Prof. Dr. Matthias Wrede: Räumliche Ökonomie, Steuern, Soziale Sicherung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-matthias-wrede/.
-- Prof. Dr. Melanie Arntz: Arbeitsmarkt, Strukturwandel, Künstliche Intelligenz. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-melanie-arntz/.
+- Prof. Dr. Lisa Handke: Teamarbeit, Digitalisierung, Arbeitsgestaltung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-lisa-handke/. E-Mail: lisa.handke@fau.de.
+- Prof. Dr. Malte Reichelt: Computational Social Science, Arbeitsmarkt, Organisationen. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-malte-reichelt/. E-Mail: malte.reichelt@fau.de.
+- Prof. Dr. Markus Beckmann: Nachhaltigkeitsmanagement, CSR, Unternehmensethik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-markus-beckmann/. E-Mail: markus.beckmann@fau.de.
+- Prof. Dr. Markus Nagler: Arbeitsmarktökonomik, Innovationsökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-markus-nagler/. E-Mail: markus.nagler@fau.de.
+- Prof. Dr. Martin Abraham: Arbeitsmarkt, Ungleichheit, Mobilität, Beruf. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martin-abraham/. E-Mail: martin.abraham@fau.de.
+- Prof. Dr. Martin Matzner: Geschäftsprozessmanagement, IT-gestützte Dienstleistungen. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martin-matzner/. E-Mail: martin.matzner@fau.de.
+- Prof. Dr. Martina Steul-Fischer: Dienstleistungsmarketing, Konsumentenverhalten. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-martina-steul-fischer/. E-Mail: martina.steul-fischer@fau.de.
+- Prof. Dr. Marvin Nipper: Nachhaltigkeit, Berichterstattung, Governance. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-marvin-nipper/. E-Mail: marvin.nipper@fau.de. Telefon: +49 9131 85-71342.
+- Prof. Dr. Matthias Wrede: Räumliche Ökonomie, Steuern, Soziale Sicherung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-matthias-wrede/. E-Mail: matthias.wrede@fau.de. Telefon: +49 911 5302-95951.
+- Prof. Dr. Melanie Arntz: Arbeitsmarkt, Strukturwandel, Künstliche Intelligenz. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-melanie-arntz/. E-Mail: melanie.arntz@fau.de.
 - Prof. Dr. Michael Amberg: IT-Management, Big Data, BPR, Digitalisierung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-michael-amberg/.
-- Prof. Dr. Michael Oberfichtner: Arbeitsmärkte, Betriebe und Beschäftigung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-michael-oberfichtner/.
-- Prof. Dr. Nicole Kimmelmann: Berufsbildung, Diversität, Inklusion, Personalentwicklung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-nicole-kimmelmann/.
-- Prof. Dr. Nicole Koschate-Fischer: Customer Insights, Pricing, Marktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-nicole-koschate-fischer/.
-- Prof. Dr. Oliver Schöffski: Evaluationen, Telemedizin, Versorgungsforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-oliver-schoeffski-mph/.
+- Prof. Dr. Michael Oberfichtner: Arbeitsmärkte, Betriebe und Beschäftigung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-michael-oberfichtner/. E-Mail: michael.oberfichtner@fau.de.
+- Prof. Dr. Nicole Kimmelmann: Berufsbildung, Diversität, Inklusion, Personalentwicklung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-nicole-kimmelmann/. E-Mail: nicole.kimmelmann@fau.de. Telefon: +49 911 5302-96298.
+- Prof. Dr. Nicole Koschate-Fischer: Customer Insights, Pricing, Marktforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-nicole-koschate-fischer/. E-Mail: wiso-sekretariat-koschate-fischer@fau.de.
+- Prof. Dr. Oliver Schöffski: Evaluationen, Telemedizin, Versorgungsforschung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-oliver-schoeffski-mph/. E-Mail: oliver.schoeffski@fau.de. Telefon: +49 911 5302-95313.
 - Prof. Dr. Reif: Gesundheitsmärkte, Digital Health. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-simon-reif/.
-- Prof. Dr. Sarah Necker: Finanzwissenschaft, Verhaltensökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-sarah-necker/.
-- Prof. Dr. Sven Laumer: Digitale Transformation & Zukunft der Arbeit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-sven-laumer/.
-- Prof. Dr. Thiess Büttner: Steuern, Staatsausgaben, Mobilität, Föderalismus. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-thiess-buettner/.
+- Prof. Dr. Sarah Necker: Finanzwissenschaft, Verhaltensökonomik. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-sarah-necker/. E-Mail: sarah.necker@fau.de.
+- Prof. Dr. Sven Laumer: Digitale Transformation & Zukunft der Arbeit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-sven-laumer/. E-Mail: sven.laumer@fau.de.
+- Prof. Dr. Thiess Büttner: Steuern, Staatsausgaben, Mobilität, Föderalismus. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-thiess-buettner/. E-Mail: thiess.buettner@fau.de.
 - Prof. Dr. Tiefenbeck: Digitale Interventionen, Konsumentenverhalten, Energie. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-verena-tiefenbeck/.
-- Prof. Dr. Tobias Wolbring: Wirtschaft, Evaluation, Bildung, Ungleichheit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-tobias-wolbring/.
-- Prof. Dr.-Ing. Eva Maria Hartmann: Supply Chain Management, Logistik, Einkauf. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-evi-hartmann/.
-- Prof. Regina Therese Riphahn ( Ph.D. ): Sozialpolitik, Arbeitsmarkt, Bevölkerung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-regina-t-riphahn-ph-d/.
-- Prof. Sena Coskun Dalgic ( Ph.D. ): Makro-Arbeitsökonomie, Familienökonomie. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-sena-coskun-ph-d/.
+- Prof. Dr. Tobias Wolbring: Wirtschaft, Evaluation, Bildung, Ungleichheit. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-tobias-wolbring/. E-Mail: tobias.wolbring@fau.de.
+- Prof. Dr.-Ing. Eva Maria Hartmann: Supply Chain Management, Logistik, Einkauf. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-dr-evi-hartmann/. E-Mail: evi.hartmann@fau.de.
+- Prof. Regina Therese Riphahn ( Ph.D. ): Sozialpolitik, Arbeitsmarkt, Bevölkerung. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-regina-t-riphahn-ph-d/. E-Mail: regina.riphahn@fau.de.
+- Prof. Sena Coskun Dalgic ( Ph.D. ): Makro-Arbeitsökonomie, Familienökonomie. Profil: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/prof-sena-coskun-ph-d/. E-Mail: sena.coskun@fau.de.
 
 ## Quellen und Aktualisierung
 - Professorenschaft: https://www.wiso.rw.fau.de/forschung/forschungsprofil/professorenschaft/
 - Lehrstuhlübersicht: https://www.wiso.rw.fau.de/fachbereich/leitung-und-organisation/institute-und-lehrstuehle/lehrstuehle/
 - Personen- und Rollenangaben bei Lehrstühlen: jeweils verlinkte offizielle Teamseite.
-- Bei abweichenden Angaben auf einer aktuellen offiziellen Seite hat diese Vorrang. Keine privaten Durchwahlen oder nichtöffentlich bereitgestellten Kontaktdaten ausgeben.
+- Bei abweichenden Angaben auf einer aktuellen offiziellen Seite hat diese Vorrang. Es werden ausschließlich auf den öffentlichen Profilseiten veröffentlichte Kontaktdaten ausgegeben.

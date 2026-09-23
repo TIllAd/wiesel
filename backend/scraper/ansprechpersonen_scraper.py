@@ -1,8 +1,8 @@
 """Erzeugt die kuratierte WiSo-Personenübersicht für Kategorie E.
 
 Die Quelle ist ausschließlich die öffentlich sichtbare WiSo-Webseite. Der
-Crawler nimmt keine privaten Kontaktdaten auf und listet bei Lehrstühlen nur
-Professor:innen sowie klar ausgewiesene Sekretariate/Office-Management.
+Crawler übernimmt nur Kontaktangaben, die im öffentlichen Profil der jeweiligen
+Professorin bzw. des jeweiligen Professors ausgewiesen sind.
 """
 from datetime import date
 from pathlib import Path
@@ -42,6 +42,19 @@ TEAM_CONTACTS = [
 ]
 
 
+def extract_public_contact(profile_html: str) -> tuple[str | None, str | None]:
+    """Liest ausschließlich die Angaben aus dem sichtbaren Profil-Kontaktblock."""
+    contact = BeautifulSoup(profile_html, "html.parser").select_one(".profile-contact")
+    if contact is None:
+        return None, None
+
+    email_link = contact.select_one('a[href^="mailto:"]')
+    email = email_link.get("href", "").removeprefix("mailto:").strip() if email_link else None
+    phone_item = contact.select_one("li.phone")
+    phone = re.sub(r"^Telefon:\s*", "", phone_item.get_text(" ", strip=True)) if phone_item else None
+    return email or None, phone or None
+
+
 def professors():
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0 (compatible; WisdomBot/1.0)"})
@@ -60,11 +73,14 @@ def professors():
         context = link.parent.get_text(" ", strip=True)
         field = re.sub(r"\s+", " ", context.replace(short_name, "")).strip(" –-: ")
         try:
-            profile = BeautifulSoup(session.get(url, timeout=30).text, "html.parser")
+            profile_html = session.get(url, timeout=30).text
+            profile = BeautifulSoup(profile_html, "html.parser")
             name = re.sub(r"\s+", " ", profile.select_one("main h1").get_text(" ", strip=True))
+            email, phone = extract_public_contact(profile_html)
         except (requests.RequestException, AttributeError):
             name = short_name
-        result.append((name, field or "Fachgebiet siehe Profil", url))
+            email, phone = None, None
+        result.append((name, field or "Fachgebiet siehe Profil", url, email, phone))
     if len(result) < 45:
         raise RuntimeError(f"Professorenschaft unvollständig extrahiert ({len(result)} Einträge)")
     return sorted(result, key=lambda item: item[0])
@@ -101,10 +117,15 @@ def render(entries):
     for chair, name, role, url in TEAM_CONTACTS:
         lines.append(f"- {chair}: {name} ({role}) – {url}")
     lines += ["", "## Professorinnen und Professoren: Fachgebiete und Profile", "Diese Liste hilft bei der fachlichen Zuordnung. Sie ersetzt keine Prüfungs- oder Studienberatung; eine Professur ist nicht automatisch die richtige Adresse für individuelle Verwaltungsfragen."]
-    for name, field, url in entries:
+    for name, field, url, email, phone in entries:
         suffix = " Nicht als aktuelle Ansprechpartnerin verwenden; die offizielle Seite kennzeichnet sie als verstorben/ehemalig." if "Gatzert" in name else ""
-        lines.append(f"- {name}: {field}. Profil: {url}.{suffix}")
-    lines += ["", "## Quellen und Aktualisierung", f"- Professorenschaft: {PROFESSORS_URL}", "- Lehrstuhlübersicht: https://www.wiso.rw.fau.de/fachbereich/leitung-und-organisation/institute-und-lehrstuehle/lehrstuehle/", "- Personen- und Rollenangaben bei Lehrstühlen: jeweils verlinkte offizielle Teamseite.", "- Bei abweichenden Angaben auf einer aktuellen offiziellen Seite hat diese Vorrang. Keine privaten Durchwahlen oder nichtöffentlich bereitgestellten Kontaktdaten ausgeben."]
+        contact = "".join(
+            f" {label}: {value}."
+            for label, value in (("E-Mail", email), ("Telefon", phone))
+            if value
+        )
+        lines.append(f"- {name}: {field}. Profil: {url}.{contact}{suffix}")
+    lines += ["", "## Quellen und Aktualisierung", f"- Professorenschaft: {PROFESSORS_URL}", "- Lehrstuhlübersicht: https://www.wiso.rw.fau.de/fachbereich/leitung-und-organisation/institute-und-lehrstuehle/lehrstuehle/", "- Personen- und Rollenangaben bei Lehrstühlen: jeweils verlinkte offizielle Teamseite.", "- Bei abweichenden Angaben auf einer aktuellen offiziellen Seite hat diese Vorrang. Es werden ausschließlich auf den öffentlichen Profilseiten veröffentlichte Kontaktdaten ausgegeben."]
     return "\n".join(lines) + "\n"
 
 
