@@ -6,8 +6,11 @@
 - Das Sozialökonomik Planspiel findet **ausschließlich im Wintersemester** statt.
 - Die Teilnahme ist prinzipiell **verpflichtend für alle Studierenden im 1. Fachsemester Sozialökonomik**.
 - **Anmeldung zum Planspiel:**
-  - Zeitraum: 01. August bis **spätestens 05. Oktober** (über den Link auf der Sozök-Planspiel-Webseite)
+  - Zeitraum im WS 2026/27: 01. August bis **spätestens 05. Oktober 2026** (über den Link auf der Sozök-Planspiel-Webseite)
   - Die Anmeldung ist **unabhängig vom Immatrikulationsstatus** – auch ohne Matrikelnummer möglich.
+  - Es gibt keine Anmeldebestätigung. Nach dem Anmeldeschluss am 05.10.2026 erhalten angemeldete Studierende eine allgemeine Info-Mail mit weiteren Informationen.
+  - Bitte schreibe nicht zur Bestätigung der Anmeldung. Nur wenn du bis Donnerstag vor dem Planspiel (08.10.2026) keine E-Mail erhalten hast, kontaktiere wiso-ba-sozoek@fau.de.
+  - Anmeldung verpasst? Kontaktiere wiso-ba-sozoek@fau.de.
 - **Keine** Kursanmeldungen und/oder Stundenpläne **vor** dem Planspiel nötig.
 
 ## 2. Semesterstart
@@ -22,10 +25,12 @@
 
 - Planspielanmeldung ist **verpflichtend**.
 - Teilnahme im Einzelnen:
-  - **Informationstag (Dienstag):** optional
+  - Nur der Informationstag am Dienstag ist optional.
+  - Mittwoch und Donnerstag sind verpflichtend.
   - **Sozialökonomisches Planspiel (Mittwoch):** verpflichtend
-  - **Studium-Tag (Donnerstag):** Vorlesung zur Soziologie – Teilnahme nach den regulären Anwesenheitsregelungen der Veranstaltungen
+  - **Studium-Tag (Donnerstag):** verpflichtend
 - Das WiWi-Planspiel kann **nicht** angerechnet werden.
+
 
 ### Bereits in höherem Fachsemester Sozialökonomik
 

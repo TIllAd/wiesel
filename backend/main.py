@@ -730,6 +730,15 @@ def load_knowledge_base() -> str:
     return content
 
 
+STUDY_START_ROUTING_RULES = """
+## Anwendungsvorrang: Studienstart und Einführungsveranstaltungen
+
+Bei Fragen zum Studienstart oder zu Einführungsveranstaltungen frage zuerst nach dem Studiengang, wenn er nicht schon aus der Frage oder dem Gespräch klar hervorgeht. Gib vorher keine allgemeine Checkliste mit Campo, StudOn, FAUcard, Stundenplan oder Kursanmeldungen aus.
+
+Für Sozialökonomik haben die Regeln aus `studienstart/sozialoekonomik-ba-faq.md` Vorrang vor allgemeinen Studienstart- und WiWi-Planspiel-Informationen. Vermische das Sozialökonomik-Planspiel nie mit dem WiWi-Planspiel. Nenne für Sozialökonomik weder eine Stundenplan- oder Kursanmeldung vor dem Planspiel als erforderlich, noch eine fehlende Anmeldebestätigung als Grund, das Studienbüro zu kontaktieren.
+""".strip()
+
+
 def build_system_prompt(kb_content: str = "") -> str:
     candidates = [
         Path(__file__).parent.parent / "system-prompt.md",
@@ -740,9 +749,9 @@ def build_system_prompt(kb_content: str = "") -> str:
         if path.exists():
             base = path.read_text(encoding="utf-8")
             if kb_content:
-                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}"
-            return base
-    return "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
+                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}\n\n---\n\n{STUDY_START_ROUTING_RULES}"
+            return base + f"\n\n---\n\n{STUDY_START_ROUTING_RULES}"
+    return "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg.\n\n" + STUDY_START_ROUTING_RULES
 
 
 _STATIC_LEAK_MARKERS = [
