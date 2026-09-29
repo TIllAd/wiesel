@@ -37,6 +37,7 @@ import anthropic
 import jwt
 import hmac as hmac_lib
 from oauthlib.oauth1.rfc5849 import signature as oauth_signature
+from backend.evidence_guard import apply_evidence_guard
 
 APP_TIMEZONE = ZoneInfo("Europe/Berlin")
 
@@ -1018,6 +1019,7 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
         if looks_like_system_prompt_leak(text):
             logger.error("Blocked likely system-prompt leak in Claude response")
             return SYSTEM_PROMPT_LEAK_FALLBACK
+        text = apply_evidence_guard(query, text, kb_content)
         text = apply_output_guards(query, text)
         LLM_HEALTH.update({"ok": True, "last_success": json_timestamp(datetime.utcnow()), "last_error": None})
         return text
