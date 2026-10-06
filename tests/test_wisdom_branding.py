@@ -44,6 +44,16 @@ class WisdomBrandingTests(unittest.TestCase):
         )
         self.assertIn('Zentrale Studienberatung', chat)
 
+    def test_google_favicon_is_a_public_square_logo_of_at_least_48_pixels(self):
+        chat = (STATIC / "chat.html").read_text(encoding="utf-8")
+        favicon = STATIC / "favicon.png"
+
+        self.assertIn('rel="icon" type="image/png" href="/favicon.png" sizes="512x512"', chat)
+        self.assertTrue(favicon.is_file(), "public favicon.png is missing")
+        dimensions = favicon.read_bytes()[16:24]
+        self.assertEqual(int.from_bytes(dimensions[:4], "big"), 512)
+        self.assertEqual(int.from_bytes(dimensions[4:], "big"), 512)
+
     def test_header_uses_the_readable_wisdom_wordmark_on_the_red_bar(self):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
         brand = STATIC / "brand"
