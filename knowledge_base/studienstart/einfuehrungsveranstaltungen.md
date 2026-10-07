@@ -27,6 +27,8 @@ Die Veranstaltung ist die studiengangsspezifische Einführung für den Bachelor 
 
 Studierende wählen im StudOn-Vorkurs einen von drei Durchgängen: Dienstag/Donnerstag, Mittwoch/Freitag oder einen Nachholkurs mit höherem Onlineanteil und mehreren kürzeren Präsenzterminen. Die Wahl einer Studienrichtung beim Anmelden dient nur dem Kennenlernen; die verbindliche Wahl erfolgt erst ab dem 3. Semester.
 
+Für Dienstag/Donnerstag: Mittwoch ist der verpflichtende Selbstlern- und Vorbereitungstag für die Kleingruppenpräsentation bzw. den Ideenpitch und die digitale Rallye – kein freier Tag. Für Mittwoch/Freitag: Donnerstag ist der verpflichtende Selbstlern- und Vorbereitungstag mit denselben Aufgaben – ebenfalls kein freier Tag. Tage ohne Präsenztermin sind nicht automatisch frei; StudOn ist für weitere Aufgaben und verbindliche Angaben maßgeblich.
+
 Für die beiden Präsenzdurchgänge ist die Anmeldung bis 08.10.2026 möglich. Der Nachholkurs kann bis 04.11.2026, 23:55 Uhr, gewählt werden; er richtet sich insbesondere an Personen mit Care-Verpflichtungen, nicht verschiebbaren Terminen, Erkrankung in der ersten Vorlesungswoche oder ohne Platz in einem Präsenzdurchgang.
 
 Wer bis 04.10.2026 noch nicht abschließend immatrikuliert ist, soll sich mit einer Gastkennung zum Vorkurs anmelden und nach der Immatrikulation auf die reguläre FAU-Kennung wechseln. Die Gastkennung ist laut Seite nur bis 28.02.2027 gültig. Die Prüfungsleistung wird mit bestanden/nicht bestanden bewertet und besteht aus mehreren Einzel- und Gruppenanteilen.
