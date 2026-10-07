@@ -28,23 +28,23 @@ Am ersten Tag erhalten die Studierenden allgemeine Infos zum Studium an der FAU-
 
 Detaillierter Zeit- und Raumplan für Montag (alle Begrüßungen inkl. englischer BA/MA-Begrüßung, Master-Einführungsveranstaltungen, Räume und Kapazitäten): siehe „Erstsemesterbegrüßung & Einführungsveranstaltungen: Zeit- und Raumplan (WS 26/27)".
 
-## Planspiel (Tag 2–4)
+## Planspiel (13.–16.10.2026)
 
-Grundlage ist die vorherige StudOn-Anmeldung im Kurs „Perspektiven der Wiwi" inkl. Wahl einer Schwerpunkt-Gruppe (Wirtschaftspädagogik, Wirtschaftsinformatik, VWL, BWL, etc.). Am ersten Planspieltag werden die Studierenden in Gruppen eingeteilt.
+Grundlage ist die vorherige StudOn-Anmeldung im Kurs „Perspektiven der Wiwi" inklusive Wahl einer Schwerpunkt-Gruppe (Wirtschaftspädagogik, Wirtschaftsinformatik, VWL, BWL etc.). Die Teilnahme ist verpflichtend; die konkreten Zeiten und Räume stehen verbindlich in StudOn und Campo.
 
 Bestandteile:
-- Computer-Planspiel (Software: Bizz.Trainer) – vermittelt wirtschaftliche Grundkenntnisse. Die Ergebnisse/Platzierungen sind Teil eines internen Wettbewerbs zwischen den Mentees und werden nicht benotet — die aktive Teilnahme an den vier Spielrunden zählt aber als Teilleistung der Prüfungsleistung (max. 20 %, Details siehe bizz.trainer-FAQ, Stand 17.07.2026).
-- Kleingruppenpräsentation / Ideenpitch – wird am Zwischentag in Kleingruppen vorbereitet (Gruppen werden am 1. Planspieltag eingeteilt). Dies ist die erste Prüfungsleistung des Studiums, dient aber vor allem der Einführung ins Uni-Leben und der Vernetzung unter Studierenden. Keine Vorbereitung nötig – wird am 1. Planspieltag von den Mentor/-innen erklärt.
+- Computer-Planspiel (Software: Bizz.Trainer) – vermittelt wirtschaftliche Grundkenntnisse. Die aktive Teilnahme an den vier Spielrunden zählt als Teilleistung der Prüfungsleistung (max. 20 %, Details siehe bizz.trainer-FAQ, Stand 17.07.2026).
+- Kleingruppenpräsentation / Ideenpitch – wird am Zwischentag vorbereitet. Dieser Tag ist kein freier Tag, sondern dient der selbstständigen Bearbeitung der Selbstlernphase und der digitalen Rallye sowie der Vorbereitung im Team.
 
 Die Gruppen werden während der Planspielwoche von Mentor/-innen begleitet – Studierende höherer Semester, die als Wegbegleiter fungieren.
 
 ### Zwei Termin-Varianten (je nach Anmeldung/Zuteilung)
 
-Gruppe 1 – Planspiel in Präsenz: Dienstag (13.10.) + Donnerstag (15.10.); Ideenpitch-Erstellung: Mittwoch (14.10.)
-→ Freitag (16.10.) frei!
+Gruppe 1 – Präsenztermine: Dienstag (13.10.) und Donnerstag (15.10.); Mittwoch (14.10.) ist der verpflichtende Selbstlern- und Vorbereitungstag.
 
-Gruppe 2 – Planspiel in Präsenz: Mittwoch (14.10.) + Freitag (16.10.); Ideenpitch-Erstellung: Donnerstag (15.10.)
-→ Dienstag (13.10.) frei!
+Gruppe 2 – Präsenztermine: Mittwoch (14.10.) und Freitag (16.10.); Donnerstag (15.10.) ist der verpflichtende Selbstlern- und Vorbereitungstag.
+
+Der Ablauf der Einführungswoche erstreckt sich insgesamt über Dienstag bis Freitag. Je nach Durchgang kann der letzte Präsenztermin bereits am Donnerstag sein; ob und wann darüber hinaus noch Aufgaben anstehen, ist in StudOn maßgeblich.
 
 ## Planspiel Tag 1 (1. Präsenztag: Di 13.10. oder Mi 14.10.)
 
@@ -82,6 +82,6 @@ Gruppe 2 – Planspiel in Präsenz: Mittwoch (14.10.) + Freitag (16.10.); Ideenp
 - Get-Together/Begrüßung: Montag, 12.10.2026, H4, 08:00–18:00, Party ab 20:00
 - Planspiel-Software: Bizz.Trainer
 - Ideenpitch = erste Prüfungsleistung; Planspiel-Ergebnisse = interner Wettbewerb, keine Note
-- Gruppe 1: Planspiel Di+Do, Ideenpitch-Vorbereitung Mi, frei Fr
-- Gruppe 2: Planspiel Mi+Fr, Ideenpitch-Vorbereitung Do, frei Di
-- Betreuung durch Mentor/-innen (höhere Semester)
+- Gruppe 1: Präsenz Di+Do, verpflichtende Selbstlernphase/digitale Rallye Mi
+- Gruppe 2: Präsenz Mi+Fr, verpflichtende Selbstlernphase/digitale Rallye Do
+- Anwesenheitspflicht und weitere Aufgaben: verbindlich in StudOn/Campo prüfen

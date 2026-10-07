@@ -21,6 +21,8 @@ Die WiSo-Erstsemesterbegrüßung findet am Montag, 12.10.2026, statt. Dort stell
 
 Offizielle Detailseite: https://www.professur-wirtschaftspaedagogik.rw.fau.de/en/einfuhrung-perspektiven-der-wirtschaftswissenschaften/
 
+Für den Bachelor Wirtschaftswissenschaften ist die Einführung „Perspektiven der Wirtschaftswissenschaften“ vorgesehen. Die Anmeldung vor Semesterstart ist verpflichtend. Informationen und Anmeldung stehen auf der offiziellen Detailseite oben.
+
 Die Veranstaltung ist die studiengangsspezifische Einführung für den Bachelor Wirtschaftswissenschaften, einschließlich Studienrichtungen wie Nachhaltigkeit und FACT-S. Sie verbindet eine computergestützte Unternehmenssimulation mit Grundlagen zu Administration, Beschaffung und Lagerhaltung, Produktion, Vertrieb und Finanzen; außerdem gehören Gruppenpräsentation, wissenschaftliches Arbeiten und Schreiben sowie KI im Studium dazu.
 
 Studierende wählen im StudOn-Vorkurs einen von drei Durchgängen: Dienstag/Donnerstag, Mittwoch/Freitag oder einen Nachholkurs mit höherem Onlineanteil und mehreren kürzeren Präsenzterminen. Die Wahl einer Studienrichtung beim Anmelden dient nur dem Kennenlernen; die verbindliche Wahl erfolgt erst ab dem 3. Semester.

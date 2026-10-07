@@ -29,7 +29,7 @@ import uvicorn
 
 from pydantic import BaseModel
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, Float
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, Float, text, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session as SQLSession
 
@@ -40,6 +40,26 @@ from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 from backend.evidence_guard import apply_evidence_guard
 
 APP_TIMEZONE = ZoneInfo("Europe/Berlin")
+WEEKDAY_DE = (
+    "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag",
+)
+
+
+def build_current_datetime_context(now: datetime | None = None) -> str:
+    """Return the non-cacheable, authoritative current-time context for one LLM call."""
+    current = now or datetime.now(APP_TIMEZONE)
+    weekday = WEEKDAY_DE[current.weekday()]
+    timestamp = f"{weekday}, {current:%d.%m.%Y, %H:%M} Uhr ({APP_TIMEZONE.key})."
+    return f"""Aktuelles Datum und Uhrzeit: {timestamp}
+Das ist die einzige gültige Angabe für „heute". Zeitstempel in der Wissensbasis
+(„Zuletzt aktualisiert", „Heute", „Morgen") zeigen nur, von wann die jeweiligen
+Daten stammen.
+
+Vergleiche jede Frist und jeden Termin mit dem aktuellen Datum:
+- Liegt eine Frist in der Vergangenheit, sag ausdrücklich, dass sie abgelaufen ist,
+und nenne die zuständige Kontaktstelle.
+- Verwende „heute", „morgen" und „in X Tagen" nur, wenn es zum aktuellen Datum passt.
+- Sind tagesaktuelle Daten (Mensa, Wetter, ÖPNV) nicht von heute, weise darauf hin."""
 
 
 def utc_naive_to_app_time(value: datetime) -> datetime:
@@ -268,10 +288,18 @@ class LLMUsage(Base):
     estimated_cost_eur = Column(Float, default=0.0)
     latency_ms = Column(Integer, nullable=True)
     error_type = Column(String, nullable=True, index=True)
+    usage_type = Column(String, default="chat", index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 Base.metadata.create_all(bind=engine)
+# create_all does not add columns to an existing SQLite table. Keep the usage
+# source explicit so quality-review spend cannot disappear into chat spend.
+if DATABASE_URL.startswith("sqlite"):
+    with engine.begin() as connection:
+        usage_columns = {row[1] for row in connection.execute(text("PRAGMA table_info(llm_usage)"))}
+        if "usage_type" not in usage_columns:
+            connection.execute(text("ALTER TABLE llm_usage ADD COLUMN usage_type VARCHAR DEFAULT 'chat'"))
 
 
 def cleanup_expired_data() -> None:
@@ -567,7 +595,8 @@ def todays_llm_cost_eur() -> float:
     db = SessionLocal()
     try:
         total = db.query(func.coalesce(func.sum(LLMUsage.estimated_cost_eur), 0.0)).filter(
-            LLMUsage.created_at >= day_start_utc
+            LLMUsage.created_at >= day_start_utc,
+            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type != "quality_review"),
         ).scalar()
         return float(total or 0.0)
     finally:
@@ -753,6 +782,22 @@ def build_system_prompt(kb_content: str = "") -> str:
                 return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}\n\n---\n\n{STUDY_START_ROUTING_RULES}"
             return base + f"\n\n---\n\n{STUDY_START_ROUTING_RULES}"
     return "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg.\n\n" + STUDY_START_ROUTING_RULES
+
+
+LEARNING_LAYER_PREAMBLE = (
+    "Die folgenden Hinweise stammen aus der automatischen Auswertung von Nutzergesprächen. "
+    "Bei Widerspruch zur Wissensbasis oben gilt die Wissensbasis."
+)
+
+
+def load_learning_layer() -> str:
+    """Load the generated, non-versioned learning layer without touching the KB cache."""
+    path = Path(os.getenv("WISDOM_QUALITY_DIR", "/wisdom-quality")) / "gelerntes.md"
+    try:
+        content = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    return content
 
 
 _STATIC_LEAK_MARKERS = [
@@ -991,6 +1036,20 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
             "cache_control": {"type": "ephemeral"}
         }
     ]
+    # Deliberately after the cache breakpoint: this changes per request while
+    # the system prompt and knowledge base remain cacheable.
+    system_blocks.append({
+        "type": "text",
+        "text": build_current_datetime_context(),
+    })
+    learning_layer = load_learning_layer()
+    if learning_layer:
+        # Separate, uncached block: changing the daily layer must not invalidate
+        # the stable system-prompt/knowledge-base cache above.
+        system_blocks.append({
+            "type": "text",
+            "text": f"{LEARNING_LAYER_PREAMBLE}\n\n{learning_layer}",
+        })
     # ────────────────────────────────────────────────────────────────────────
 
     try:
@@ -1382,25 +1441,28 @@ async def costs_summary():
     previous_month_end = month_start - timedelta(microseconds=1)
     previous_month_start = previous_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    def period_summary(db: SQLSession, start: datetime, end: datetime) -> dict:
+    def period_summary(db: SQLSession, start: datetime, end: datetime, usage_type: str = "chat") -> dict:
         start_utc, end_utc = _cost_period_bounds(start, end)
         usage_rows = db.query(LLMUsage).filter(
             LLMUsage.created_at >= start_utc,
             LLMUsage.created_at <= end_utc,
+            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type == usage_type),
         ).all()
         sessions = db.query(SessionRecord).filter(
             SessionRecord.created_at >= start_utc,
             SessionRecord.created_at <= end_utc,
-        ).count()
+        ).count() if usage_type == "chat" else 0
         messages = db.query(ChatMessage).filter(
             ChatMessage.created_at >= start_utc,
             ChatMessage.created_at <= end_utc,
-        ).count()
+        ).count() if usage_type == "chat" else 0
         return _cost_usage_summary(usage_rows, sessions, messages)
 
     db = SessionLocal()
     try:
-        all_usage = db.query(LLMUsage).order_by(LLMUsage.created_at.asc()).all()
+        all_usage = db.query(LLMUsage).filter(
+            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type == "chat")
+        ).order_by(LLMUsage.created_at.asc()).all()
         total = _cost_usage_summary(
             all_usage,
             db.query(SessionRecord).count(),
@@ -1429,6 +1491,8 @@ async def costs_summary():
             "tage_im_monat": (next_month_start.date() - month_start.date()).days,
         })
         previous_month = period_summary(db, previous_month_start, previous_month_end)
+        quality_today = period_summary(db, today_start, now_app, "quality_review")
+        quality_month = period_summary(db, month_start, now_app, "quality_review")
         previous_month.update({
             "monat": previous_month_start.strftime("%Y-%m"),
             "tage_erfasst": len({
@@ -1452,6 +1516,7 @@ async def costs_summary():
             "heute": today,
             "monat": month,
             "vormonat": previous_month,
+            "qualitaetsanalyse": {"heute": quality_today, "monat": quality_month},
         }
     finally:
         db.close()

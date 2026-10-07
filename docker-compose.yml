@@ -25,6 +25,8 @@ services:
       - ./knowledge_base:/knowledge_base
       - ./system-prompt.md:/system-prompt.md
       - ./backend/wiesel.db:/app/wiesel.db
+      - ./quality_review.py:/app/quality_review.py:ro
+      - ${WISDOM_QUALITY_DIR:-${HOME}/wisdom-quality}:/wisdom-quality
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - wiesel-network

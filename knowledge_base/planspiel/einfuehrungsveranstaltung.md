@@ -49,10 +49,9 @@ Eine
 Anmeldung
 für den
 Kurs DI+DO
-ist bis 08.10.2026
 sowie für den Kurs
 MI+FR
-ist bis 10.10.2026
+ist bis 08.10.2026
 möglich.
 Eine
 Anmeldung
@@ -63,7 +62,7 @@ ist bis einschließlich
 möglich
 Studierende, die noch nicht abschließend immatrikuliert sind. Sollen sich bitte unbedingt auch zum Kurs anmelden. Eine Anleitung und Hilfestellung zur Anmeldung und zur Erstellung der Gastkennung (Selbstregistrierung) finden Sie
 hier.
-Bitte beachten Sie, dass die Gastkennung nur bis zum  28.02.2026 gültig ist. Bitte verwenden Sie unbedingt nach abgeschlossener Immatrikulation, Ihre „richtige“ Kennung.
+Bitte beachten Sie, dass die Gastkennung nur bis zum 28.02.2027 gültig ist. Bitte verwenden Sie nach abgeschlossener Immatrikulation unbedingt Ihre offizielle FAU-Kennung.
 Prüfungsleistung:
 bestehen oder nicht bestehen
 Die Prüfungsleistung besteht aus mehreren Elementen. Diese Elemente umfassen sowohl Einzel- als auch Gruppenarbeiten.

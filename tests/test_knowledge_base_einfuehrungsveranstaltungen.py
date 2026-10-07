@@ -56,3 +56,20 @@ def test_einfuehrungsveranstaltungen_point_to_existing_deep_dive_articles():
     assert "planspiel/einfuehrungsveranstaltung.md" in content
     assert "studienstart/sozialoekonomik-ba-faq.md" in content
     assert "studienstart/erstsemesterbegruessung-zeitplan-ws2627.md" in content
+
+
+def test_wiwi_perspektiven_makes_pre_semester_registration_unambiguous():
+    content = OVERVIEW.read_text(encoding="utf-8")
+
+    assert "Für den Bachelor Wirtschaftswissenschaften ist die Einführung „Perspektiven der Wirtschaftswissenschaften“ vorgesehen." in content
+    assert "Die Anmeldung vor Semesterstart ist verpflichtend." in content
+    assert content.count("https://www.professur-wirtschaftspaedagogik.rw.fau.de/en/einfuhrung-perspektiven-der-wirtschaftswissenschaften/") == 1
+
+
+def test_wiwi_planspiel_does_not_describe_required_days_as_free_time():
+    schedule = (ROOT / "knowledge_base" / "planspiel" / "ablauf-einfuehrungswoche.md").read_text(encoding="utf-8")
+
+    assert "Selbstlernphase und der digitalen Rallye" in schedule
+    assert "→ Freitag (16.10.) frei!" not in schedule
+    assert "→ Dienstag (13.10.) frei!" not in schedule
+    assert "Anwesenheitspflicht" in schedule

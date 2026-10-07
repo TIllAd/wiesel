@@ -29,6 +29,9 @@ def table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
 
 
+def table_columns(conn: sqlite3.Connection, name: str) -> set[str]:
+    return {row[1] for row in conn.execute(f"PRAGMA table_info({name})")}
+
 
 def percentile(values: list[int], q: float) -> int | None:
     if not values:
@@ -108,6 +111,7 @@ def export():
     # ── Sessions laden ──
     has_chat_flags = table_exists(conn, "chat_flags")
     has_llm_usage = table_exists(conn, "llm_usage")
+    usage_filter = " AND (usage_type IS NULL OR usage_type = 'chat')" if has_llm_usage and "usage_type" in table_columns(conn, "llm_usage") else ""
     sessions_rows = conn.execute("""
         SELECT * FROM sessions
         WHERE created_at >= ? AND created_at < ?
@@ -136,12 +140,12 @@ def export():
         """, (s["id"],)).fetchall() if has_chat_flags else []
         session_flags = [{"tag": f["tag"], "created_at": f["created_at"]} for f in flags]
 
-        usage_rows = conn.execute("""
+        usage_rows = conn.execute(f"""
             SELECT model, input_tokens, output_tokens, cache_creation_input_tokens,
                    cache_read_input_tokens, estimated_cost_usd, estimated_cost_eur,
                    latency_ms, error_type, created_at
             FROM llm_usage
-            WHERE session_id = ? AND created_at >= ? AND created_at < ?
+            WHERE session_id = ? AND created_at >= ? AND created_at < ?{usage_filter}
             ORDER BY created_at ASC
         """, (s["id"], day_start_iso, day_end_exclusive_iso)).fetchall() if has_llm_usage else []
 
@@ -173,12 +177,12 @@ def export():
         })
 
     total_messages = sum(s["nachrichten"] for s in sessions)
-    all_usage_rows = conn.execute("""
+    all_usage_rows = conn.execute(f"""
         SELECT model, input_tokens, output_tokens, cache_creation_input_tokens,
                cache_read_input_tokens, estimated_cost_usd, estimated_cost_eur,
                latency_ms, error_type, created_at
         FROM llm_usage
-        WHERE created_at >= ? AND created_at < ?
+        WHERE created_at >= ? AND created_at < ?{usage_filter}
         ORDER BY created_at ASC
     """, (day_start_iso, day_end_exclusive_iso)).fetchall() if has_llm_usage else []
 
