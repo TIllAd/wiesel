@@ -413,7 +413,8 @@ def run_review(db_path: Path, directory: Path, since: datetime | None = None, dr
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        state = load_state(directory) if not dry_run else {"reviewed_session_ids": [], "reported_dates": []}
+        # Dry-run must show the same pending queue as a real run, otherwise it lies.
+        state = load_state(directory)
         selected = select_sessions(conn, set(state["reviewed_session_ids"]), now - timedelta(minutes=30), since)
         result = {"selected": len(selected), "reviewed": 0, "failed": 0, "report_path": None}
         run_map_usage = {"input_tokens": 0.0, "output_tokens": 0.0, "cache_creation_input_tokens": 0.0, "cache_read_input_tokens": 0.0, "cost_eur": 0.0}

@@ -177,6 +177,26 @@ class ChatReviewTests(unittest.TestCase):
             self.assertIn("Tokenverbrauch dieses Laufs", report)
             self.assertIn("Geschätzte Kosten dieses Laufs", report)
 
+    def test_dry_run_loads_job_written_state_and_excludes_reviewed_sessions(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "test.db"
+            report_dir = root / "reports"
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            make_db(db_path, now)
+            review.save_state(
+                report_dir,
+                {"reviewed_session_ids": ["complete"], "reported_dates": ["2026-10-19"]},
+            )
+
+            result = review.run_review(db_path, report_dir, dry_run=True, now=now)
+            persisted = json.loads((report_dir / "review_state.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(persisted["reviewed_session_ids"], ["complete"])
+        self.assertNotIn("complete", result["session_ids"])
+        self.assertEqual(result["session_ids"], ["already-done", "old"])
+
     def test_failed_session_is_not_saved_in_state_and_is_selected_again(self):
         review = load_module()
         with tempfile.TemporaryDirectory() as tmp:
