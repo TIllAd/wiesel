@@ -25,7 +25,7 @@ Für den Bachelor Wirtschaftswissenschaften ist die Einführung „Perspektiven 
 
 Die Veranstaltung ist die studiengangsspezifische Einführung für den Bachelor Wirtschaftswissenschaften, einschließlich Studienrichtungen wie Nachhaltigkeit und FACT-S. Sie verbindet eine computergestützte Unternehmenssimulation mit Grundlagen zu Administration, Beschaffung und Lagerhaltung, Produktion, Vertrieb und Finanzen; außerdem gehören Gruppenpräsentation, wissenschaftliches Arbeiten und Schreiben sowie KI im Studium dazu.
 
-Studierende wählen im StudOn-Vorkurs einen von drei Durchgängen: Dienstag/Donnerstag, Mittwoch/Freitag oder einen Nachholkurs mit höherem Onlineanteil und mehreren kürzeren Präsenzterminen. Die Wahl einer Studienrichtung beim Anmelden dient nur dem Kennenlernen; die verbindliche Wahl erfolgt erst ab dem 3. Semester.
+Studierende wählen im [StudOn-Vorkurs](https://www.studon.fau.de/studon/ilias.php?baseClass=ilrepositorygui&ref_id=5137221) einen von drei Durchgängen: Dienstag/Donnerstag, Mittwoch/Freitag oder einen Nachholkurs mit höherem Onlineanteil und mehreren kürzeren Präsenzterminen. Der Vorkurs enthält die drei Kurse und alle weiterführenden Informationen. Die Wahl einer Studienrichtung beim Anmelden dient nur dem Kennenlernen; die verbindliche Wahl erfolgt erst ab dem 3. Semester.
 
 Für Dienstag/Donnerstag: Mittwoch ist der verpflichtende Selbstlern- und Vorbereitungstag für die Kleingruppenpräsentation bzw. den Ideenpitch und die digitale Rallye – kein freier Tag. Für Mittwoch/Freitag: Donnerstag ist der verpflichtende Selbstlern- und Vorbereitungstag mit denselben Aufgaben – ebenfalls kein freier Tag. Tage ohne Präsenztermin sind nicht automatisch frei; StudOn ist für weitere Aufgaben und verbindliche Angaben maßgeblich.
 

@@ -191,7 +191,7 @@ class QualityReviewTests(unittest.TestCase):
         self.assertIn("load_learning_layer()", source)
         self.assertIn('"usage_type"', source)
         budget_source = source[source.index("def todays_llm_cost_eur"):source.index("def budget_exhausted")]
-        self.assertIn('LLMUsage.usage_type != "quality_review"', budget_source)
+        self.assertIn('LLMUsage.usage_type.notin_(["quality_review", "chat_review"])', budget_source)
 
     def test_compose_mounts_isolated_quality_directory_and_job_script(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")

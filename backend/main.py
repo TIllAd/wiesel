@@ -596,7 +596,7 @@ def todays_llm_cost_eur() -> float:
     try:
         total = db.query(func.coalesce(func.sum(LLMUsage.estimated_cost_eur), 0.0)).filter(
             LLMUsage.created_at >= day_start_utc,
-            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type != "quality_review"),
+            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type.notin_(["quality_review", "chat_review"])),
         ).scalar()
         return float(total or 0.0)
     finally:

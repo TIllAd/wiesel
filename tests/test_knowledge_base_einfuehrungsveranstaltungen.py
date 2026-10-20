@@ -66,6 +66,18 @@ def test_wiwi_perspektiven_makes_pre_semester_registration_unambiguous():
     assert content.count("https://www.professur-wirtschaftspaedagogik.rw.fau.de/en/einfuhrung-perspektiven-der-wirtschaftswissenschaften/") == 1
 
 
+def test_wiwi_perspektiven_links_directly_to_the_studon_vorkurs_and_uses_correct_days():
+    overview = OVERVIEW.read_text(encoding="utf-8")
+    detail = (ROOT / "knowledge_base" / "planspiel" / "einfuehrungsveranstaltung.md").read_text(encoding="utf-8")
+    vorkurs_url = "https://www.studon.fau.de/studon/ilias.php?baseClass=ilrepositorygui&ref_id=5137221"
+
+    assert vorkurs_url in overview
+    assert vorkurs_url in detail
+    assert "Dienstag/Donnerstag" in overview
+    assert "Mittwoch/Freitag" in overview
+    assert "Ti+Do" not in overview + detail
+
+
 def test_wiwi_planspiel_does_not_describe_required_days_as_free_time():
     schedule = (ROOT / "knowledge_base" / "planspiel" / "ablauf-einfuehrungswoche.md").read_text(encoding="utf-8")
 
@@ -73,3 +85,13 @@ def test_wiwi_planspiel_does_not_describe_required_days_as_free_time():
     assert "→ Freitag (16.10.) frei!" not in schedule
     assert "→ Dienstag (13.10.) frei!" not in schedule
     assert "Anwesenheitspflicht" in schedule
+
+
+def test_wiwi_overview_explains_both_planspiel_schedules_without_inventing_free_days():
+    content = OVERVIEW.read_text(encoding="utf-8")
+
+    assert "Dienstag/Donnerstag: Mittwoch ist der verpflichtende Selbstlern- und Vorbereitungstag" in content
+    assert "Mittwoch/Freitag: Donnerstag ist der verpflichtende Selbstlern- und Vorbereitungstag" in content
+    assert "digitale Rallye" in content
+    assert "kein freier Tag" in content
+    assert "StudOn ist für weitere Aufgaben und verbindliche Angaben maßgeblich" in content

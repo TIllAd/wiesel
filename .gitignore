@@ -67,6 +67,8 @@ knowledge_base/fau-aktuell.md
 reports/
 backend/reports/
 backend/analytics/
+wiesel-reports/
+
 *.db
 *.db-shm
 *.db-wal

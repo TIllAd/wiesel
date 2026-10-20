@@ -24,13 +24,8 @@ ein detaillierter Zeitplan ist auf Campo und in StudOn zu finden. Anwesenheitspf
 Nachholkurs:
 die fünf genauen Termine, sowie Infos dazu, sind im Kurs und in Campo hinterlegt. Anwesenheitspflicht bitte beachten. Beim Nachholkurs handelt es sich um ein Blendend Learning Format mit mehr Onlineanteil, sowie  der Präsenzteil ist auf mehrere kürzere Termine aufgeteilt. Dieses Format eignet sich besonders z.B. für Personen mit Careverpflichtungen oder anderen nicht verschiebbaren Verpflichtungen während der Kurse DI+Do oder MI+FR. Ebenso ist dieser auch für Personen, beispielsweise in der ersten Vorlesungswoche krank waren oder keinen Platz mehr in den Kursen DI+Do oder MI+FR bekommen haben.
 Anmeldung zum Kurs:
-Treten Sie den
-StudOn „Vorkurs“
-über den folgenden
-Link
-bei.
-Dort finden sie drei Kurse
-sowie weiteren Informationen.
+Treten Sie dem [StudOn-Vorkurs](https://www.studon.fau.de/studon/ilias.php?baseClass=ilrepositorygui&ref_id=5137221) bei.
+Dort finden Sie die drei Kurse sowie weitere Informationen.
 Wenn Sie im Vorkurs sind müssen, Sie
 einen
 der drei Kurse auswählen, nur so können Sie teilnehmen.
