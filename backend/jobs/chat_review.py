@@ -30,6 +30,10 @@ LOGGER = logging.getLogger("jobs.chat_review")
 class ReviewJSONError(ValueError):
     """The model did not return the requested review schema."""
 
+    def __init__(self, message: str, *, raw_response: str | None = None) -> None:
+        super().__init__(message)
+        self.raw_response = raw_response
+
 
 class AllEvaluationsFailed(RuntimeError):
     """A run selected sessions but produced no usable evaluation."""
@@ -63,37 +67,44 @@ def _clean_text(value: object, limit: int) -> str:
 
 
 def parse_json_response(text: str) -> dict[str, Any]:
-    """Parse and validate the narrow map-result schema; never silently guess."""
+    """Parse and validate the map-result schema, retaining invalid output for diagnostics."""
     content = (text or "").strip()
     if content.startswith("```"):
         content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE)
     try:
         raw = json.loads(content)
     except json.JSONDecodeError as exc:
-        raise ReviewJSONError(f"ungültiges JSON: {exc.msg}") from exc
+        raise ReviewJSONError(f"ungültiges JSON: {exc.msg}", raw_response=text) from exc
     if not isinstance(raw, dict):
-        raise ReviewJSONError("JSON-Ergebnis ist kein Objekt")
+        raise ReviewJSONError("JSON-Ergebnis ist kein Objekt", raw_response=text)
 
     category = str(raw.get("kategorie", "")).strip().lower()
     if category not in CATEGORIES:
-        raise ReviewJSONError("unbekannte oder fehlende Kategorie")
+        raise ReviewJSONError("unbekannte oder fehlende Kategorie", raw_response=text)
     severity = raw.get("schwere")
     if not isinstance(severity, int) or isinstance(severity, bool) or not 0 <= severity <= 3:
-        raise ReviewJSONError("schwere muss eine ganze Zahl von 0 bis 3 sein")
+        raise ReviewJSONError("schwere muss eine ganze Zahl von 0 bis 3 sein", raw_response=text)
     proposal = raw.get("kb_vorschlag")
     if proposal is not None and not isinstance(proposal, str):
-        raise ReviewJSONError("kb_vorschlag muss String oder null sein")
+        raise ReviewJSONError("kb_vorschlag muss String oder null sein", raw_response=text)
 
-    required_text = ("thema", "begruendung", "auszug")
+    required_text = ("thema", "begruendung")
     if any(not isinstance(raw.get(field), str) for field in required_text):
-        raise ReviewJSONError("Pflichtfelder fehlen oder sind nicht textuell")
+        raise ReviewJSONError("Pflichtfelder fehlen oder sind nicht textuell", raw_response=text)
+    excerpt = raw.get("auszug")
+    if isinstance(excerpt, str):
+        excerpts = [excerpt]
+    elif isinstance(excerpt, list) and all(isinstance(item, str) for item in excerpt):
+        excerpts = excerpt
+    else:
+        raise ReviewJSONError("auszug muss ein String oder eine Liste von Strings sein", raw_response=text)
     return {
         "kategorie": category,
         "schwere": severity,
         "thema": _clean_text(raw["thema"], 120),
         "begruendung": _clean_text(raw["begruendung"], 500),
         "kb_vorschlag": _clean_text(proposal, 500) if proposal else None,
-        "auszug": _clean_text(raw["auszug"], 600),
+        "auszug": [_clean_text(item, 300) for item in excerpts[:2] if _clean_text(item, 300)],
     }
 
 
@@ -207,9 +218,12 @@ Antworte ausschließlich mit einem JSON-Objekt, ohne Markdown und ohne Zusatztex
   "schwere": 0,
   "thema": "kurzes Stichwort",
   "begruendung": "1-2 Sätze",
-  "kb_vorschlag": "konkrete Ergänzung oder Korrektur für die Wissensbasis, oder null",
-  "auszug": "maximal zwei kurze Zitate, die den Befund belegen"
+  "kb_vorschlag": null,
+  "auszug": ["erstes kurzes Zitat", "optional zweites kurzes Zitat"]
 }}
+
+Formatregeln: `kb_vorschlag` ist entweder ein String oder das JSON-Literal null.
+`auszug` ist entweder ein einzelner String oder eine JSON-Liste aus höchstens zwei Strings.
 
 <unterhaltung>
 {conversation}
@@ -422,7 +436,15 @@ def run_review(db_path: Path, directory: Path, since: datetime | None = None, dr
                 result["reviewed"] += 1
             except Exception as exc:
                 LOGGER.exception("Bewertung für Session %s fehlgeschlagen", session_id)
-                append_jsonl(eval_path, {"session_id": session_id, "reviewed_at": iso(now), "status": "error", "error": _clean_text(exc, 300)})
+                error_record: dict[str, Any] = {
+                    "session_id": session_id,
+                    "reviewed_at": iso(now),
+                    "status": "error",
+                    "error": _clean_text(exc, 300),
+                }
+                if isinstance(exc, ReviewJSONError) and exc.raw_response is not None:
+                    error_record["raw_response"] = exc.raw_response[:500]
+                append_jsonl(eval_path, error_record)
                 result["failed"] += 1
                 if is_non_transient_error(exc):
                     raise FatalReviewError(

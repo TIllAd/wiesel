@@ -124,17 +124,26 @@ class ChatReviewTests(unittest.TestCase):
             stored = json.loads((directory / "review_state.json").read_text(encoding="utf-8"))
             self.assertEqual(stored["reviewed_session_ids"], ["session-a", "session-b"])
 
-    def test_parse_json_response_accepts_schema_and_rejects_invalid_json(self):
+    def test_parse_json_response_accepts_string_or_string_list_excerpt_and_null_proposal(self):
         review = load_module()
         raw = """```json
-        {"kategorie":"wissensluecke","schwere":2,"thema":"Frist","begruendung":"Antwort blieb vage.","kb_vorschlag":"Frist erklären.","auszug":"Kurzes Zitat"}
+        {"kategorie":"wissensluecke","schwere":2,"thema":"Frist","begruendung":"Antwort blieb vage.","kb_vorschlag":null,"auszug":["Kurzes Zitat eins", "Kurzes Zitat zwei"]}
         ```"""
         result = review.parse_json_response(raw)
         self.assertEqual(result["kategorie"], "wissensluecke")
         self.assertEqual(result["schwere"], 2)
-        self.assertEqual(result["kb_vorschlag"], "Frist erklären.")
-        with self.assertRaises(review.ReviewJSONError):
+        self.assertIsNone(result["kb_vorschlag"])
+        self.assertEqual(result["auszug"], ["Kurzes Zitat eins", "Kurzes Zitat zwei"])
+        single_excerpt = review.parse_json_response(
+            '{"kategorie":"unauffaellig","schwere":0,"thema":"Keins","begruendung":"Unauffällig.","kb_vorschlag":null,"auszug":"Ein kurzes Zitat"}'
+        )
+        self.assertEqual(single_excerpt["auszug"], ["Ein kurzes Zitat"])
+
+    def test_parse_json_response_rejects_invalid_json_with_raw_response(self):
+        review = load_module()
+        with self.assertRaises(review.ReviewJSONError) as error:
             review.parse_json_response("not json")
+        self.assertEqual(error.exception.raw_response, "not json")
         with self.assertRaises(review.ReviewJSONError):
             review.parse_json_response('{"kategorie":"erfunden"}')
     def test_run_writes_external_artifacts_and_second_run_skips_reviewed_sessions(self):
@@ -185,6 +194,29 @@ class ChatReviewTests(unittest.TestCase):
 
         self.assertEqual(state["reviewed_session_ids"], [])
         self.assertEqual(second["selected"], 2)
+
+    def test_review_json_error_jsonl_contains_truncated_raw_model_response(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "test.db"
+            report_dir = root / "reports"
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            make_db(db_path, now)
+            raw = "x" * 700
+            review.evaluate_session = lambda _conn, _conversation: (_ for _ in ()).throw(
+                review.ReviewJSONError("invalid schema", raw_response=raw)
+            )
+
+            with self.assertRaises(review.AllEvaluationsFailed):
+                review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
+            records = [
+                json.loads(line)
+                for line in (report_dir / "evaluations" / "2026-10-20.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+
+        self.assertTrue(all(record["status"] == "error" for record in records))
+        self.assertTrue(all(record["raw_response"] == raw[:500] for record in records))
 
     def test_non_transient_type_error_aborts_without_retrying_each_session(self):
         review = load_module()
