@@ -234,6 +234,26 @@ Für parallele Nutzung WAL aktivieren:
 sqlite3 backend/wiesel.db "PRAGMA journal_mode=WAL;"
 ```
 
+## Täglicher Chat-Review
+
+Die Artefakte bleiben außerhalb des Repos in `~/wiesel-reports`. Das Verzeichnis muss einmal dem Benutzer gehören, der den Cronjob installiert; sonst erzeugt Docker wieder Root-Dateien, weil offenbar selbst Dateirechte ein Abenteuer sein müssen.
+
+```bash
+install -d -m 0755 -o "$(id -u)" -g "$(id -g)" ~/wiesel-reports
+```
+
+Der Job läuft mit derselben Host-UID/GID im bestehenden Container und kann daher Bericht und State schreiben, während die SQLite-DB weiter per Volume erreichbar bleibt:
+
+```cron
+15 3 * * * docker exec -u "$(id -u):$(id -g)" -w /app/backend wiesel-backend python -m jobs.chat_review >> "$HOME/wiesel-reports/cron.log" 2>&1
+```
+
+Ein Test ohne Anthropic-Aufrufe:
+
+```bash
+docker exec -u "$(id -u):$(id -g)" -w /app/backend wiesel-backend python -m jobs.chat_review --dry-run
+```
+
 ## Logs und Fehleranalyse
 
 Backend-Logs:

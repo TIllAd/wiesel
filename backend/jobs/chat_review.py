@@ -31,6 +31,14 @@ class ReviewJSONError(ValueError):
     """The model did not return the requested review schema."""
 
 
+class AllEvaluationsFailed(RuntimeError):
+    """A run selected sessions but produced no usable evaluation."""
+
+
+class FatalReviewError(RuntimeError):
+    """A non-transient provider or programming error stopped the whole run."""
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
@@ -141,7 +149,11 @@ def select_sessions(
     params: list[str] = [iso(cutoff)]
     since_clause = ""
     if since is not None:
-        since_clause = "AND activity.last_message_at >= datetime(?)"
+        since_clause = """AND EXISTS (
+            SELECT 1 FROM chat_messages since_message
+            WHERE since_message.session_id = sessions.id
+              AND datetime(since_message.created_at) >= datetime(?)
+        )"""
         params.append(iso(since))
     rows = conn.execute(
         f"""
@@ -276,7 +288,39 @@ def record_usage(
     return {**values, "cost_eur": eur}
 
 
-def claude_text(conn: sqlite3.Connection, prompt: str, max_tokens: int) -> tuple[str, dict[str, int | float]]:
+def claude_request_kwargs(prompt: str, *, max_tokens: int) -> dict[str, Any]:
+    """Keep this aligned with the deployed bot's supported SDK call shape."""
+    return {
+        "model": MODEL,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+
+def is_non_transient_error(exc: Exception) -> bool:
+    """Configuration/client errors must not be retried once per session."""
+    if isinstance(exc, TypeError):
+        return True
+    try:
+        import anthropic
+        fatal_types = tuple(
+            error_type for error_type in (
+                getattr(anthropic, "AuthenticationError", None),
+                getattr(anthropic, "PermissionDeniedError", None),
+                getattr(anthropic, "BadRequestError", None),
+                getattr(anthropic, "NotFoundError", None),
+                getattr(anthropic, "UnprocessableEntityError", None),
+            ) if isinstance(error_type, type)
+        )
+        if fatal_types and isinstance(exc, fatal_types):
+            return True
+    except ImportError:
+        pass
+    status_code = getattr(exc, "status_code", None)
+    return isinstance(status_code, int) and 400 <= status_code < 500 and status_code not in {408, 429}
+
+
+def claude_text(conn: sqlite3.Connection, prompt: str, *, max_tokens: int) -> tuple[str, dict[str, int | float]]:
     import anthropic
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -285,10 +329,7 @@ def claude_text(conn: sqlite3.Connection, prompt: str, max_tokens: int) -> tuple
     started = time.monotonic()
     try:
         response = anthropic.Anthropic(api_key=api_key).messages.create(
-            model=MODEL,
-            max_tokens=max_tokens,
-            temperature=0,
-            messages=[{"role": "user", "content": prompt}],
+            **claude_request_kwargs(prompt, max_tokens=max_tokens),
         )
     except Exception as exc:
         record_usage(conn, latency_ms=int((time.monotonic() - started) * 1000), error_type=type(exc).__name__)
@@ -315,8 +356,8 @@ def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[
                 raise
         except ReviewJSONError:
             raise
-        except Exception:
-            if attempt == 2:
+        except Exception as exc:
+            if is_non_transient_error(exc) or attempt == 2:
                 raise
             time.sleep(2**attempt)
     raise RuntimeError("unreachable")
@@ -383,6 +424,15 @@ def run_review(db_path: Path, directory: Path, since: datetime | None = None, dr
                 LOGGER.exception("Bewertung für Session %s fehlgeschlagen", session_id)
                 append_jsonl(eval_path, {"session_id": session_id, "reviewed_at": iso(now), "status": "error", "error": _clean_text(exc, 300)})
                 result["failed"] += 1
+                if is_non_transient_error(exc):
+                    raise FatalReviewError(
+                        f"Nicht vorübergehender Fehler bei Session {session_id}: {type(exc).__name__}: {exc}"
+                    ) from exc
+
+        if result["selected"] and result["reviewed"] == 0 and result["failed"]:
+            raise AllEvaluationsFailed(
+                f"Alle {result['failed']} ausgewählten Sessions konnten nicht bewertet werden; keine Review erzeugt."
+            )
 
         date_key = now.date().isoformat()
         if result["reviewed"] == 0 and date_key in state["reported_dates"]:

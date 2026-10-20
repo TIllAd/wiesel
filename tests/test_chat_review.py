@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 import sqlite3
 import tempfile
@@ -87,6 +88,32 @@ class ChatReviewTests(unittest.TestCase):
 
         self.assertEqual([session["id"] for session in selected], ["complete", "already-done"])
 
+    def test_selection_since_includes_an_old_session_with_a_new_message(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            db_path = Path(tmp) / "test.db"
+            make_db(db_path, now)
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                "INSERT INTO chat_messages VALUES (?, ?, ?, ?, ?)",
+                (7, "old", "assistant", "follow-up after the cutoff", "2026-10-19 08:00:00"),
+            )
+            conn.commit()
+            conn.row_factory = sqlite3.Row
+            selected = review.select_sessions(conn, set(), now - timedelta(minutes=30), datetime(2026, 10, 19))
+            conn.close()
+
+        self.assertIn("old", [session["id"] for session in selected])
+
+    def test_claude_request_kwargs_bind_to_installed_anthropic_messages_signature(self):
+        review = load_module()
+        import anthropic
+
+        kwargs = review.claude_request_kwargs("synthetic prompt", max_tokens=420)
+        inspect.signature(anthropic.resources.messages.Messages.create).bind(None, **kwargs)
+        self.assertNotIn("temperature", kwargs)
+
     def test_state_round_trip_and_missing_state_are_safe(self):
         review = load_module()
         with tempfile.TemporaryDirectory() as tmp:
@@ -140,6 +167,62 @@ class ChatReviewTests(unittest.TestCase):
             report = (report_dir / "reviews" / "2026-10-20.md").read_text(encoding="utf-8")
             self.assertIn("Tokenverbrauch dieses Laufs", report)
             self.assertIn("Geschätzte Kosten dieses Laufs", report)
+
+    def test_failed_session_is_not_saved_in_state_and_is_selected_again(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "test.db"
+            report_dir = root / "reports"
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            make_db(db_path, now)
+            review.evaluate_session = lambda _conn, _conversation: (_ for _ in ()).throw(review.ReviewJSONError("bad json"))
+
+            with self.assertRaises(review.AllEvaluationsFailed):
+                review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
+            state = review.load_state(report_dir)
+            second = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), dry_run=True, now=now)
+
+        self.assertEqual(state["reviewed_session_ids"], [])
+        self.assertEqual(second["selected"], 2)
+
+    def test_non_transient_type_error_aborts_without_retrying_each_session(self):
+        review = load_module()
+        calls = []
+
+        def broken_claude(_conn, _prompt, *, max_tokens):
+            self.assertEqual(max_tokens, 420)
+            calls.append("call")
+            raise TypeError("unsupported keyword")
+
+        review.claude_text = broken_claude
+        with self.assertRaises(TypeError):
+            review.evaluate_session(None, "synthetic conversation")
+
+        self.assertEqual(calls, ["call"])
+
+    def test_fatal_error_stops_run_after_first_session_without_state_update(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "test.db"
+            report_dir = root / "reports"
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            make_db(db_path, now)
+            calls = []
+
+            def broken_evaluate(_conn, _conversation):
+                calls.append("map")
+                raise TypeError("unsupported keyword")
+
+            review.evaluate_session = broken_evaluate
+            with self.assertRaises(review.FatalReviewError):
+                review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
+
+            state = review.load_state(report_dir)
+
+        self.assertEqual(calls, ["map"])
+        self.assertEqual(state["reviewed_session_ids"], [])
 
 
 if __name__ == "__main__":
