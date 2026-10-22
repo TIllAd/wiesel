@@ -8,7 +8,7 @@ Stand: 2026-09-23. Primärquellen: offizielle WiSo-Webseiten.
 - Prüfungsanmeldung, Fristen und organisatorische Prüfungsfragen: Prüfungsamt WiSo. Nicht zuständig für Immatrikulation, Rückmeldung oder Adresse; dafür die Studierendenverwaltung. Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenservice/pruefungsamt/
 - Auslandssemester oder Fragen internationaler Studierender: Büro für Internationale Beziehungen, LG 2.232, wiso-international@fau.de, 0911 5302-95627. Quelle: https://www.wiso.rw.fau.de/studium/international-studierende/international-office/
 - Praktikum, Berufseinstieg, Bewerbung, Career Day und Mentoring: Career Service WiSo, wiso-career-service@fau.de, 0911 5302-95678. Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/career-service-am-fachbereich/
-- Diskriminierung, Diversität, Studium ohne akademische Familientradition oder Raum der Stille: Diversity-Angebote WiSo und Mentoring/Support. Quelle: https://www.wiso.rw.fau.de/fachbereich/strategie/handlungsfeld-people/diversitaet-am-fachbereich/
+- Diskriminierung, Diversität, Studium ohne akademische Familientradition oder Raum der Stille: Diversity-Angebote WiSo und Mentoring/Support. Quelle: https://www.wiso.rw.fau.de/
 
 ## Fachstudienberatung: Bachelor
 - International Business Studies (B.Sc.): Nikhila Raghavan, nikhila.raghavan@fau.de.
