@@ -47,8 +47,9 @@ Mo, Mi, Do: 9:00–11:00 Uhr · Di: 9:00–11:00 Uhr UND zusätzlich 13:00–16:
 Kontakt: pruefungsamt@wiso.fau.de · [wiso.fau.de/pruefungsamt](https://www.wiso.rw.fau.de/pruefungsamt)
 [Navigation](https://www.google.com/maps/search/?api=1&query=Prüfungsamt+WiSo+FAU+Lange+Gasse+20+Nürnberg)
 
-**Studienbüro WiSo**
-studienbuero@wiso.fau.de
+**Infothek WiSo**
+Lange Gasse 20, 90403 Nürnberg
+Vor Ort erste Anlaufstelle. Für Fragen zum Studiengang: Fachstudienberatung Wirtschaftswissenschaften (B.A.), wiso-wiwi@fau.de · Kontakte aller Studiengänge: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/fachstudienberatung/
 
 ---
 

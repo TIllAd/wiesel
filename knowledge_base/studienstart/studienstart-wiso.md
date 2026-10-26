@@ -12,7 +12,8 @@ Gecrawlt am: 2026-06-26 · Zeitplan-Block übernommen aus wissen-basis.md am 202
 
 **Vorher erledigt haben:** IDm aktiviert, FAUcard validiert (jedes Semester!), Immatrikulationsbescheinigung griffbereit, Matrikelnummer notiert.
 
-**Kontakt Studienbüro WiSo:** studienbuero@wiso.fau.de · wiso.fau.de/studienberatung
+**Kontakt Fachstudienberatung Wirtschaftswissenschaften (B.A.):** wiso-wiwi@fau.de · Kontakte aller Studiengänge: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/fachstudienberatung/
+Hinweis: Die WiSo hat kein eigenes Studienbüro. Für Fragen zum Studiengang ist die Fachstudienberatung zuständig, vor Ort hilft die Infothek (Lange Gasse 20).
 
 ---
 
