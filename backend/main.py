@@ -38,6 +38,13 @@ import jwt
 import hmac as hmac_lib
 from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 from backend.evidence_guard import apply_evidence_guard
+from backend.config import (
+    ANTHROPIC_MODEL,
+    MODEL_PRICING,
+    PROMPT_TIER_THRESHOLD,
+    estimate_cost_usd as configured_estimate_cost_usd,
+    prompt_tokens,
+)
 
 APP_TIMEZONE = ZoneInfo("Europe/Berlin")
 WEEKDAY_DE = (
@@ -127,11 +134,12 @@ LTI_ENABLED = os.getenv("LTI_ENABLED", "false").lower() == "true"
 # Image input is unnecessary for the mentor test phase and would transmit image
 # data to the LLM provider. It remains disabled unless formally approved.
 IMAGE_UPLOAD_ENABLED = os.getenv("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 DEFAULT_GREETING = "Hi, ich bin Wisdom. Ich helfe dir, dich an der WiSo zurechtzufinden."
 SYSTEM_PROMPT_LEAK_FALLBACK = "Komm zum Punkt – was willst du über die WiSo wissen?"
 TECHNICAL_ERROR_FALLBACK = "Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal."
+LLM_REFUSAL_FALLBACK = "Dabei kann ich dir gerade nicht zuverlässig helfen. Frag bitte beim Studienbüro oder bei der zuständigen Beratungsstelle nach."
 AMBIGUOUS_FIRST_MESSAGE_FALLBACK = "{message}? Damit kann ich allein nichts anfangen. Gib mir bitte kurz mehr Kontext – zum Beispiel: Prüfungen, StudOn, Stundenplan, BAföG oder Studienstart."
+
 LLM_HEALTH = {"ok": bool(ANTHROPIC_API_KEY), "last_success": None, "last_error": None}
 MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(3 * 1024 * 1024)))
 MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "1600"))
@@ -141,15 +149,7 @@ MAX_QUERY_CHARS_HARD = int(os.getenv("MAX_QUERY_CHARS_HARD", "3000"))
 ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
-# USD pro 1 Mio Tokens. Defaults reflect Claude Haiku 4.5 public pricing:
-# base input 1.00, 5m cache write 1.25, cache hits/refreshes 0.10, output 5.00.
-# Configurable because model pricing changes more often than documentation survives.
-# (A familiar little tragedy.)
 USD_PER_EUR = float(os.getenv("USD_PER_EUR", "1.08"))
-LLM_INPUT_USD_PER_MTOK = float(os.getenv("LLM_INPUT_USD_PER_MTOK", "1.00"))
-LLM_OUTPUT_USD_PER_MTOK = float(os.getenv("LLM_OUTPUT_USD_PER_MTOK", "5.00"))
-LLM_CACHE_WRITE_USD_PER_MTOK = float(os.getenv("LLM_CACHE_WRITE_USD_PER_MTOK", "1.25"))
-LLM_CACHE_READ_USD_PER_MTOK = float(os.getenv("LLM_CACHE_READ_USD_PER_MTOK", "0.10"))
 
 # ============================================================================
 # SECURITY / OPS CONFIG (P0)
@@ -161,9 +161,7 @@ ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "").strip()
 # launches and bookmarked sessions during the domain migration.
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wisdom.chatbot-wiso.de,https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
-# Leer = Anthropic-API-Default (1.0). Für reproduzierbarere Eval-Läufe z. B. LLM_TEMPERATURE=0.2 in .env setzen.
-LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE", "").strip()
-# Deterministische Output-Guards (unabhängig vom Modell): "0" zum Deaktivieren.
+
 SAFETY_110_GUARD = os.getenv("SAFETY_110_GUARD", "1").strip() != "0"
 FORMAT_GUARD = os.getenv("FORMAT_GUARD", "1").strip() != "0"
 JWT_TTL_HOURS = int(os.getenv("JWT_TTL_HOURS", "2"))
@@ -940,17 +938,19 @@ def apply_output_guards(user_text: str, reply: str) -> str:
 
 
 def estimate_llm_cost_usd(
+    model: str = ANTHROPIC_MODEL,
     input_tokens: int = 0,
     output_tokens: int = 0,
     cache_creation_input_tokens: int = 0,
     cache_read_input_tokens: int = 0,
 ) -> float:
-    return (
-        input_tokens * LLM_INPUT_USD_PER_MTOK
-        + output_tokens * LLM_OUTPUT_USD_PER_MTOK
-        + cache_creation_input_tokens * LLM_CACHE_WRITE_USD_PER_MTOK
-        + cache_read_input_tokens * LLM_CACHE_READ_USD_PER_MTOK
-    ) / 1_000_000
+    return configured_estimate_cost_usd(
+        model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_creation_input_tokens=cache_creation_input_tokens,
+        cache_read_input_tokens=cache_read_input_tokens,
+    )
 
 
 def record_llm_usage(
@@ -965,11 +965,18 @@ def record_llm_usage(
     cache_creation_input_tokens = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
     cache_read_input_tokens = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
     estimated_cost_usd = estimate_llm_cost_usd(
+        model=model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cache_creation_input_tokens=cache_creation_input_tokens,
         cache_read_input_tokens=cache_read_input_tokens,
     )
+    prompt_token_count = prompt_tokens(input_tokens, cache_creation_input_tokens, cache_read_input_tokens)
+    last_warning_at = getattr(record_llm_usage, "_last_tier_warning_at", None)
+    now = datetime.utcnow()
+    if prompt_token_count > PROMPT_TIER_THRESHOLD and (last_warning_at is None or now - last_warning_at >= timedelta(hours=1)):
+        logger.warning("LLM prompt exceeds %s tokens; high Haiku 5.5 pricing tier applies (tokens=%s, model=%s)", PROMPT_TIER_THRESHOLD, prompt_token_count, model)
+        record_llm_usage._last_tier_warning_at = now
     db = SessionLocal()
     try:
         db.add(LLMUsage(
@@ -990,6 +997,28 @@ def record_llm_usage(
         db.rollback()
     finally:
         db.close()
+
+
+def record_llm_stop_flag(session_id: str, stop_reason: str) -> None:
+    """Keep provider refusals and empty truncations visible to mentor review."""
+    db = SessionLocal()
+    try:
+        db.add(ChatFlag(session_id=session_id, message_id=None, tag=f"llm_{stop_reason}"))
+        db.commit()
+    except Exception:
+        logger.error("Could not record LLM stop flag", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
+
+
+def response_text_blocks(content) -> str:
+    """Extract only visible text; thinking/tool blocks are never chat output."""
+    return "".join(
+        getattr(block, "text", "")
+        for block in (content or [])
+        if getattr(block, "type", None) == "text"
+    )
 
 
 # Ein Client für den Prozess. Async, damit ein 3–5-s-LLM-Call nicht den
@@ -1059,15 +1088,26 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
             max_tokens=LLM_MAX_TOKENS,
             system=system_blocks,
             messages=messages,
+            output_config={"effort": "low"},
+            thinking={"type": "disabled"},
             extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
-        if LLM_TEMPERATURE:
-            llm_kwargs["temperature"] = float(LLM_TEMPERATURE)
         response = await client.messages.create(**llm_kwargs)
         latency_ms = int((datetime.utcnow() - started_at).total_seconds() * 1000)
         record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, usage=response.usage, latency_ms=latency_ms)
         logger.info(f"LLM usage: input={response.usage.input_tokens} | output={response.usage.output_tokens} | cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)} | cache_write={getattr(response.usage, 'cache_creation_input_tokens', 0)} | latency_ms={latency_ms} | stop={response.stop_reason}")
-        text = response.content[0].text
+        text = response_text_blocks(response.content)
+        if response.stop_reason == "refusal":
+            logger.warning("Claude refused chat response for session %s", session_id)
+            record_llm_stop_flag(session_id, "refusal")
+            return LLM_REFUSAL_FALLBACK
+        if response.stop_reason == "max_tokens" and not text:
+            logger.warning("Claude returned no text before max_tokens for session %s", session_id)
+            record_llm_stop_flag(session_id, "max_tokens_no_text")
+            return LLM_REFUSAL_FALLBACK
+        if not text:
+            logger.warning("Claude returned no visible text for session %s; stop=%s", session_id, response.stop_reason)
+            return TECHNICAL_ERROR_FALLBACK
         if response.stop_reason == "max_tokens":
             # Nicht mitten im Satz enden lassen: letzten vollständigen Satz behalten.
             logger.warning("LLM-Antwort lief in max_tokens — wird sauber gekürzt")
@@ -1506,10 +1546,9 @@ async def costs_summary():
             "generated_at": now_app.isoformat(),
             "timezone": APP_TIMEZONE.key,
             "preise": {
-                "input_usd_per_mtok": LLM_INPUT_USD_PER_MTOK,
-                "output_usd_per_mtok": LLM_OUTPUT_USD_PER_MTOK,
-                "cache_write_usd_per_mtok": LLM_CACHE_WRITE_USD_PER_MTOK,
-                "cache_read_usd_per_mtok": LLM_CACHE_READ_USD_PER_MTOK,
+                "modell": ANTHROPIC_MODEL,
+                "staffel_ab_prompt_tokens": PROMPT_TIER_THRESHOLD,
+                "staffeln_usd_per_mtok": MODEL_PRICING.get(ANTHROPIC_MODEL, MODEL_PRICING["claude-haiku-5-5"]),
                 "usd_per_eur": USD_PER_EUR,
             },
             "gesamt": total,

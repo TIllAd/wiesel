@@ -8,7 +8,7 @@ Das Backend ist die zentrale Wiesel-Anwendung: Es liefert die Chat-UI aus, valid
 - SQLAlchemy + SQLite
 - PyJWT für Session Tokens
 - oauthlib für LTI-1.1/OAuth-1.0a-Signaturen
-- Anthropic SDK, Modell `claude-haiku-4-5`
+- Anthropic SDK; standardmäßig `claude-haiku-5-5`, per `ANTHROPIC_MODEL` überschreibbar
 - Prompt Caching für System-Prompt und Wissensbasis
 
 ## Struktur

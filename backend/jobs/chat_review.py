@@ -19,11 +19,30 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+try:  # python -m jobs.chat_review runs with /app/backend on sys.path.
+    from config import ANTHROPIC_REVIEW_MODEL, estimate_cost_usd
+except ImportError:  # Direct script loading in tests needs repository root.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from backend.config import ANTHROPIC_REVIEW_MODEL, estimate_cost_usd
+
 CATEGORIES = {
     "wissensluecke", "falsch_oder_unklar", "missbrauch", "sensibel", "kurios", "unauffaellig",
 }
-MODEL = "claude-haiku-4-5"
+MODEL = ANTHROPIC_REVIEW_MODEL
 USAGE_TYPE = "chat_review"
+REVIEW_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "kategorie": {"type": "string", "enum": sorted(CATEGORIES)},
+        "schwere": {"type": "integer", "minimum": 0, "maximum": 3},
+        "thema": {"type": "string"},
+        "begruendung": {"type": "string"},
+        "kb_vorschlag": {"type": ["string", "null"]},
+        "auszug": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+    },
+    "required": ["kategorie", "schwere", "thema", "begruendung", "kb_vorschlag", "auszug"],
+    "additionalProperties": False,
+}
 LOGGER = logging.getLogger("jobs.chat_review")
 
 
@@ -262,12 +281,13 @@ def estimate_cost_eur(usage: Any) -> tuple[float, float]:
     output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
     cache_write = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
     cache_read = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
-    usd = (
-        input_tokens * _price("LLM_INPUT_USD_PER_MTOK", "1.00")
-        + output_tokens * _price("LLM_OUTPUT_USD_PER_MTOK", "5.00")
-        + cache_write * _price("LLM_CACHE_WRITE_USD_PER_MTOK", "1.25")
-        + cache_read * _price("LLM_CACHE_READ_USD_PER_MTOK", "0.10")
-    ) / 1_000_000
+    usd = estimate_cost_usd(
+        MODEL,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_creation_input_tokens=cache_write,
+        cache_read_input_tokens=cache_read,
+    )
     eur_rate = _price("USD_PER_EUR", "1.08")
     return usd, usd / eur_rate if eur_rate else usd
 
@@ -308,6 +328,8 @@ def claude_request_kwargs(prompt: str, *, max_tokens: int) -> dict[str, Any]:
         "model": MODEL,
         "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
+        "output_config": {"effort": "low", "format": {"type": "json_schema", "schema": REVIEW_JSON_SCHEMA}},
+        "thinking": {"type": "disabled"},
     }
 
 
@@ -334,6 +356,14 @@ def is_non_transient_error(exc: Exception) -> bool:
     return isinstance(status_code, int) and 400 <= status_code < 500 and status_code not in {408, 429}
 
 
+def response_text_blocks(content: Any) -> str:
+    return "".join(
+        getattr(block, "text", "")
+        for block in (content or [])
+        if getattr(block, "type", None) == "text"
+    )
+
+
 def claude_text(conn: sqlite3.Connection, prompt: str, *, max_tokens: int) -> tuple[str, dict[str, int | float]]:
     import anthropic
 
@@ -349,7 +379,14 @@ def claude_text(conn: sqlite3.Connection, prompt: str, *, max_tokens: int) -> tu
         record_usage(conn, latency_ms=int((time.monotonic() - started) * 1000), error_type=type(exc).__name__)
         raise
     usage = record_usage(conn, response.usage, latency_ms=int((time.monotonic() - started) * 1000))
-    return response.content[0].text, usage
+    text = response_text_blocks(response.content)
+    if response.stop_reason == "refusal":
+        raise FatalReviewError("Anthropic verweigerte die Review-Ausgabe")
+    if response.stop_reason == "max_tokens" and not text:
+        raise FatalReviewError("Anthropic lieferte wegen max_tokens keinen Text")
+    if not text:
+        raise ReviewJSONError("Anthropic lieferte keinen Text")
+    return text, usage
 
 
 def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[str, Any], dict[str, int | float]]:
@@ -361,13 +398,7 @@ def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[
             text, usage = claude_text(conn, prompt, max_tokens=420)
             for key in total:
                 total[key] += usage.get(key, 0)  # type: ignore[operator]
-            try:
-                return parse_json_response(text), total
-            except ReviewJSONError:
-                if attempt == 0:
-                    prompt += "\nDeine vorige Ausgabe war kein gültiges Schema. Wiederhole ausschließlich gültiges JSON."
-                    continue
-                raise
+            return parse_json_response(text), total
         except ReviewJSONError:
             raise
         except Exception as exc:

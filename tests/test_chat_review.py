@@ -113,6 +113,9 @@ class ChatReviewTests(unittest.TestCase):
         kwargs = review.claude_request_kwargs("synthetic prompt", max_tokens=420)
         inspect.signature(anthropic.resources.messages.Messages.create).bind(None, **kwargs)
         self.assertNotIn("temperature", kwargs)
+        self.assertEqual(kwargs["output_config"]["effort"], "low")
+        self.assertEqual(kwargs["thinking"], {"type": "disabled"})
+        self.assertEqual(kwargs["output_config"]["format"]["type"], "json_schema")
 
     def test_state_round_trip_and_missing_state_are_safe(self):
         review = load_module()
