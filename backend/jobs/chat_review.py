@@ -30,15 +30,17 @@ CATEGORIES = {
 }
 MODEL = ANTHROPIC_REVIEW_MODEL
 USAGE_TYPE = "chat_review"
+# Structured Outputs unterstützt keine Zahlen- oder Längenbeschränkungen
+# (minimum/maximum, maxItems). Wertebereiche prüft parse_json_response.
 REVIEW_JSON_SCHEMA = {
     "type": "object",
     "properties": {
         "kategorie": {"type": "string", "enum": sorted(CATEGORIES)},
-        "schwere": {"type": "integer", "minimum": 0, "maximum": 3},
+        "schwere": {"type": "integer"},
         "thema": {"type": "string"},
         "begruendung": {"type": "string"},
-        "kb_vorschlag": {"type": ["string", "null"]},
-        "auszug": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+        "kb_vorschlag": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "auszug": {"type": "array", "items": {"type": "string"}},
     },
     "required": ["kategorie", "schwere", "thema", "begruendung", "kb_vorschlag", "auszug"],
     "additionalProperties": False,
@@ -101,8 +103,9 @@ def parse_json_response(text: str) -> dict[str, Any]:
     if category not in CATEGORIES:
         raise ReviewJSONError("unbekannte oder fehlende Kategorie", raw_response=text)
     severity = raw.get("schwere")
-    if not isinstance(severity, int) or isinstance(severity, bool) or not 0 <= severity <= 3:
-        raise ReviewJSONError("schwere muss eine ganze Zahl von 0 bis 3 sein", raw_response=text)
+    if not isinstance(severity, int) or isinstance(severity, bool):
+        raise ReviewJSONError("schwere muss eine ganze Zahl sein", raw_response=text)
+    severity = max(0, min(3, severity))
     proposal = raw.get("kb_vorschlag")
     if proposal is not None and not isinstance(proposal, str):
         raise ReviewJSONError("kb_vorschlag muss String oder null sein", raw_response=text)
@@ -242,8 +245,8 @@ Antworte ausschließlich mit einem JSON-Objekt, ohne Markdown und ohne Zusatztex
 }}
 
 Formatregeln: `kb_vorschlag` ist entweder ein String oder das JSON-Literal null.
-`auszug` ist entweder ein einzelner String oder eine JSON-Liste aus höchstens zwei Strings.
-
+`auszug` ist eine JSON-Liste aus höchstens zwei kurzen Strings.
+`schwere` ist eine ganze Zahl: 0 = unauffällig, 1 = leicht, 2 = deutlich, 3 = gravierend.
 <unterhaltung>
 {conversation}
 </unterhaltung>"""
