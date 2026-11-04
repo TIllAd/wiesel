@@ -325,13 +325,21 @@ def record_usage(
     return {**values, "cost_eur": eur}
 
 
-def claude_request_kwargs(prompt: str, *, max_tokens: int) -> dict[str, Any]:
-    """Keep this aligned with the deployed bot's supported SDK call shape."""
+def claude_request_kwargs(
+    prompt: str, *, max_tokens: int, schema: dict[str, Any] | None = REVIEW_JSON_SCHEMA
+) -> dict[str, Any]:
+    """Keep this aligned with the deployed bot's supported SDK call shape.
+
+    schema=None erzeugt freien Text (z. B. die Markdown-Zusammenfassung).
+    """
+    output_config: dict[str, Any] = {"effort": "low"}
+    if schema is not None:
+        output_config["format"] = {"type": "json_schema", "schema": schema}
     return {
         "model": MODEL,
         "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
-        "output_config": {"effort": "low", "format": {"type": "json_schema", "schema": REVIEW_JSON_SCHEMA}},
+        "output_config": output_config,
         "thinking": {"type": "disabled"},
     }
 
@@ -367,7 +375,13 @@ def response_text_blocks(content: Any) -> str:
     )
 
 
-def claude_text(conn: sqlite3.Connection, prompt: str, *, max_tokens: int) -> tuple[str, dict[str, int | float]]:
+def claude_text(
+    conn: sqlite3.Connection,
+    prompt: str,
+    *,
+    max_tokens: int,
+    schema: dict[str, Any] | None = REVIEW_JSON_SCHEMA,
+) -> tuple[str, dict[str, int | float]]:
     import anthropic
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -376,7 +390,7 @@ def claude_text(conn: sqlite3.Connection, prompt: str, *, max_tokens: int) -> tu
     started = time.monotonic()
     try:
         response = anthropic.Anthropic(api_key=api_key).messages.create(
-            **claude_request_kwargs(prompt, max_tokens=max_tokens),
+            **claude_request_kwargs(prompt, max_tokens=max_tokens, schema=schema),
         )
     except Exception as exc:
         record_usage(conn, latency_ms=int((time.monotonic() - started) * 1000), error_type=type(exc).__name__)
@@ -398,7 +412,7 @@ def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[
     prompt = map_prompt(conversation)
     for attempt in range(3):
         try:
-            text, usage = claude_text(conn, prompt, max_tokens=420)
+            text, usage = claude_text(conn, prompt, max_tokens=900)
             for key in total:
                 total[key] += usage.get(key, 0)  # type: ignore[operator]
             return parse_json_response(text), total
@@ -412,7 +426,7 @@ def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[
 
 
 def reduce_review(conn: sqlite3.Connection, evaluations: list[dict[str, Any]], reviewed_count: int) -> tuple[str, dict[str, int | float]]:
-    return claude_text(conn, reduce_prompt(evaluations, reviewed_count), max_tokens=1400)
+    return claude_text(conn, reduce_prompt(evaluations, reviewed_count), max_tokens=1400, schema=None)
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
