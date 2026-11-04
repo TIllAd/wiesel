@@ -38,6 +38,7 @@ import jwt
 import hmac as hmac_lib
 from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 from backend.evidence_guard import apply_evidence_guard
+from backend.review_api import load_evaluations, load_session_messages
 from backend.config import (
     ANTHROPIC_MODEL,
     MODEL_PRICING,
@@ -451,6 +452,32 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def review_database_path() -> Path:
+    """Resolve the SQLite file shared with the file-backed nightly review job."""
+    prefix = "sqlite:///"
+    if not DATABASE_URL.startswith(prefix):
+        raise HTTPException(status_code=503, detail="Review storage unavailable")
+    return Path(DATABASE_URL[len(prefix):])
+
+
+def review_evaluations_dir() -> Path:
+    return Path(os.getenv("CHAT_REVIEW_DIR", "/app/reports")) / "evaluations"
+
+
+_review_session_reads: dict[str, int] = {}
+
+
+def review_session_limit_exceeded() -> bool:
+    """Cap transcript retrieval globally at 50 per local calendar day per process."""
+    today = datetime.now(APP_TIMEZONE).date().isoformat()
+    _review_session_reads.clear() if set(_review_session_reads) != {today} else None
+    count = _review_session_reads.get(today, 0)
+    if count >= 50:
+        return True
+    _review_session_reads[today] = count + 1
+    return False
 
 
 ADMIN_COOKIE_NAME = "wiesel_admin_key"
@@ -1815,6 +1842,30 @@ async def flag_chat_session(request: ChatFlagRequest):
         return {"ok": True, "flag_id": flag.id, "session_id": request.session_id, "tag": tag, "created_at": json_timestamp(flag.created_at), "already_flagged": False}
     finally:
         db.close()
+
+
+@app.get("/api/review/evaluations", dependencies=[Depends(require_admin)])
+async def review_evaluations_endpoint(since: Optional[str] = None):
+    if since:
+        try:
+            since_date = datetime.strptime(since, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="since erwartet YYYY-MM-DD") from exc
+    else:
+        since_date = datetime.now(APP_TIMEZONE).date() - timedelta(days=6)
+    evaluations = load_evaluations(review_evaluations_dir(), review_database_path(), since_date)
+    return {"since": since_date.isoformat(), "evaluations": evaluations}
+
+
+@app.get("/api/review/session/{session_id}", dependencies=[Depends(require_admin)])
+async def review_session_endpoint(session_id: str):
+    if review_session_limit_exceeded():
+        raise HTTPException(status_code=429, detail="Tageslimit für Sitzungsabrufe erreicht")
+    messages = load_session_messages(review_database_path(), session_id)
+    logger.info("Review session retrieval: session_id=%s at=%s", session_id, datetime.now(timezone.utc).isoformat())
+    if not messages:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"session_id": session_id, "messages": messages}
 
 
 @app.get("/api/session/{session_id}", dependencies=[Depends(require_admin)])

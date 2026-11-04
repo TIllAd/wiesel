@@ -76,6 +76,11 @@ def report_dir() -> Path:
     return Path(os.getenv("CHAT_REVIEW_DIR", "/app/reports"))
 
 
+def summary_enabled() -> bool:
+    """Only the literal opt-in value keeps the legacy LLM reduce step alive."""
+    return os.getenv("CHAT_REVIEW_SUMMARY", "0").strip() == "1"
+
+
 def database_path() -> Path:
     return Path(os.getenv("WIESEL_DB_PATH", "/app/wiesel.db"))
 
@@ -84,6 +89,7 @@ def _clean_text(value: object, limit: int) -> str:
     text = " ".join(str(value or "").split())
     text = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", "[E-Mail entfernt]", text)
     text = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "[IP entfernt]", text)
+    text = re.sub(r"\b\d{8}\b", "[Matrikelnummer entfernt]", text)
     return text[:limit].rstrip()
 
 
@@ -252,8 +258,13 @@ Formatregeln: `kb_vorschlag` ist entweder ein String oder das JSON-Literal null.
 </unterhaltung>"""
 
 
-def reduce_prompt(evaluations: list[dict[str, Any]], reviewed_count: int) -> str:
+def reduce_prompt(
+    evaluations: list[dict[str, Any]], reviewed_count: int, category_counts: Counter[str]
+) -> str:
     serialized = json.dumps(evaluations, ensure_ascii=False, indent=2)
+    overview = ", ".join(
+        f"{category}={count}" for category, count in sorted(category_counts.items())
+    ) or "keine"
     return f"""Schreibe eine knappe interne Markdown-Review für Wisdom. Du erhältst
 nur strukturierte Meta-Bewertungen, keine vollständigen Gespräche. Erfinde keine
 Fakten oder Zitate. Nenne bei jedem konkreten Befund die vorhandene Session-ID.
@@ -267,6 +278,8 @@ Gliedere genau in diese Abschnitte:
 # Kuriose / lustige Highlights
 
 Berücksichtige: {reviewed_count} im aktuellen Lauf neu bewertete Sessions.
+Der Kurzüberblick muss diese bereits im Code berechneten Zahlen unverändert nutzen:
+Bewertungen heute: {reviewed_count}. Kategorien: {overview}.
 Auszüge kurz lassen; keine IPs, E-Mail-Adressen oder technischen Kennungen außer
 der Session-ID nennen. Sind keine Befunde einer Rubrik vorhanden, schreibe das klar.
 
@@ -425,8 +438,13 @@ def evaluate_session(conn: sqlite3.Connection, conversation: str) -> tuple[dict[
     raise RuntimeError("unreachable")
 
 
-def reduce_review(conn: sqlite3.Connection, evaluations: list[dict[str, Any]], reviewed_count: int) -> tuple[str, dict[str, int | float]]:
-    return claude_text(conn, reduce_prompt(evaluations, reviewed_count), max_tokens=1400, schema=None)
+def reduce_review(
+    conn: sqlite3.Connection,
+    evaluations: list[dict[str, Any]],
+    reviewed_count: int,
+    category_counts: Counter[str],
+) -> tuple[str, dict[str, int | float]]:
+    return claude_text(conn, reduce_prompt(evaluations, reviewed_count, category_counts), max_tokens=3000, schema=None)
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
@@ -505,18 +523,21 @@ def run_review(db_path: Path, directory: Path, since: datetime | None = None, dr
                 f"Alle {result['failed']} ausgewählten Sessions konnten nicht bewertet werden; keine Review erzeugt."
             )
 
+        if not summary_enabled():
+            return result
+
         date_key = now.date().isoformat()
         if result["reviewed"] == 0 and date_key in state["reported_dates"]:
             return result
         evaluations = load_today_evaluations(eval_path)
         if not evaluations:
             return result
+        category_counts = Counter(item["bewertung"].get("kategorie", "unbekannt") for item in evaluations)
         reduce_items = [
             {"session_id": item["session_id"], "bewertung": item["bewertung"]}
             for item in evaluations
         ]
-        markdown, usage = reduce_review(conn, reduce_items, len(reduce_items))
-        category_counts = Counter(item["bewertung"].get("kategorie", "unbekannt") for item in evaluations)
+        markdown, usage = reduce_review(conn, reduce_items, len(reduce_items), category_counts)
         total_tokens = int(
             sum(run_map_usage[key] for key in run_map_usage if key != "cost_eur")
             + sum(int(usage.get(key, 0) or 0) for key in usage if key != "cost_eur")

@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -168,9 +169,17 @@ class ChatReviewTests(unittest.TestCase):
                 }, {"input_tokens": 10, "output_tokens": 5, "cost_eur": 0.001}
 
             review.evaluate_session = fake_evaluate
-            review.reduce_review = lambda _conn, _items, _count: ("# Kurzüberblick\nSynthetischer Test.", {"input_tokens": 5, "output_tokens": 4, "cost_eur": 0.002})
-            first = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
-            second = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now + timedelta(minutes=1))
+            review.reduce_review = lambda _conn, _items, _count, _categories: ("# Kurzüberblick\nSynthetischer Test.", {"input_tokens": 5, "output_tokens": 4, "cost_eur": 0.002})
+            previous = os.environ.get("CHAT_REVIEW_SUMMARY")
+            os.environ["CHAT_REVIEW_SUMMARY"] = "1"
+            try:
+                first = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
+                second = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now + timedelta(minutes=1))
+            finally:
+                if previous is None:
+                    os.environ.pop("CHAT_REVIEW_SUMMARY", None)
+                else:
+                    os.environ["CHAT_REVIEW_SUMMARY"] = previous
 
             self.assertEqual(first["reviewed"], 2)
             self.assertEqual(second["selected"], 0)
@@ -179,6 +188,58 @@ class ChatReviewTests(unittest.TestCase):
             report = (report_dir / "reviews" / "2026-10-20.md").read_text(encoding="utf-8")
             self.assertIn("Tokenverbrauch dieses Laufs", report)
             self.assertIn("Geschätzte Kosten dieses Laufs", report)
+
+    def test_summary_is_disabled_by_default_after_individual_evaluations(self):
+        review = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "test.db"
+            report_dir = root / "reports"
+            now = datetime(2026, 10, 20, 12, 0, 0)
+            make_db(db_path, now)
+            review.evaluate_session = lambda _conn, _conversation: (
+                {"kategorie": "wissensluecke", "schwere": 1, "thema": "Test", "begruendung": "Fund.", "kb_vorschlag": None, "auszug": []},
+                {"input_tokens": 1, "output_tokens": 1, "cost_eur": 0.0},
+            )
+            review.reduce_review = lambda *_args: self.fail("Reduce darf bei CHAT_REVIEW_SUMMARY=0 nicht laufen")
+
+            previous = os.environ.get("CHAT_REVIEW_SUMMARY")
+            os.environ["CHAT_REVIEW_SUMMARY"] = "0"
+            try:
+                result = review.run_review(db_path, report_dir, since=datetime(2026, 10, 20), now=now)
+            finally:
+                if previous is None:
+                    os.environ.pop("CHAT_REVIEW_SUMMARY", None)
+                else:
+                    os.environ["CHAT_REVIEW_SUMMARY"] = previous
+
+            self.assertEqual(result["reviewed"], 2)
+            self.assertIsNone(result["report_path"])
+            self.assertFalse((report_dir / "reviews" / "2026-10-20.md").exists())
+
+    def test_reduce_prompt_receives_code_calculated_category_counts(self):
+        review = load_module()
+        prompt = review.reduce_prompt(
+            [{"session_id": "one", "bewertung": {"kategorie": "wissensluecke"}}],
+            3,
+            {"wissensluecke": 2, "unauffaellig": 1},
+        )
+
+        self.assertIn("Bewertungen heute: 3", prompt)
+        self.assertIn("wissensluecke=2", prompt)
+        self.assertIn("unauffaellig=1", prompt)
+
+    def test_optional_summary_uses_3000_tokens(self):
+        review = load_module()
+        captured = {}
+
+        def fake_claude(_conn, _prompt, *, max_tokens, schema):
+            captured.update(max_tokens=max_tokens, schema=schema)
+            return "# Kurzüberblick", {"input_tokens": 0, "output_tokens": 0, "cost_eur": 0.0}
+
+        review.claude_text = fake_claude
+        review.reduce_review(None, [], 0, {})
+        self.assertEqual(captured, {"max_tokens": 3000, "schema": None})
 
     def test_dry_run_loads_job_written_state_and_excludes_reviewed_sessions(self):
         review = load_module()
@@ -246,7 +307,7 @@ class ChatReviewTests(unittest.TestCase):
         calls = []
 
         def broken_claude(_conn, _prompt, *, max_tokens):
-            self.assertEqual(max_tokens, 420)
+            self.assertEqual(max_tokens, 900)
             calls.append("call")
             raise TypeError("unsupported keyword")
 
