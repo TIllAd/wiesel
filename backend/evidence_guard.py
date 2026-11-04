@@ -10,9 +10,8 @@ _URL_RE = re.compile(r"https?://[^\s)>\]}]+", re.IGNORECASE)
 # plausible-sounding detail. Broad study orientation deliberately stays outside.
 _EVIDENCE_REQUIRED_RE = re.compile(
     r"\b(prüf(?:ung|ungen|ungs|ungsamt)|gop|wiederhol\w*|durchgefall\w*|"
-    r"rücktritt\w*|abmeld\w*|krank\w*|attest\w*|frist\w*|zulassung\w*|"
-    r"anerkennung\w*|bafoeg|bafög|ansprechpartner\w*|ansprechperson\w*|"
-    r"studienberatung\w*|kontakt(?:daten)?|e[- ]?mail(?:adresse)?)\b",
+    r"rücktritt\w*|krank\w*|attest\w*|frist\w*|zulassung\w*|"
+    r"anerkennung\w*|bafoeg|bafög)\b",
     re.IGNORECASE,
 )
 

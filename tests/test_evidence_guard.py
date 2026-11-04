@@ -47,6 +47,24 @@ def test_unverbindliche_orientierungsantwort_bleibt_unveraendert():
     assert apply_evidence_guard("Was ist der Unterschied zwischen Campo und StudOn?", reply, KB) == reply
 
 
+def test_studienberatung_ohne_sichtbaren_link_wird_nicht_durch_pruefungsregel_ersetzt():
+    reply = "Die Zentrale Studienberatung WiSo hilft bei allgemeinen Fragen zum Studium."
+
+    assert apply_evidence_guard("Wo ist die Studienberatung?", reply, KB) == reply
+
+
+def test_vorlesungsabmeldung_ohne_pruefungsbezug_wird_nicht_durch_pruefungsamt_ersetzt():
+    reply = "Ob du dich abmelden kannst, hängt von der jeweiligen Veranstaltung ab."
+
+    assert apply_evidence_guard("Kann ich mich von einer Vorlesung abmelden?", reply, KB) == reply
+
+
+def test_fau_mailadresse_ohne_sichtbaren_link_wird_nicht_durch_pruefungsamt_ersetzt():
+    reply = "Deine FAU-Mailadresse findest du in den offiziellen IT-Konten-Einstellungen."
+
+    assert apply_evidence_guard("Wie ist meine FAU-Mailadresse aufgebaut?", reply, KB) == reply
+
+
 def test_chat_pipeline_runs_the_evidence_gate_with_the_loaded_knowledge_base():
     main = (ROOT / "backend" / "main.py").read_text(encoding="utf-8")
 
