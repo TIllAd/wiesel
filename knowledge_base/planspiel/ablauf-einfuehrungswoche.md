@@ -12,6 +12,8 @@ Stand: 2026-07-09
 
 Ziel der Einführungswoche: Kennenlernen unter den Erstsemestern und erster Kontakt mit der WiSo. Offene Fragen sollen direkt zu Studienbeginn geklärt werden.
 
+Für Fragen zur Einführungswoche, zum Planspiel sowie zu Coaching und Mentoring ist wiso-mentoren@fau.de der passende Kontakt.
+
 ## Tag 1: Begrüßung & Get-Together (Montag, 12.10.2026)
 
 Am ersten Tag erhalten die Studierenden allgemeine Infos zum Studium an der FAU-WiSo. Bekannte Persönlichkeiten (Studiendekan, Nürnbergs Oberbürgermeister, Vorsitzende der Fachschaften) heißen die neuen Bachelorstudierenden willkommen.
@@ -71,7 +73,7 @@ Der Ablauf der Einführungswoche erstreckt sich insgesamt über Dienstag bis Fre
 | 09:45 – 10:15 | Begrüßung, Fragen & Anmeldung Kurs „Zukunftsthemen WiWi" |
 | 10:15 – 11:15 | 3. Runde Computer-Planspiel |
 | 11:30 – 12:30 | 4. Runde Computer-Planspiel |
-| 12:30 – 12:45 | Offene Fragerunde zum Studium, gemeinsame Stundenplanerstellung mit Mentor/-innen |
+| 12:30 – 12:45 | Offene Fragerunde zum Studium, gemeinsame Stundenplanerstellung mit Mentorinnen und Mentoren |
 | 12:45 – 13:30 | Mittagspause |
 | 13:30 – 16:00 | Kleingruppenpräsentationen / Ideenpitches halten |
 | 16:00 – 16:15 | Evaluation der Veranstaltung |
