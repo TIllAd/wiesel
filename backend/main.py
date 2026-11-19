@@ -266,6 +266,16 @@ class ChatFlag(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class UeqSFeedback(Base):
+    """One voluntary, structured UEQ-S answer; no chat text is copied here."""
+    __tablename__ = "ueq_s_feedback"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, index=True)
+    item_key = Column(String, index=True)
+    value = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class LTINonce(Base):
     """Consumed OAuth nonces. Stored independently of sessions so a failed
     launch cannot be replayed and successful nonces survive session cleanup."""
@@ -326,6 +336,7 @@ def cleanup_expired_data() -> None:
         if expired_session_ids:
             db.query(ChatMessage).filter(ChatMessage.session_id.in_(expired_session_ids)).delete(synchronize_session=False)
             db.query(ChatFlag).filter(ChatFlag.session_id.in_(expired_session_ids)).delete(synchronize_session=False)
+            db.query(UeqSFeedback).filter(UeqSFeedback.session_id.in_(expired_session_ids)).delete(synchronize_session=False)
             db.query(SessionRecord).filter(SessionRecord.id.in_(expired_session_ids)).delete(synchronize_session=False)
         db.query(LLMUsage).filter(LLMUsage.created_at < usage_cutoff).delete(synchronize_session=False)
         db.commit()
@@ -338,6 +349,7 @@ def cleanup_expired_data() -> None:
 # ============================================================================
 # LTI 1.1 SIGNATURE VALIDATION
 # ============================================================================
+
 
 def _nonce_already_used(nonce: str) -> bool:
     db = SessionLocal()
@@ -437,6 +449,12 @@ class ChatResponse(BaseModel):
 class ChatFlagRequest(BaseModel):
     session_id: str
     tag: str = "auffaelligkeit"
+
+
+class UeqSFeedbackRequest(BaseModel):
+    session_id: str
+    item_key: str
+    value: int
 
 
 class WikiResponse(BaseModel):
@@ -1811,6 +1829,30 @@ async def usage_timeseries(start: str, end: str, granularity: str = "hour", sinc
             "peak_hour_messages": peak["user_messages"] if peak else 0,
             "points": points,
         }
+    finally:
+        db.close()
+
+
+@app.post("/api/feedback/ueq-s")
+async def record_ueq_s_feedback(request: UeqSFeedbackRequest):
+    allowed_items = {"supportive", "easy", "efficient", "clear", "exciting", "interesting", "inventive", "novel"}
+    if request.item_key not in allowed_items or request.value not in range(1, 8):
+        raise HTTPException(status_code=400, detail="Invalid UEQ-S response")
+    db = SessionLocal()
+    try:
+        if not db.query(SessionRecord).filter(SessionRecord.id == request.session_id).first():
+            raise HTTPException(status_code=401, detail="Invalid session")
+        existing = db.query(UeqSFeedback).filter(
+            UeqSFeedback.session_id == request.session_id,
+            UeqSFeedback.item_key == request.item_key,
+        ).first()
+        if existing:
+            existing.value = request.value
+            db.commit()
+            return {"ok": True, "updated": True}
+        db.add(UeqSFeedback(session_id=request.session_id, item_key=request.item_key, value=request.value))
+        db.commit()
+        return {"ok": True, "updated": False}
     finally:
         db.close()
 

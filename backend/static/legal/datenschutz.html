@@ -25,6 +25,7 @@
 <ul>
 <li>Chatnachrichten und Antworten von Wisdom mit Zeitstempel und technischer Sitzungskennung;</li>
 <li>bei einer Markierung als Testfall: Grund der Markierung, Sitzungskennung und Zeitstempel; die zugehörige Unterhaltung bleibt für die Auswertung verfügbar;</li>
+<li>bei einer freiwilligen UEQ-S-Bewertung: ausgewähltes Gegensatzpaar, Skalenwert (1 bis 7), technische Sitzungskennung und Zeitstempel; Chatnachrichten werden nicht als Teil der Bewertung übertragen;</li>
 <li>Nutzungsdaten des Sprachmodells: Modellname, Tokenwerte, geschätzte Kosten, Laufzeit und Fehlerart;</li>
 <li>IP-Adressen ausschließlich im Arbeitsspeicher zur Anfragenbegrenzung; sie werden nach aktuellem Anwendungscode nicht in der Datenbank gespeichert;</li>
 <li>Wisdom wird derzeit ausschließlich über die öffentliche Website genutzt. Die LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert; es werden keine Nutzerkennungen, Namen oder Kursdaten aus StudOn übernommen.</li>
@@ -40,7 +41,7 @@
 <p>Für Hosting, Betrieb und Schutz vor Angriffen dürfen nur die im tatsächlichen Produktivbetrieb eingesetzten technischen Auftragsverarbeiter eingesetzt werden. Die verbindliche Liste dieser Dienstleister wird von der FAU-Betriebsverantwortung geführt und muss vor dem Livegang mit dieser Erklärung abgeglichen werden.</p>
 
 <h2>Speicherdauer</h2>
-<p>Sitzungsdaten und nicht markierte Chatnachrichten werden spätestens 30 Tage nach der letzten Nutzung gelöscht. Als Testfall markierte Unterhaltungen einschließlich Markierungsgrund werden für die Mentor:innen-Auswertung höchstens 90 Tage gespeichert und danach gelöscht. Nutzungsdaten des Sprachmodells werden höchstens 90 Tage gespeichert. IP-Adressen werden nur flüchtig zur Anfragenbegrenzung verarbeitet und nicht in der Datenbank gespeichert. Die Löschung wird beim Start und während des Betriebs technisch ausgeführt. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</p>
+<p>Sitzungsdaten und nicht markierte Chatnachrichten werden spätestens 30 Tage nach der letzten Nutzung gelöscht. Freiwillige UEQ-S-Bewertungen werden mit der zugehörigen Sitzung spätestens nach 30 Tagen gelöscht. Als Testfall markierte Unterhaltungen einschließlich Markierungsgrund werden für die Mentor:innen-Auswertung höchstens 90 Tage gespeichert und danach gelöscht. Nutzungsdaten des Sprachmodells werden höchstens 90 Tage gespeichert. IP-Adressen werden nur flüchtig zur Anfragenbegrenzung verarbeitet und nicht in der Datenbank gespeichert. Die Löschung wird beim Start und während des Betriebs technisch ausgeführt. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</p>
 
 <h2>Deine Rechte</h2>
 <p>Du hast nach Maßgabe der DSGVO das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Bei einer Verarbeitung auf Grundlage einer Einwilligung kannst du diese jederzeit mit Wirkung für die Zukunft widerrufen. Wegen der technischen Sitzungskennung kann die Zuordnung eines Chatverlaufs bei einer Anfrage eingeschränkt sein.</p>

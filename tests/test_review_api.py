@@ -53,6 +53,27 @@ class ReviewApiTests(unittest.TestCase):
         self.assertEqual(result[0]["kategorie"], "falsch_oder_unklar")
         self.assertEqual(result[0]["auszug"], ["Antwort"])
 
+    def test_load_evaluations_uses_raw_timestamp_when_sqlite_cannot_parse_it(self):
+        review_api = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evaluations = root / "evaluations"
+            evaluations.mkdir()
+            (evaluations / "2026-11-04.jsonl").write_text(
+                json.dumps({"session_id": "public-session", "reviewed_at": "2026-11-04 09:00:00", "status": "ok", "bewertung": {"kategorie": "wissensluecke", "schwere": 2, "thema": "Frist", "begruendung": "Unklar.", "kb_vorschlag": None, "auszug": []}}) + "\n",
+                encoding="utf-8",
+            )
+            db_path = root / "wiesel.db"
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE chat_messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, content TEXT, created_at DATETIME)")
+            conn.execute("INSERT INTO chat_messages VALUES (1, 'public-session', 'user', 'Frage', 'not-a-sqlite-date')")
+            conn.commit()
+            conn.close()
+
+            result = review_api.load_evaluations(evaluations, db_path, datetime(2026, 11, 4).date())
+
+        self.assertEqual(result[0]["letzte_nachricht_am"], "not-a-sqlite-date")
+
     def test_load_session_messages_masks_email_and_matrikelnummer(self):
         review_api = load_module()
         with tempfile.TemporaryDirectory() as tmp:

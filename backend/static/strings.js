@@ -9,6 +9,7 @@ window.STRINGS = {
     hbadge: 'FAU WISO',
     hsub: 'Dein Kompass durch die WiSo',
     homeLink: 'Zur WiSo-Startseite',
+
     flagBtn: 'Testfall markieren',
     flagHint: 'Für Mentor:innen: auffällige oder unklare Antworten für die Auswertung markieren.',
     flagBtnMarked: 'Chat als Auffälligkeit markiert',
@@ -107,6 +108,7 @@ window.STRINGS = {
     hbadge: 'FAU WISO',
     hsub: 'Your compass through WiSo',
     homeLink: 'Open WiSo homepage',
+
     flagBtn: 'Mark test case',
     flagHint: 'For mentors: mark unclear or notable answers for review.',
     flagBtnMarked: 'Chat marked as notable',

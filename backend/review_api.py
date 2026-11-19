@@ -31,7 +31,8 @@ def _last_message_dates(db_path: Path, session_ids: set[str]) -> dict[str, str |
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         rows = conn.execute(
-            f"""SELECT session_id, MAX(datetime(created_at)) AS last_message_at
+            f"""SELECT session_id,
+                       COALESCE(MAX(datetime(created_at)), MAX(created_at)) AS last_message_at
                 FROM chat_messages WHERE session_id IN ({placeholders})
                 GROUP BY session_id""",
             tuple(session_ids),
