@@ -1,6 +1,6 @@
 """
-Wiesel LTI 1.1 Backend
-FastAPI app with LTI launch endpoint, chat API, and SQLite session management.
+WiSdom Backend
+FastAPI app with public chat, chat API, internal area and SQLite session management.
 """
 
 import os
@@ -13,7 +13,7 @@ import base64
 import binascii
 from collections import defaultdict, deque
 from io import BytesIO
-from urllib.parse import urlparse, unquote
+from urllib.parse import unquote
 from dotenv import load_dotenv
 load_dotenv()
 from datetime import datetime, timedelta, timezone
@@ -36,7 +36,6 @@ from sqlalchemy.orm import sessionmaker, Session as SQLSession
 import anthropic
 import jwt
 import hmac as hmac_lib
-from oauthlib.oauth1.rfc5849 import signature as oauth_signature
 from backend.evidence_guard import apply_evidence_guard
 from backend.review_api import load_evaluations, load_session_messages
 from backend.config import (
@@ -95,7 +94,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Wisdom Backend",
-    description="LTI 1.1 Backend for the Wisdom Chatbot (FAU WiSo)",
+    description="Backend for the WiSdom chatbot (FAU WiSo)",
     version="0.1.0",
     docs_url="/api/docs",
     redoc_url=None,
@@ -122,16 +121,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # CONFIG
 # ============================================================================
 
-LTI_CONSUMER_KEY = os.getenv("LTI_CONSUMER_KEY", "test_consumer_key_mock")
-LTI_CONSUMER_SECRET = os.getenv("LTI_CONSUMER_SECRET", "test_consumer_secret_mock")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "wiesel_jwt_secret_dev")
 JWT_ALGORITHM = "HS256"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wiesel.db")
-MOCK_LTI_MODE = os.getenv("MOCK_LTI_MODE", "true").lower() == "true"
-# Wisdom is currently a public website, not a StudOn/LTI integration. Keep the
-# implementation behind an explicit opt-in so it cannot process LTI data by accident.
-LTI_ENABLED = os.getenv("LTI_ENABLED", "false").lower() == "true"
 # Image input is unnecessary for the mentor test phase and would transmit image
 # data to the LLM provider. It remains disabled unless formally approved.
 IMAGE_UPLOAD_ENABLED = os.getenv("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"
@@ -158,7 +151,7 @@ USD_PER_EUR = float(os.getenv("USD_PER_EUR", "1.08"))
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "").strip()
-# Wisdom is the canonical public host. Keep Wiesel temporarily for existing LTI
+# Wisdom is the canonical public host. Keep Wiesel temporarily for
 # launches and bookmarked sessions during the domain migration.
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://wisdom.chatbot-wiso.de,https://wiesel.chatbot-wiso.de").split(",") if o.strip()]
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
@@ -199,7 +192,6 @@ def _cf_access_issuer() -> str:
 
 
 _DEV_JWT_SECRETS = {"wiesel_jwt_secret_dev", ""}
-_DEV_LTI_SECRETS = {"test_consumer_secret_mock", ""}
 
 
 def validate_config() -> None:
@@ -210,16 +202,10 @@ def validate_config() -> None:
             problems.append("ANTHROPIC_API_KEY fehlt")
         if JWT_SECRET in _DEV_JWT_SECRETS:
             problems.append("JWT_SECRET fehlt oder steht auf Dev-Default")
-        if not MOCK_LTI_MODE and LTI_CONSUMER_SECRET in _DEV_LTI_SECRETS:
-            problems.append("LTI_CONSUMER_SECRET fehlt oder steht auf Dev-Default")
         if not ADMIN_API_KEY:
             problems.append("ADMIN_API_KEY fehlt (Log-/Analytics-Endpoints brauchen ihn)")
     if problems:
         raise RuntimeError("Unsichere Konfiguration in production: " + "; ".join(problems))
-    if MOCK_LTI_MODE:
-        # Bewusst kein Hard-Fail: Default-Umstellung auf false erst NACH einem
-        # verifizierten echten StudOn-Launch (Fix-Plan Phase 1, Schritt 1 → 2).
-        logger.critical("MOCK_LTI_MODE ist AKTIV — OAuth-Signaturen werden NICHT geprüft. Nur für Test/Debug akzeptabel.")
 
 
 validate_config()
@@ -274,14 +260,6 @@ class UeqSFeedback(Base):
     item_key = Column(String, index=True)
     value = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class LTINonce(Base):
-    """Consumed OAuth nonces. Stored independently of sessions so a failed
-    launch cannot be replayed and successful nonces survive session cleanup."""
-    __tablename__ = "lti_nonces"
-    nonce = Column(String, primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class LLMUsage(Base):
@@ -345,89 +323,6 @@ def cleanup_expired_data() -> None:
         logger.error("Retention cleanup failed", exc_info=True)
     finally:
         db.close()
-
-# ============================================================================
-# LTI 1.1 SIGNATURE VALIDATION
-# ============================================================================
-
-
-def _nonce_already_used(nonce: str) -> bool:
-    db = SessionLocal()
-    try:
-        return db.query(LTINonce).filter(LTINonce.nonce == nonce).first() is not None
-    finally:
-        db.close()
-
-
-def _consume_nonce(nonce: str) -> None:
-    """Persist a nonce after successful validation; prune entries older than the
-    timestamp window (they can no longer pass the skew check anyway)."""
-    db = SessionLocal()
-    try:
-        db.add(LTINonce(nonce=nonce))
-        db.query(LTINonce).filter(
-            LTINonce.created_at < datetime.utcnow() - timedelta(hours=2)
-        ).delete()
-        db.commit()
-    except Exception:
-        db.rollback()
-        logger.error("Could not persist LTI nonce", exc_info=True)
-    finally:
-        db.close()
-
-
-def validate_lti_request(uri: str, params: dict, body: str = "") -> tuple[bool, str]:
-    """LTI 1.1 OAuth 1.0a validation (HMAC-SHA1).
-
-    Fix 2026-07: the previous version collected the body parameters via
-    collect_parameters() AND re-added `params` afterwards, so every parameter
-    appeared twice in the signature base string — legitimate launches could
-    never validate. The base string is now built from the form body exactly
-    once (plus any query-string parameters), per RFC 5849 §3.4.1.3.
-    """
-    client_key = params.get("oauth_consumer_key", "")
-    nonce      = params.get("oauth_nonce", "")
-    timestamp  = params.get("oauth_timestamp", "0")
-
-    if client_key != LTI_CONSUMER_KEY:
-        return False, f"Unknown consumer key: {client_key!r}"
-
-    if MOCK_LTI_MODE:
-        logger.warning("MOCK_LTI_MODE active – skipping OAuth signature check")
-        return True, ""
-
-    try:
-        skew = abs(int(datetime.utcnow().timestamp()) - int(timestamp))
-        if skew > 3600:
-            return False, f"Timestamp skew too large: {skew}s"
-    except ValueError:
-        return False, "Invalid oauth_timestamp"
-
-    if not nonce:
-        return False, "Missing oauth_nonce"
-    if _nonce_already_used(nonce):
-        return False, f"Nonce already used: {nonce!r}"
-
-    collected = oauth_signature.collect_parameters(
-        uri_query=urlparse(uri).query,
-        body=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        exclude_oauth_signature=True,
-        with_realm=False,
-    )
-
-    base_string = oauth_signature.construct_base_string(
-        "POST",
-        oauth_signature.normalize_base_string_uri(uri),
-        oauth_signature.normalize_parameters(collected),
-    )
-    expected = oauth_signature.sign_hmac_sha1(base_string, LTI_CONSUMER_SECRET, "")
-    received = params.get("oauth_signature", "")
-    if not hmac_lib.compare_digest(expected, received):
-        return False, "OAuth signature mismatch"
-
-    _consume_nonce(nonce)
-    return True, ""
 
 # ============================================================================
 # PYDANTIC MODELS
@@ -660,11 +555,8 @@ def budget_exhausted() -> bool:
     return False
 
 
-from backend.routers import agenda as agenda_router
 from backend.routers import mentor as mentor_router
-agenda_router.init(Base, get_db, json_timestamp, engine)
 mentor_router.init(Base, get_db, json_timestamp, engine)
-app.include_router(agenda_router.router)
 app.include_router(mentor_router.router)
 
 
@@ -785,13 +677,7 @@ def load_knowledge_base() -> str:
         return _kb_cache["content"]
 
     parts = []
-    main_kb = kb_dir / "wissen-basis.md"
-    if main_kb.exists():
-        parts.append(main_kb.read_text(encoding="utf-8"))
-
     for md_file in md_files:
-        if md_file.name == "wissen-basis.md":
-            continue
         try:
             parts.append(md_file.read_text(encoding="utf-8"))
         except Exception as e:
@@ -1292,43 +1178,6 @@ async def chat_page(request: Request):
         finally:
             db.close()
     return FileResponse(str(_static_dir / "chat.html"))
-
-@app.post("/lti/launch")
-async def lti_launch(request: Request):
-    if not LTI_ENABLED:
-        raise HTTPException(status_code=404, detail="Not found")
-    db = SessionLocal()
-    try:
-        raw_body = await request.body()
-        body = raw_body.decode("utf-8")
-        from urllib.parse import parse_qs
-        parsed = parse_qs(body, keep_blank_values=True)
-        form_data = {k: v[0] for k, v in parsed.items()}
-        logger.info(f"LTI Launch received. Keys: {list(form_data.keys())[:5]}")
-
-        valid, reason = validate_lti_request(str(request.url), form_data, body)
-        if not valid:
-            logger.error(f"LTI validation failed: {reason}")
-            return JSONResponse({"error": "LTI validation failed", "detail": reason}, status_code=401)
-
-        user_id     = form_data.get("user_id", "anonymous")
-        course_id   = form_data.get("course_id", "unknown")
-        roles       = form_data.get("roles", "Learner")
-        user_name   = form_data.get("lis_person_name_full", "Student")
-        course_name = form_data.get("context_title", "Unknown Course")
-        nonce       = form_data.get("oauth_nonce", None)
-
-        session_id = jwt.encode({"user": user_id, "ts": datetime.utcnow().timestamp()}, JWT_SECRET)
-        db.add(SessionRecord(id=session_id, user_id=user_id, course_id=course_id, user_role=roles.split(",")[0] if roles else "student", user_name=user_name, course_name=course_name, nonce=nonce))
-        db.commit()
-        token = create_jwt_token(session_id)
-        return RedirectResponse(url=f"/chat?token={token}&session_id={session_id}&user={user_name}&course={course_name}", status_code=302)
-    except Exception:
-        logger.error("LTI Launch error", exc_info=True)
-        raise HTTPException(status_code=500)
-    finally:
-        db.close()
-
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, http_request: Request):
@@ -1990,7 +1839,6 @@ async def startup_event():
     logger.info("Wiesel Backend starting...")
     cleanup_expired_data()
     logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"LTI Consumer Key: {LTI_CONSUMER_KEY}")
     logger.info(f"Database: {DATABASE_URL}")
     # SQLite härten: WAL-Mode reduziert Korruptionsrisiko bei parallelen
     # Zugriffen; quick_check erkennt eine kaputte DB beim Start statt im Betrieb.

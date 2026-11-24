@@ -268,8 +268,7 @@ class WisdomBrandingTests(unittest.TestCase):
         chat = (STATIC / "chat.html").read_text(encoding="utf-8")
         privacy = (STATIC / "legal" / "datenschutz.html").read_text(encoding="utf-8")
 
-        self.assertIn('LTI_ENABLED = os.getenv("LTI_ENABLED", "false").lower() == "true"', backend)
-        self.assertIn('if not LTI_ENABLED:', backend)
+        self.assertNotIn('/lti/launch', backend)
         self.assertIn('IMAGE_UPLOAD_ENABLED = os.getenv("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"', backend)
         self.assertIn('Bild-Uploads sind derzeit deaktiviert.', backend)
         self.assertIn('CHAT_RETENTION_DAYS = int(os.getenv("CHAT_RETENTION_DAYS", "30"))', backend)

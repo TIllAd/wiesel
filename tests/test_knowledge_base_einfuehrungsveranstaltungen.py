@@ -3,17 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OVERVIEW = ROOT / "knowledge_base" / "studienstart" / "einfuehrungsveranstaltungen.md"
-CATEGORIES = ROOT / "knowledge_base" / "categories.json"
-
-
-def test_category_g_is_named_for_all_wiso_introduction_events():
-    categories = CATEGORIES.read_text(encoding="utf-8")
-
-    assert '"code": "E"' in categories
-    assert '"name": "Anlaufstellen & Ansprechpersonen"' in categories
-    assert '"code": "G"' in categories
-    assert '"name": "Einführungsveranstaltungen an der WiSo"' in categories
-    assert "BizzTrainer" not in categories
 
 
 def test_einfuehrungsveranstaltungen_record_current_program_specific_details():

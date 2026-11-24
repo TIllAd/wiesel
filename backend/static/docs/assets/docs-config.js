@@ -1,9 +1,6 @@
 window.WIESEL_DOCS = {
   publicDocs: [
-    { title: 'Wisdom', path: 'public/wisdom_roadmap.html' },
     { title: 'Architecture', path: 'public/architecture.html' },
-    { title: 'Tonalität', path: 'public/tonalitaet.html' },
-    { title: 'Wisdom Hunt', path: 'public/gamification_landingpage.html' },
   ],
   internalDocs: [
     {
@@ -40,13 +37,6 @@ window.WIESEL_DOCS = {
       kicker: 'Testphase',
       description: 'Offene Team-Notizen für Mentorentest, Fragen und nächste Absprachen.',
       foot: 'Arbeitsfläche',
-    },
-    {
-      title: 'Agenda',
-      path: 'agenda.html',
-      kicker: 'Team',
-      description: 'Laufende Themen, Aufgaben und Hinweise — als Kanban mit Neu / Aktiv / Erledigt.',
-      foot: 'Kanban',
     },
   ],
 };
