@@ -243,3 +243,25 @@ def test_system_prompt_and_rules_are_editable_with_history(client):
                                        "base_mtime": sp["base_mtime"]}).status_code == 422
     assert c.delete("/api/kb/file", params={"path": "_wisdom/system-prompt.md"}).status_code == 400
     assert c.get("/api/kb/history", params={"path": "_wisdom/regeln.md"}).json()["versions"][0]["action"] == "geaendert"
+
+
+def test_source_watch_ignores_network_errors_but_flags_dead_pages(tmp_path):
+    import requests
+    (tmp_path / "a.md").write_text("# A\nQuelle: https://www.fau.de/a\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("# B\nQuelle: https://www.fau.de/b\n", encoding="utf-8")
+    (tmp_path / "c.md").write_text("# C\nQuelle: https://example.org/weg\n", encoding="utf-8")
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        if "fau.de" in url:
+            raise requests.ConnectionError("Network is unreachable")
+        response = requests.Response()
+        response.status_code = 404
+        raise requests.HTTPError(response=response)
+
+    state = source_watch.run(tmp_path, fetcher=fetch, pause=0)
+    assert state["a.md"].get("nicht_pruefbar") and not state["a.md"].get("fehler")
+    assert state["b.md"].get("nicht_pruefbar")
+    assert calls.count("https://www.fau.de/b") == 0  # Server nach erstem Timeout übersprungen
+    assert state["c.md"]["fehler"] == "HTTP 404"

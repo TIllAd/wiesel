@@ -17,6 +17,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     from backend import kb_store
@@ -59,7 +60,7 @@ def page_fingerprint(html: str) -> str:
 def fetch(url: str) -> str:
     import requests
 
-    response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
+    response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=(5, 20))
     response.raise_for_status()
     return response.text
 
@@ -77,10 +78,17 @@ def mark_reviewed(base: Path, relative: str, who: str = "") -> None:
     save_state(base, state)
 
 
+def _mark_unreachable(entry: dict, reason: str) -> None:
+    entry["nicht_pruefbar"] = reason
+    entry.pop("fehler", None)
+    entry.pop("fehler_seit", None)
+
+
 def run(base: Path, fetcher=fetch, pause: float = 1.0) -> dict:
     state = load_state(base)
     now = datetime.now().isoformat(timespec="minutes")
     seen = set()
+    unreachable_hosts: set[str] = set()  # ein Timeout pro Server reicht, nicht 40
     for path in kb_store.md_files(base):
         relative = kb_store.rel(base, path)
         if kb_store.is_auto(relative):
@@ -94,14 +102,28 @@ def run(base: Path, fetcher=fetch, pause: float = 1.0) -> dict:
         if entry.get("url") != url:  # neue oder geänderte Quelle → neu einlesen
             entry = {"url": url}
         entry["letzter_check"] = now
+        host = urlparse(url).hostname or ""
+        if host in unreachable_hosts:
+            _mark_unreachable(entry, "Server vom WiSdom-Server aus nicht erreichbar")
+            state[relative] = entry
+            continue
         try:
             fingerprint = page_fingerprint(fetcher(url))
         except Exception as e:
-            entry["fehler"] = f"{e.__class__.__name__}: {str(e)[:160]}"
-            entry.setdefault("fehler_seit", now)
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status is not None:
+                # Die Seite antwortet, aber mit Fehler (404, 410 …): echter Hinweis fürs Team.
+                entry["fehler"] = f"HTTP {status}"
+                entry.setdefault("fehler_seit", now)
+                entry.pop("nicht_pruefbar", None)
+            else:
+                # Netzwerk (z. B. FAU-Seiten sind von der VM aus gesperrt): kein Alarm.
+                unreachable_hosts.add(host)
+                _mark_unreachable(entry, e.__class__.__name__)
         else:
             entry.pop("fehler", None)
             entry.pop("fehler_seit", None)
+            entry.pop("nicht_pruefbar", None)
             entry["aktuell_hash"] = fingerprint
             if not entry.get("basis_hash"):
                 entry["basis_hash"] = fingerprint
@@ -127,7 +149,8 @@ def main() -> int:
     state = run(base)
     changed = [p for p, e in state.items() if e.get("geaendert_seit")]
     failed = [p for p, e in state.items() if e.get("fehler")]
-    print(f"[{datetime.now():%Y-%m-%d %H:%M}] {len(state)} Quellen geprüft, {len(changed)} geändert, {len(failed)} nicht erreichbar")
+    skipped = [p for p, e in state.items() if e.get("nicht_pruefbar")]
+    print(f"[{datetime.now():%Y-%m-%d %H:%M}] {len(state)} Quellen: {len(changed)} geändert, {len(failed)} mit Fehlerseite, {len(skipped)} vom Server aus nicht prüfbar")
     return 0
 
 

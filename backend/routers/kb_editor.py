@@ -408,8 +408,9 @@ def _check_link(url: str) -> dict:
         ok = r.status_code < 400
         return {"url": url, "ok": ok, "status": r.status_code,
                 "hinweis": "" if ok else ("Seite nicht gefunden" if r.status_code == 404 else f"Fehler {r.status_code}")}
-    except Exception as e:
-        return {"url": url, "ok": False, "status": None, "hinweis": f"Nicht erreichbar ({e.__class__.__name__})"}
+    except Exception:
+        # Verbindungsfehler heißt nicht „Link kaputt“: FAU-Seiten sind z. B. von der VM aus gesperrt.
+        return {"url": url, "ok": None, "status": None, "hinweis": "vom Server aus nicht prüfbar"}
 
 
 @router.post("/links")

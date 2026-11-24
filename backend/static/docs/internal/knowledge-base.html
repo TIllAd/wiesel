@@ -309,7 +309,7 @@
     if (beh) banners += `<div class="banner warn"><span>Diese Datei steuert, <strong>wie</strong> WiSdom antwortet: Persönlichkeit, Ton, Grenzen und Sicherheitsregeln. Sie gilt für <em>jede</em> Antwort. Vorsichtig ändern, vor dem Speichern mit „Mit Entwurf fragen“ testen und danach die Standardfragen prüfen. Über „Verlauf“ lässt sich jeder frühere Stand zurückholen.</span></div>`;
     if (ro) banners += `<div class="banner ${f.status === 'auto-veraltet' ? 'bad' : ''}"><span>Diese Datei wird jede Nacht automatisch erzeugt (zuletzt ${fmtMtime(f.mtime)}).${f.status === 'auto-veraltet' ? ' Sie ist älter als zwei Tage und wird WiSdom deshalb gerade <strong>nicht</strong> mitgegeben. Läuft der nächtliche Job auf der VM?' : ''}</span></div>`;
     if (q.geaendert_seit) banners += `<div class="banner warn"><span>Die <strong>Quellseite hat sich geändert</strong> (bemerkt am ${fmtWhen(q.geaendert_seit)}). Bitte vergleichen und die Datei ggf. anpassen.</span><span class="btn-row"><a href="${esc(f.quelle)}" target="_blank" rel="noopener"><button type="button">Quelle öffnen</button></a><button type="button" id="btn-reviewed">Als geprüft markieren</button></span></div>`;
-    if (q.fehler) banners += `<div class="banner bad"><span>Die Quellseite war beim letzten Check nicht erreichbar (${esc(q.fehler)}). Vielleicht wurde sie verschoben – Link prüfen.</span></div>`;
+    if (q.fehler) banners += `<div class="banner bad"><span>Die Quellseite antwortet mit einem Fehler (${esc(q.fehler)}). Vermutlich wurde sie verschoben oder gelöscht – Link prüfen und auf die neue Seite ändern.</span></div>`;
     if (!ro && (f.status === 'abgelaufen' || f.status === 'bald')) banners += `<div class="banner ${f.status === 'abgelaufen' ? 'bad' : 'warn'}"><span>Diese Datei sollte bis <strong>${fmtDate(f.pruefen_bis)}</strong> geprüft werden. Inhalt durchsehen, ggf. anpassen und danach ein neues „Prüfen bis“-Datum setzen.</span></div>`;
 
     $('#editor').innerHTML = `
@@ -404,9 +404,10 @@
     try {
       const r = await api('POST', '/api/kb/links', { body: $('#body').value });
       if (!r.links.length) { $('#links-out').innerHTML = '<p class="small">Keine Links gefunden.</p>'; return; }
-      const bad = r.links.filter(l => !l.ok);
-      $('#links-out').innerHTML = `<p class="small">${r.links.length} Links, ${bad.length ? `<strong style="color:var(--st-ab)">${bad.length} mit Problem</strong>` : 'alle erreichbar'}.</p><ul class="links">` +
-        r.links.sort((a, b) => a.ok - b.ok).map(l => `<li><span class="${l.ok ? 'ok' : 'bad'}">${l.ok ? '✓' : '✗ ' + esc(l.hinweis)}</span> <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></li>`).join('') + '</ul>';
+      const bad = r.links.filter(l => l.ok === false), unk = r.links.filter(l => l.ok === null);
+      const rank = l => l.ok === false ? 0 : l.ok === null ? 1 : 2;
+      $('#links-out').innerHTML = `<p class="small">${r.links.length} Links: ${bad.length ? `<strong style="color:var(--st-ab)">${bad.length} kaputt</strong>` : 'keiner kaputt'}${unk.length ? `, ${unk.length} vom Server aus nicht prüfbar (bitte bei Bedarf selbst anklicken)` : ''}.</p><ul class="links">` +
+        r.links.sort((a, b) => rank(a) - rank(b)).map(l => `<li><span class="${l.ok === false ? 'bad' : l.ok ? 'ok' : ''}">${l.ok === false ? '✗ ' + esc(l.hinweis) : l.ok ? '✓' : '? ' + esc(l.hinweis)}</span> <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></li>`).join('') + '</ul>';
     } catch (e) { $('#links-out').innerHTML = `<p class="small" style="color:var(--st-ab)">${esc(e.message)}</p>`; }
   }
   async function markReviewed() {
