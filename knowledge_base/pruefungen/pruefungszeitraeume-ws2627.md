@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-02-28
+---
 # Prüfungsanmeldung & Prüfungszeiträume WS 2026/27
 Erstellt am: 2026-07-04 · Status: Termine noch NICHT veröffentlicht
 

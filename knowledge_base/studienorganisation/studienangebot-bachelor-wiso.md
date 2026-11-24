@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Bachelorstudiengänge an der WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/studienangebot/bachelor/
 Gecrawlt am: 2026-09-21

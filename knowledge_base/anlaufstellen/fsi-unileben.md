@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # FSI WiSo – Unileben
 Quelle: https://www.fsi-wiso.de/unileben/
 Gecrawlt am: 2026-06-27

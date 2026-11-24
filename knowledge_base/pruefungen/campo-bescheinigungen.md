@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Bescheinigungen über campo
 Gecrawlt am: 2026-07-04
 

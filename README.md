@@ -77,7 +77,7 @@ wiesel/
 │   ├── main.py                 # FastAPI, LTI, Chat API, SQLite, Healthcheck
 │   ├── static/chat.html         # Chat-UI, Bild-/Sprachinput, Flagging
 │   ├── requirements.txt
-│   └── scraper/                 # Hilfsskripte für Wissensquellen
+│   └── jobs/                    # Nächtliche Jobs: Crawler, Quellen-Wächter, Chat-Review
 ├── knowledge_base/              # Markdown-Faktenbasis für Wiesel
 ├── docs/
 │   ├── ARCHITECTURE.de.md
@@ -101,7 +101,7 @@ wiesel/
 
 Jeder echte LLM-Aufruf schreibt einen Datensatz in `llm_usage`: Modell, Input-/Output-Tokens, Prompt-Cache-Write, Prompt-Cache-Read, geschätzte Kosten in EUR/USD, Latenz und Fehlerklasse. Die Preise sind bewusst über `.env` konfigurierbar; sie dienen der Einordnung, nicht als Buchhaltung mit Steuerberaterhut.
 
-`export_analytics.py` nimmt diese Usage-Daten als rohe Messdaten in die Tages-JSON-Exports auf (`analytics_YYYY-MM-DD.json`): Token-Zahlen, Kosten, Request-Counts und Session-Summen. Das Dashboard berechnet daraus Präsentationswerte wie Cent-Szenarien und Monatsprojektionen selbst. Analysen sollen diese Datei verwenden, nicht direkt die DB.
+Die Kosten stehen in der Claude Console des Anthropic-Kontos; die Nutzung im internen Bereich unter „Nutzungszeiten“ (`/api/usage/timeseries`).
 
 ## Arbeitskultur
 

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # WiSo-Studienstart, BA Wirtschaftswissenschaften & FAU-Dienste
 
 *Quellen geprüft am 31.07.2026: [WiSo-Onboarding-FAQ in StudOn](https://www.studon.fau.de/studon/ilias.php?baseClass=ilrepositorygui&cmdNode=13a:r1&cmdClass=ilObjContentPageGUI&cmd=view&ref_id=5964235) und [Studienstart WiSo: Gut zu wissen](https://www.studienstart.wiso.rw.fau.de/gut-zu-wissen/). Die Informationen zum BA Wirtschaftswissenschaften gelten nur, soweit sie zu deiner Fachprüfungsordnung passen. Bei Fristen, Prüfungsterminen und Öffnungszeiten immer Campo bzw. die verlinkte Stelle prüfen.*

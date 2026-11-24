@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Anlaufstellen & Ansprechpersonen an der FAU WiSo
 Kategorie E – kuratierte Orientierung für die Suche nach der richtigen Person.
 Stand: 2026-09-23. Primärquellen: offizielle WiSo-Webseiten.

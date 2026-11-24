@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Studierendenwerk Erlangen-Nürnberg
 Quelle: https://www.werkswelt.de
 Gecrawlt am: 2026-06-27

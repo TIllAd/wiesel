@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Modulhandbücher Übersicht
 Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenservice/modulhandbuecher/
 Gecrawlt am: 2026-06-26

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Auslandssemester Outgoing WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/international-studierende/internationales-studium/outgoing/
 Gecrawlt am: 2026-06-26

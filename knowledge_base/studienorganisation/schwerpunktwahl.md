@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Schwerpunktwahl BA WiWi
 Quelle: https://www.ba-wiwi.wiso.rw.fau.de/
 Gecrawlt am: 2026-06-26

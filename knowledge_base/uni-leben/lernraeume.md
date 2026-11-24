@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Lernräume & Gruppenräume
 Quelle: https://www.infothek.rw.fau.de/glossary/lernraeume/
 Gecrawlt am: 2026-06-26

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Prüfungsrücktritt
 Quelle: https://www.fau.de/glossary/kann-ich-von-pruefungen-zuruecktreten/
 Gecrawlt am: 2026-07-04

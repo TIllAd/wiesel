@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Bibliotheken FAU – Öffnungszeiten & Standorte
 
 *Stand: Juni 2026 · Bitte vor Ort oder auf ub.fau.de prüfen, Zeiten können sich ändern.*

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-02-28
+---
 # Semestertermine FAU (Vorlesungszeiten, Fristen, Feiertage)
 Quelle: https://www.fau.de/studium/studienorganisation/semestertermine/
 Gecrawlt am: 2026-06-26

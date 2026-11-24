@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Fachstudienberatung WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/im-studium/fachstudienberatung/
 Gecrawlt am: 2026-06-27

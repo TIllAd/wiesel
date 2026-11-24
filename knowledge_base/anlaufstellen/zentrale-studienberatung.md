@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Zentrale Studienberatung
 Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenberatung/zentrale-studienberatung/
 Gecrawlt am: 2026-06-27

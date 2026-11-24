@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Prüfungen Übersicht FAU
 Quelle: https://www.fau.de/studium/studienorganisation/pruefungen/#pruefungsamt
 Gecrawlt am: 2026-07-04

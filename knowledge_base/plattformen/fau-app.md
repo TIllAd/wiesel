@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # FAU App
 Quelle: https://www.fau.de/universitaet/foerderung-und-unterstuetzung/alumni/die-fau-community/die-fau-community-app/
 Gecrawlt am: 2026-06-26

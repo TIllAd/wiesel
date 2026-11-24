@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Infothek A-Z – Relevante Einrichtungen für Erstsemester
 Quelle: https://www.infothek.rw.fau.de/a-z/
 Gecrawlt am: 2026-06-27

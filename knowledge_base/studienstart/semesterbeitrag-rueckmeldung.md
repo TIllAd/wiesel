@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Semesterbeitrag & Rückmeldung
 Quelle: https://www.fau.de/studium/bewerbung-und-zulassung/alle-fristen-und-termine/
 Gecrawlt am: 2026-09-21

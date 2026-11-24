@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Hochschulsport FAU
 Quelle: https://www.hochschulsport.fau.de/
 Gecrawlt am: 2026-06-26

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Mentoring-Programme WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenservice/mentoring-programme/
 Gecrawlt am: 2026-06-27

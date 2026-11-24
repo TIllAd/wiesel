@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # StudOn – Lernplattform
 Kuratiert am: 2026-07-04 (ersetzt unbrauchbaren Crawl der Magazin-Navigation)
 

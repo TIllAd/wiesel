@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Career Service FAU
 Quelle: https://www.career.fau.de/
 Gecrawlt am: 2026-06-26

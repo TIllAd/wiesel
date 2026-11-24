@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Einführungsveranstaltungen an der WiSo
 
 Quelle (Übersicht): https://www.wiso.rw.fau.de/studium/studienorganisation/studienstart/einfuehrungsveranstaltungen/

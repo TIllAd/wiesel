@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Sozialökonomik BA – Studienstart FAQs
 
 ## 1. VOR dem Studienstart: Das Sozialökonomik Planspiel

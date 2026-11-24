@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Wohnen in Erlangen, Nürnberg und Umgebung
 Quelle: https://www.fau.de/studium/studentisches-leben/wohnen/
 Gecrawlt am: 2026-09-21

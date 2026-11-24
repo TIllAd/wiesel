@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Deutschlandticket für Studierende
 Quelle: https://www.fau.de/2026/03/news/studium/deutschlandticket-ermaessigt-fuer-studierende/
 Gecrawlt am: 2026-06-26

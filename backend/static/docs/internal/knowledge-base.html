@@ -3,569 +3,554 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wisdom Wissensbasis</title>
+<title>WiSdom Wissensbasis</title>
 <link rel="stylesheet" href="../assets/docs-theme.css" />
 <style>
-  .kb-layout { display:grid; grid-template-columns:1fr 380px; gap:20px; padding:24px; align-items:start; }
-  @media (max-width:900px) { .kb-layout { grid-template-columns:1fr; } }
-
-  /* KB overview */
-  .kb-section { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); }
-  .kb-section + .kb-section { margin-top:14px; }
-  .kb-section-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; cursor:pointer; user-select:none; }
-  .kb-section-header:hover { background:var(--panel-2); }
-  .kb-section-title { margin:0; font-family:var(--serif); font-size:18px; font-weight:400; letter-spacing:-.01em; }
-  .kb-section-right { display:flex; align-items:center; gap:10px; }
-  .kb-count { font-size:12px; color:var(--muted); }
-  .kb-chevron { color:var(--muted); font-size:13px; transition:transform .2s ease; }
-  .kb-section.open .kb-chevron { transform:rotate(180deg); }
-  .kb-body { padding:0 22px 18px; display:none; }
-  .kb-section.open .kb-body { display:block; }
-  .kb-body-note { color:var(--muted); font-size:12px; margin:0 0 10px; }
-  .kb-articles { display:grid; gap:7px; }
-  .kb-article { display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--panel-3); border:1px solid var(--line); border-radius:9px; font-size:13px; cursor:pointer; transition:border-color .15s, background .15s; }
-  .kb-article:hover { background:var(--panel-2); border-color:var(--accent); }
-  .kb-article.active { background:var(--accent-soft); border-color:var(--accent); }
-  .kb-article-name { flex:1; color:var(--text); font-weight:500; }
-  .kb-article-sub { color:var(--muted); font-size:12px; margin-top:1px; }
-  .tag { display:inline-block; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; }
-  .tag-auto { background:rgba(59,109,17,.12); color:var(--success); border:1px solid rgba(59,109,17,.2); }
-  .tag-json { background:var(--accent-soft); color:var(--accent-2); border:1px solid rgba(184,80,15,.2); }
-  .tag-static { background:var(--panel-2); color:var(--muted); border:1px solid var(--line); }
-
-  /* Gap tracker */
-  .gap-panel { position:sticky; top:20px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; box-shadow:var(--shadow); }
-  .gap-panel h2 { margin:0 0 5px; font-family:var(--serif); font-size:21px; font-weight:400; letter-spacing:-.01em; }
-  .gap-panel .sub { color:var(--muted); font-size:13px; margin:0 0 18px; line-height:1.5; }
-  .gap-form { display:grid; gap:10px; margin-bottom:18px; }
-  .gap-form label { display:grid; gap:4px; font-size:11px; color:var(--muted); }
-  .gap-form input, .gap-form select, .gap-form textarea {
-    border:1px solid var(--line); border-radius:8px; background:var(--panel-3);
-    color:var(--text); font:inherit; font-size:13px; padding:8px 10px; width:100%;
-  }
-  .gap-form textarea { resize:vertical; min-height:64px; }
-  .gap-form input:focus, .gap-form select:focus, .gap-form textarea:focus {
-    outline:none; border-color:var(--accent);
-  }
-  .btn-add { width:100%; background:var(--accent); border:none; border-radius:9px; color:#fff; font:inherit; font-size:13px; font-weight:600; padding:10px; cursor:pointer; }
-  .btn-add:hover { background:var(--accent-2); }
-
-  .gap-list { display:grid; gap:8px; }
-  .gap-empty { color:var(--muted); font-size:13px; text-align:center; padding:22px 0; }
-  .gap-item { background:var(--panel-3); border:1px solid var(--line); border-radius:10px; padding:11px 13px; position:relative; }
-  .gap-item-top { display:flex; align-items:flex-start; gap:8px; }
-  .gap-item-topic { font-size:13px; font-weight:600; flex:1; line-height:1.4; }
-  .gap-item-delete { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:0 2px; line-height:1; }
-  .gap-item-delete:hover { color:var(--accent); border:none; background:none; }
-  .gap-item-meta { display:flex; align-items:center; gap:7px; margin-top:5px; flex-wrap:wrap; }
-  .gap-item-notes { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.5; }
-  .gap-item-date { color:var(--muted); font-size:11px; }
-  .tag-miss { background:rgba(184,80,15,.12); color:#8f3f0c; border:1px solid rgba(184,80,15,.25); }
-  .tag-wrong { background:rgba(124,77,31,.12); color:#5c3510; border:1px solid rgba(124,77,31,.25); }
-  .tag-refuse { background:rgba(111,94,73,.12); color:var(--muted-2); border:1px solid rgba(111,94,73,.25); }
-  .tag-other { background:var(--panel-2); color:var(--muted-2); border:1px solid var(--line); }
-
-  /* Drawer */
-  .drawer-overlay { position:fixed; inset:0; background:rgba(26,24,20,.35); z-index:100; opacity:0; pointer-events:none; transition:opacity .2s; }
-  .drawer-overlay.open { opacity:1; pointer-events:auto; }
-  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(680px,96vw); background:var(--panel); border-left:1px solid var(--line); box-shadow:-8px 0 40px rgba(67,48,26,.12); z-index:101; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .22s cubic-bezier(.4,0,.2,1); }
-  .drawer.open { transform:translateX(0); }
-  .drawer-header { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); flex-shrink:0; }
-  .drawer-title { flex:1; margin:0; font-family:var(--serif); font-size:17px; font-weight:400; letter-spacing:-.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .drawer-path { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .drawer-close { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font:inherit; font-size:18px; line-height:1; padding:3px 9px; cursor:pointer; flex-shrink:0; }
-  .drawer-close:hover { border-color:var(--accent); color:var(--accent); background:none; }
-  .drawer-body { flex:1; overflow:auto; padding:22px 24px; }
-  .drawer-loading { color:var(--muted); font-size:14px; padding:32px 0; text-align:center; }
-  .drawer-error { color:var(--accent); font-size:13px; background:var(--accent-soft); border:1px solid rgba(184,80,15,.2); border-radius:9px; padding:12px 14px; }
-
-  /* Markdown rendering */
-  .md h1,.md h2,.md h3,.md h4 { font-family:var(--serif); font-weight:400; letter-spacing:-.01em; margin:1.4em 0 .5em; }
-  .md h1 { font-size:22px; } .md h2 { font-size:18px; } .md h3 { font-size:15px; color:var(--muted-2); }
-  .md p { margin:.6em 0 .9em; font-size:14px; line-height:1.7; }
-  .md ul,.md ol { padding-left:1.5em; margin:.5em 0; font-size:14px; line-height:1.65; }
-  .md li { margin:.25em 0; }
-  .md code { font-family:var(--mono); font-size:12px; background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
-  .md pre { background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:14px 16px; overflow:auto; margin:.8em 0; }
-  .md pre code { background:none; border:none; padding:0; font-size:12px; }
-  .md a { color:var(--accent); text-decoration:underline; }
-  .md strong { font-weight:700; }
-  .md em { font-style:italic; }
-  .md blockquote { border-left:3px solid var(--accent); margin:0; padding:.4em 1em; color:var(--muted-2); font-style:italic; background:var(--accent-soft); border-radius:0 6px 6px 0; }
-  .md hr { border:none; border-top:1px solid var(--line); margin:1.2em 0; }
-  .md table { border-collapse:collapse; width:100%; font-size:13px; margin:.8em 0; }
-  .md th,.md td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
-  .md th { background:var(--panel-2); font-weight:600; }
-  .md pre.json-block { font-size:12px; }
-
-  .section-divider { border:none; border-top:1px solid var(--line); margin:16px 0; }
-  .gap-count-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .gap-count-label { font-size:12px; color:var(--muted); }
-  .btn-clear { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font:inherit; font-size:11px; padding:3px 9px; cursor:pointer; }
-  .btn-clear:hover { border-color:var(--accent); color:var(--accent); background:none; }
+  :root { --st-ok:#3B6D11; --st-bald:#a86a12; --st-ab:#a9442f; --st-none:#8c8274; --st-auto:#5f5749; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .tabs button.active { background:var(--accent-soft); border-color:var(--accent); color:var(--accent-2); }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 14px; }
+  .chip { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:6px 11px; font-size:12px; cursor:pointer; color:var(--muted-2); }
+  .chip strong { color:var(--text); }
+  .chip.active { border-color:var(--accent); background:var(--accent-soft); }
+  .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; background:var(--st-none); }
+  .st-ok .dot, .dot.st-ok { background:var(--st-ok); } .dot.st-bald { background:var(--st-bald); } .dot.st-abgelaufen, .dot.st-ungueltig { background:var(--st-ab); }
+  .dot.st-kein-datum { background:var(--st-none); } .dot.st-auto-aktuell { background:var(--st-auto); } .dot.st-auto-veraltet { background:var(--st-ab); } .dot.st-verhalten { background:var(--accent); border-radius:2px; }
+  .tab-panel { padding:20px 24px 40px; }
+  .kb-wrap { display:grid; grid-template-columns:330px minmax(0,1fr); gap:18px; align-items:start; }
+  .list-card, .ed-card, .box { background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+  .list-card { position:sticky; top:14px; max-height:calc(100vh - 28px); display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .list-head { padding:12px; border-bottom:1px solid var(--line); display:grid; gap:8px; }
+  input[type=text], input[type=search], input[type=date], textarea, select { border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); font:inherit; font-size:13px; padding:8px 10px; width:100%; }
+  .list-body { overflow:auto; padding:6px 8px 12px; }
+  .folder { margin:12px 6px 4px; color:var(--accent); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .file { display:flex; align-items:center; gap:9px; width:100%; text-align:left; border:1px solid transparent; background:transparent; border-radius:8px; padding:7px 8px; font-size:13px; color:var(--muted-2); }
+  .file:hover { background:var(--panel-2); border-color:var(--line); }
+  .file.active { background:var(--accent-soft); border-color:var(--accent); color:var(--text); }
+  .file .name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file .flag { font-size:11px; color:var(--st-ab); }
+  .ed-card { min-height:70vh; }
+  .ed-empty { padding:40px; color:var(--muted); line-height:1.7; }
+  .ed-head { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+  .ed-head h2 { margin:0 0 3px; font-size:22px; }
+  .path { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .meta-row { display:grid; grid-template-columns:minmax(0,1fr) 210px auto; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); align-items:end; }
+  .quick-dates { display:flex; gap:6px; }
+  .quick-dates button { padding:7px 8px; font-size:12px; }
+  .banner { margin:12px 18px 0; padding:10px 13px; border-radius:10px; font-size:13px; line-height:1.5; border:1px solid var(--line); background:var(--panel-2); display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .banner.warn { border-color:var(--st-bald); background:#fbf1de; }
+  .banner.bad { border-color:var(--st-ab); background:#f8e6e0; }
+  .editor-split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:420px; margin-top:12px; border-top:1px solid var(--line); }
+  .editor-split.no-preview { grid-template-columns:1fr; }
+  .editor-split.no-preview .preview { display:none; }
+  #body { border:0; border-radius:0; min-height:520px; height:100%; resize:vertical; font:14px/1.6 var(--mono); padding:16px 18px; }
+  #body[readonly] { background:var(--panel-3); color:var(--muted-2); }
+  .preview { border-left:1px solid var(--line); padding:16px 20px; overflow:auto; max-height:80vh; line-height:1.6; font-size:14px; }
+  .preview h1 { font-size:24px; } .preview h2 { font-size:19px; margin-top:18px; } .preview h3 { font-size:16px; margin:14px 0 6px; font-family:var(--sans); font-weight:700; }
+  .preview a { color:var(--accent); } .preview code { background:var(--panel-3); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+  .preview table { border-collapse:collapse; font-size:13px; } .preview td, .preview th { border:1px solid var(--line); padding:4px 7px; }
+  .issues { padding:12px 18px; border-top:1px solid var(--line); display:grid; gap:6px; }
+  .issue { font-size:13px; line-height:1.45; padding:7px 10px; border-radius:8px; background:var(--panel-2); }
+  .issue.fehler { background:#f8e6e0; color:#7a2a1b; } .issue.hinweis::before { content:"Hinweis · "; font-weight:700; color:var(--st-bald); } .issue.fehler::before { content:"Fehler · "; font-weight:700; }
+  .actions { padding:14px 18px 18px; border-top:1px solid var(--line); display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .primary:hover { background:var(--accent-2); border-color:var(--accent-2); color:#fff; }
+  .danger { color:var(--st-ab); }
+  .tools { padding:0 18px 18px; display:grid; gap:12px; }
+  .tool { border:1px solid var(--line); border-radius:12px; background:var(--panel-3); padding:13px 14px; }
+  .tool h3 { margin:0 0 8px; font-size:14px; }
+  .probe-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; }
+  .answer { margin-top:10px; padding:11px 13px; border-radius:10px; background:var(--bot-bg); border:1px solid var(--bot-border); font-size:13px; line-height:1.6; white-space:pre-wrap; }
+  .small { font-size:12px; color:var(--muted); line-height:1.5; }
+  .links li { font-size:12px; margin:3px 0; word-break:break-all; } .links .ok { color:var(--st-ok); } .links .bad { color:var(--st-ab); }
+  .box { padding:18px 20px; margin-bottom:14px; }
+  .row-list { display:grid; gap:10px; }
+  .vrow { display:grid; grid-template-columns:140px minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-3); font-size:13px; }
+  .vrow .when { color:var(--muted); font-size:12px; }
+  .diff { font:12px/1.5 var(--mono); background:var(--panel-3); border:1px solid var(--line); border-radius:10px; padding:10px 12px; overflow:auto; max-height:420px; white-space:pre-wrap; margin-top:10px; }
+  .diff .add { background:#e3efd6; display:block; } .diff .del { background:#f6dfd8; display:block; } .diff .hunk { color:var(--muted); display:block; }
+  .sf { border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:var(--panel-3); }
+  .sf-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .sf-q { font-weight:600; font-size:14px; }
+  .kw { display:inline-block; font-size:11px; border:1px solid var(--line); border-radius:999px; padding:2px 8px; margin:5px 4px 0 0; background:var(--panel); }
+  .kw.miss { border-color:var(--st-ab); color:var(--st-ab); }
+  .badge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+  .badge.ok { background:#e3efd6; color:var(--st-ok); } .badge.bad { background:#f6dfd8; color:var(--st-ab); } .badge.none { background:var(--panel-2); color:var(--muted); }
+  .form-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1.3fr) auto; gap:10px; align-items:end; }
+  .help h3 { font-family:var(--sans); font-size:15px; margin:18px 0 6px; } .help p, .help li { font-size:14px; line-height:1.65; color:var(--muted-2); } .help code { background:var(--panel-3); padding:1px 5px; border-radius:4px; }
+  .toast { position:fixed; right:18px; bottom:18px; background:var(--text); color:#fff; padding:11px 15px; border-radius:10px; font-size:13px; box-shadow:var(--shadow); opacity:0; transform:translateY(8px); transition:.2s; pointer-events:none; max-width:420px; z-index:20; }
+  .toast.show { opacity:1; transform:none; } .toast.err { background:#7a2a1b; }
+  dialog { border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text); max-width:520px; width:92vw; padding:20px; box-shadow:var(--shadow); }
+  dialog::backdrop { background:rgba(26,24,20,.35); }
+  dialog h3 { margin:0 0 10px; font-family:var(--serif); font-weight:400; font-size:21px; }
+  dialog .grid-f { display:grid; gap:10px; margin:12px 0 16px; }
+  @media (max-width:1050px) { .kb-wrap { grid-template-columns:1fr; } .list-card { position:static; max-height:50vh; } .editor-split { grid-template-columns:1fr; } .preview { border-left:0; border-top:1px solid var(--line); } .meta-row, .actions, .form-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <div class="page">
   <header class="toolbar">
-    <div class="title-row">
+    <div class="title-row" style="margin-bottom:10px">
       <div>
         <h1>Wissensbasis</h1>
-        <p class="subline">Was Wisdom kennt — und was noch fehlt oder falsch läuft.</p>
+        <p class="subline" style="margin-bottom:8px">Alles, was WiSdom weiß. Änderungen gelten nach dem Speichern sofort – jede Version wird aufgehoben und lässt sich zurückholen.</p>
       </div>
+      <p class="status" id="status" style="margin:0">Lädt…</p>
     </div>
-    <p class="status" id="status">Lädt…</p>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="dateien" class="active">Dateien</button>
+      <button type="button" data-tab="fragen">Standardfragen</button>
+      <button type="button" data-tab="verlauf">Letzte Änderungen</button>
+      <button type="button" data-tab="geloescht">Gelöschte Dateien</button>
+      <button type="button" data-tab="hilfe">Anleitung</button>
+    </nav>
   </header>
 
-  <!-- File drawer -->
-  <div class="drawer-overlay" id="drawer-overlay"></div>
-  <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Dateiinhalt">
-    <div class="drawer-header">
-      <div style="flex:1;min-width:0">
-        <div class="drawer-title" id="drawer-title">–</div>
-        <div class="drawer-path" id="drawer-path"></div>
-      </div>
-      <button type="button" class="drawer-close" id="drawer-close">×</button>
+  <!-- ── Dateien ─────────────────────────────────────────────── -->
+  <section class="tab-panel" data-panel="dateien">
+    <div class="chips" id="chips"></div>
+    <div class="kb-wrap">
+      <aside class="list-card">
+        <div class="list-head">
+          <input type="search" id="search" placeholder="Suchen (Titel oder Dateiname) …" />
+          <button type="button" id="btn-new">+ Neue Datei</button>
+        </div>
+        <div class="list-body" id="file-list"></div>
+      </aside>
+
+      <main class="ed-card" id="editor">
+        <div class="ed-empty">
+          <h2>Datei auswählen</h2>
+          <p>Links eine Datei anklicken, um sie anzusehen und zu bearbeiten.<br>
+          Die <strong>farbigen Punkte</strong> zeigen, ob eine Datei überprüft werden muss:
+          <span class="dot st-ok" style="display:inline-block"></span> aktuell ·
+          <span class="dot st-bald" style="display:inline-block"></span> bald prüfen ·
+          <span class="dot st-abgelaufen" style="display:inline-block"></span> überfällig ·
+          <span class="dot st-kein-datum" style="display:inline-block"></span> kein Datum.</p>
+          <p>Neu im Editor? Oben auf <strong>„Anleitung“</strong> klicken.</p>
+        </div>
+      </main>
     </div>
-    <div class="drawer-body" id="drawer-body"></div>
-  </div>
+  </section>
 
-  <div class="kb-layout">
-    <!-- Left: KB overview -->
-    <div id="kb-overview"></div>
-
-    <!-- Right: Gap tracker -->
-    <div class="gap-panel">
-      <h2>Lücken melden</h2>
-      <p class="sub">Thema eintragen, das Wisdom nicht kennt, falsch beantwortet oder ablehnt.</p>
-
-      <form class="gap-form" id="gap-form">
-        <label>
-          Thema / Frage
-          <input type="text" id="gap-topic" placeholder="z.B. Wie beantrage ich Urlaubssemester?" required />
-        </label>
-        <label>
-          Art des Problems
-          <select id="gap-type">
-            <option value="miss">Weiß nichts dazu</option>
-            <option value="wrong">Antwortet, aber falsch / ungenau</option>
-            <option value="refuse">Lehnt Antwort ab</option>
-            <option value="other">Anderes</option>
-          </select>
-        </label>
-        <label>
-          Notiz (optional)
-          <textarea id="gap-notes" placeholder="Was genau war falsch? Welche Antwort kam?"></textarea>
-        </label>
-        <button type="submit" class="btn-add">Lücke eintragen</button>
+  <!-- ── Standardfragen ──────────────────────────────────────── -->
+  <section class="tab-panel is-hidden" data-panel="fragen">
+    <div class="box">
+      <h2>Standardfragen</h2>
+      <p class="small" style="font-size:13px">Fragen, die WiSdom immer richtig beantworten muss. Zu jeder Frage stehen <strong>Stichworte</strong>, die in der Antwort vorkommen müssen (z. B. eine Frist oder ein Raum). Nach größeren Änderungen einmal <strong>„Alle prüfen“</strong> klicken. Mehrere erlaubte Schreibweisen mit <code>|</code> trennen, z. B. <code>Prüfungsamt | Prüfungsverwaltung</code>. Jeder Durchlauf kostet ein paar Cent.</p>
+      <form class="form-grid" id="sf-form" style="margin-top:12px">
+        <label>Frage<input type="text" id="sf-frage" required placeholder="Wo melde ich mich für Prüfungen an?" /></label>
+        <label>Stichworte (Komma-getrennt)<input type="text" id="sf-kw" placeholder="campo, Anmeldezeitraum" /></label>
+        <button type="submit">Hinzufügen</button>
       </form>
-
-      <hr class="section-divider" />
-
-      <div class="gap-count-row">
-        <span class="gap-count-label" id="gap-count-label">Keine Einträge</span>
-        <button type="button" class="btn-clear" id="btn-clear-all">Alle löschen</button>
-      </div>
-      <div class="gap-list" id="gap-list">
-        <p class="gap-empty">Noch keine Lücken gemeldet.</p>
-      </div>
     </div>
-  </div>
+    <div class="btn-row" style="justify-content:flex-start;margin-bottom:12px">
+      <button type="button" class="primary" id="sf-run-all">Alle prüfen</button>
+      <span class="small" id="sf-status" style="align-self:center"></span>
+    </div>
+    <div class="row-list" id="sf-list"></div>
+  </section>
+
+  <!-- ── Verlauf ─────────────────────────────────────────────── -->
+  <section class="tab-panel is-hidden" data-panel="verlauf">
+    <div class="box"><h2>Letzte Änderungen</h2><p class="small" style="font-size:13px">Wer hat wann was geändert. Auf einen Eintrag klicken, um die Änderung zu sehen und bei Bedarf zurückzuholen.</p></div>
+    <div class="row-list" id="history-list"></div>
+  </section>
+
+  <!-- ── Gelöscht ────────────────────────────────────────────── -->
+  <section class="tab-panel is-hidden" data-panel="geloescht">
+    <div class="box"><h2>Gelöschte Dateien</h2><p class="small" style="font-size:13px">Gelöschte Dateien sind nicht weg. Mit „Wiederherstellen“ kommen sie genau so zurück, wie sie vor dem Löschen waren.</p></div>
+    <div class="row-list" id="deleted-list"></div>
+  </section>
+
+  <!-- ── Hilfe ───────────────────────────────────────────────── -->
+  <section class="tab-panel is-hidden" data-panel="hilfe">
+    <div class="box help">
+      <h2>So pflegst du die Wissensbasis</h2>
+      <p>Jede Datei ist ein Thema (z. B. „Prüfungsanmeldung“). WiSdom liest bei jeder Frage <strong>alle</strong> Dateien. Was hier steht, sagt WiSdom – was hier fehlt, weiß WiSdom nicht.</p>
+      <h3>Eine Info ändern</h3>
+      <ol><li>Datei links suchen und anklicken.</li><li>Text im linken Feld ändern. Rechts siehst du, wie es aussieht.</li><li>Bei Bedarf unten unter „Ausprobieren“ eine Frage stellen: WiSdom antwortet dann schon mit deinem Entwurf.</li><li>Kurz notieren, was du geändert hast, und <strong>Speichern</strong> klicken (oder Strg+S). Die Änderung gilt sofort.</li></ol>
+      <h3>Felder „Verantwortlich“ und „Prüfen bis“</h3>
+      <p>Trag ein, wer für die Infos zuständig ist und bis wann sie spätestens wieder geprüft werden müssen – bei Semesterterminen z. B. das Semesterende. Wird das Datum erreicht, wird die Datei gelb und dann rot. WiSdom benutzt die Datei trotzdem weiter. Diese beiden Felder sieht WiSdom nicht.</p>
+      <h3>Formatierung (Markdown)</h3>
+      <ul><li><code># Titel</code> – Überschrift der Datei (genau eine, ganz oben)</li><li><code>## Abschnitt</code> – Zwischenüberschrift</li><li><code>- Punkt</code> – Aufzählung</li><li><code>**fett**</code> – fett</li><li><code>[Linktext](https://…)</code> – Link</li><li><code>Quelle: https://…</code> – offizielle Seite. Wichtig: WiSdom verweist darauf, und nachts wird geprüft, ob sich die Seite geändert hat.</li></ul>
+      <h3>„Quelle hat sich geändert“</h3>
+      <p>Jede Nacht wird geprüft, ob sich die offizielle Quellseite verändert hat. Dann erscheint ein Hinweis. Seite öffnen, vergleichen, Datei ggf. anpassen und danach „Als geprüft markieren“ klicken. Oft sind es nur kleine Änderungen, die nichts ausmachen.</p>
+      <h3>Verhalten von WiSdom</h3>
+      <p>Ganz oben in der Liste stehen zwei besondere Dateien: der <strong>System-Prompt</strong> (Persönlichkeit, Ton, Grenzen, Sicherheitsregeln) und die <strong>Zusatzregeln</strong> für bestimmte Themen (z. B. „beim Studienstart erst nach dem Studiengang fragen“). Sie wirken auf <em>jede</em> Antwort. Deshalb: vor dem Speichern mit „Mit Entwurf fragen“ testen, danach die Standardfragen laufen lassen, und bei Problemen über den Verlauf zurück. Löschen lassen sie sich nicht.</p>
+      <h3>Automatische Dateien</h3>
+      <p>Mensa, Wetter, ÖPNV und FAU Aktuell werden jede Nacht automatisch erzeugt und können nicht bearbeitet werden. Sind sie älter als zwei Tage, bekommt WiSdom sie nicht mehr.</p>
+      <h3>Etwas ist schiefgegangen?</h3>
+      <p>Unter „Verlauf“ (bei der Datei oder oben in „Letzte Änderungen“) die frühere Version auswählen und <strong>Wiederherstellen</strong> klicken. Gelöschte Dateien liegen unter „Gelöschte Dateien“.</p>
+      <h3>Gut zu wissen</h3>
+      <ul><li>Kurz und sachlich schreiben: Fristen, Orte, Ansprechpersonen, Links. WiSdom formuliert selbst.</li><li>Alles, was hier steht, kostet bei jeder Anfrage Geld – sehr lange Texte lieber kürzen und auf die offizielle Seite verlinken.</li><li>Keine personenbezogenen Daten von Studierenden eintragen.</li></ul>
+    </div>
+  </section>
 </div>
+
+<dialog id="dlg-new">
+  <h3>Neue Datei</h3>
+  <form method="dialog" id="new-form">
+    <div class="grid-f">
+      <label>Titel<input type="text" id="new-title" required minlength="2" placeholder="z. B. Urlaubssemester" /></label>
+      <label>Ordner<select id="new-folder"></select></label>
+      <label>Verantwortlich<input type="text" id="new-owner" placeholder="z. B. Studienbüro" /></label>
+      <label>Prüfen bis<input type="date" id="new-due" /></label>
+    </div>
+    <div class="btn-row"><button type="button" id="new-cancel">Abbrechen</button><button type="submit" class="primary">Anlegen</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-version">
+  <h3 id="ver-title">Version</h3>
+  <p class="small" id="ver-meta"></p>
+  <div class="diff" id="ver-diff"></div>
+  <div class="btn-row" style="margin-top:14px"><button type="button" id="ver-close">Schließen</button><button type="button" class="primary" id="ver-restore">Diesen Stand wiederherstellen</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
 
 <script>
 (() => {
-  /* ── KB data ─────────────────────────────────── */
-  const KB = [
-    {
-      folder: 'Studienstart',
-      icon: '🎓',
-      articles: [
-        { name: 'Studienstart WiSo', file: 'studienstart/studienstart-wiso.md' },
-        { name: 'Einführungsveranstaltungen', file: 'studienstart/einfuehrungsveranstaltungen.md' },
-        { name: 'Semestertermine FAU', file: 'studienstart/semestertermine-fau.md' },
-        { name: 'Termine & Fristen WiSo', file: 'studienstart/termine-fristen-wiso.md' },
-        { name: 'Gut zu wissen', file: 'studienstart/gut-zu-wissen.md' },
-        { name: 'Infothek A–Z', file: 'studienstart/infothek-a-z.md' },
-        { name: 'Anfahrt & Lageplan', file: 'studienstart/anfahrt-lageplan.md' },
-        { name: 'Deutschlandticket', file: 'studienstart/deutschlandticket.md' },
-      ]
-    },
-    {
-      folder: 'Anlaufstellen',
-      icon: '🏛️',
-      articles: [
-        { name: 'Einrichtungen WiSo', file: 'anlaufstellen/einrichtungen-wiso.md' },
-        { name: 'Fachstudienberatung', file: 'anlaufstellen/fachstudienberatung.md' },
-        { name: 'FSI Beratung', file: 'anlaufstellen/fsi-beratung.md' },
-        { name: 'FSI Uni-Leben', file: 'anlaufstellen/fsi-unileben.md' },
-        { name: 'FSI WiSo', file: 'anlaufstellen/fsi-wiso.md' },
-        { name: 'Mentoring', file: 'anlaufstellen/mentoring.md' },
-        { name: 'Prüfungsamt', file: 'anlaufstellen/pruefungsamt.md' },
-        { name: 'Studierendenwerk', file: 'anlaufstellen/studierendenwerk.md' },
-        { name: 'Zentrale Studienberatung', file: 'anlaufstellen/zentrale-studienberatung.md' },
-      ]
-    },
-    {
-      folder: 'Plattformen',
-      icon: '💻',
-      articles: [
-        { name: 'campo', file: 'plattformen/campo.md' },
-        { name: 'StudOn', file: 'plattformen/studon.md' },
-        { name: 'FAUmail', file: 'plattformen/faumail.md' },
-        { name: 'IDM / Account', file: 'plattformen/idm.md' },
-        { name: 'Eduroam', file: 'plattformen/eduroam.md' },
-        { name: 'Microsoft Office', file: 'plattformen/microsoft-office.md' },
-        { name: 'FAU App', file: 'plattformen/fau-app.md' },
-        { name: 'Studienportale', file: 'plattformen/studienportale.md' },
-      ]
-    },
-    {
-      folder: 'Prüfungen',
-      icon: '📋',
-      articles: [
-        { name: 'Prüfungsübersicht', file: 'pruefungen/pruefungen-uebersicht.md' },
-        { name: 'GOP', file: 'pruefungen/gop.md' },
-        { name: 'Prüfungsrücktritt', file: 'pruefungen/pruefungsruecktritt.md' },
-        { name: 'Krankmeldung', file: 'pruefungen/krankmeldung.md' },
-        { name: 'Prüfungsamt FAU', file: 'pruefungen/pruefungsamt-fau.md' },
-        { name: 'campo Bescheinigungen', file: 'pruefungen/campo-bescheinigungen.md' },
-      ]
-    },
-    {
-      folder: 'Studienorganisation',
-      icon: '📅',
-      articles: [
-        { name: 'campo (Kurswahl)', file: 'studienorganisation/campo.md' },
-        { name: 'Kursanmeldung & Stundenplan (WiWi)', file: 'studienorganisation/kursanmeldung-und-stundenplan-wiwi.md' },
-        { name: 'Modulhandbücher', file: 'studienorganisation/modulhandbuecher.md' },
-        { name: 'Modulhandbuch PDF', file: 'studienorganisation/modulhandbuch-pdf.md' },
-        { name: 'Prüfungsordnungen', file: 'studienorganisation/pruefungsordnungen.md' },
-        { name: 'Schwerpunktwahl', file: 'studienorganisation/schwerpunktwahl.md' },
-        { name: 'Auslandssemester', file: 'studienorganisation/auslandssemester.md' },
-        { name: 'International Office', file: 'studienorganisation/international-office.md' },
-      ]
-    },
-    {
-      folder: 'Uni-Leben',
-      icon: '🎪',
-      articles: [
-        { name: 'BAföG', file: 'uni-leben/bafoeg.md' },
-        { name: 'Stipendien', file: 'uni-leben/stipendien.md' },
-        { name: 'Psychologische Beratung', file: 'uni-leben/psychologische-beratung.md' },
-        { name: 'Career Service', file: 'uni-leben/career-service.md' },
-        { name: 'Hochschulsport', file: 'uni-leben/hochschulsport.md' },
-        { name: 'Lernräume', file: 'uni-leben/lernraeume.md' },
-        { name: 'Nützliche Apps', file: 'uni-leben/nuetzliche-apps.md' },
-      ]
-    },
-    {
-      folder: 'Planspiel',
-      icon: '🎯',
-      articles: [
-        { name: 'BizzTrainer', file: 'planspiel/bizztrainer.md' },
-        { name: 'Einführungsveranstaltung', file: 'planspiel/einfuehrungsveranstaltung.md' },
-        { name: 'Spielanleitung', file: 'planspiel/spielanleitung.md' },
-      ]
-    },
-    {
-      folder: 'Allgemein',
-      icon: '📁',
-      articles: [
-        { name: 'BAföG Bedarfssätze', file: 'bafoeg-bedarfssaetze.md' },
-        { name: 'Bibliothek', file: 'bib_info.md' },
-        { name: 'Orte & Navigation', file: 'orte_navigation.md' },
-        { name: 'Wissensbasis Übersicht', file: 'wissen-basis.md' },
-      ]
-    },
-    {
-      folder: 'Automatisch aktualisiert',
-      icon: '🔄',
-      note: 'Diese Dateien werden regelmäßig per Scraper befüllt.',
-      articles: [
-        { name: 'Mensa diese Woche', file: 'mensa-woche.md', tag: 'auto' },
-        { name: 'ÖPNV heute', file: 'oepnv-heute.md', tag: 'auto' },
-        { name: 'Wetter heute', file: 'wetter-heute.md', tag: 'auto' },
-        { name: 'FAU Aktuell', file: 'fau-aktuell.md', tag: 'auto' },
-      ]
-    },
-  ];
-
-  /* ── Render KB overview ──────────────────────── */
-  const OPEN_KEY = 'wiesel_kb_open_v1';
-
-  function loadOpenState() {
-    try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]')); }
-    catch { return new Set(); }
-  }
-
-  function saveOpenState(openSet) {
-    localStorage.setItem(OPEN_KEY, JSON.stringify([...openSet]));
-  }
-
-  function renderKB() {
-    const container = document.getElementById('kb-overview');
-    const openSet = loadOpenState();
-    let totalArticles = 0;
-
-    const html = KB.map((group, idx) => {
-      totalArticles += group.articles.length;
-      const isOpen = openSet.has(idx);
-
-      const articles = group.articles.map(a => {
-        const tagHtml = a.tag === 'auto'
-          ? '<span class="tag tag-auto">Auto</span>'
-          : a.tag === 'json'
-          ? '<span class="tag tag-json">JSON</span>'
-          : '<span class="tag tag-static">MD</span>';
-        return `<div class="kb-article" data-file="${escHtml(a.file)}" data-name="${escHtml(a.name)}" role="button" tabindex="0">
-          <div style="flex:1">
-            <div class="kb-article-name">${escHtml(a.name)}</div>
-            <div class="kb-article-sub">${escHtml(a.file)}</div>
-          </div>
-          ${tagHtml}
-        </div>`;
-      }).join('');
-
-      const noteHtml = group.note
-        ? `<p class="kb-body-note">${escHtml(group.note)}</p>`
-        : '';
-
-      return `<div class="kb-section${isOpen ? ' open' : ''}" data-idx="${idx}">
-        <div class="kb-section-header" role="button" aria-expanded="${isOpen}">
-          <h2 class="kb-section-title">${group.icon} ${escHtml(group.folder)}</h2>
-          <div class="kb-section-right">
-            <span class="kb-count">${group.articles.length} Artikel</span>
-            <span class="kb-chevron">▾</span>
-          </div>
-        </div>
-        <div class="kb-body">
-          ${noteHtml}
-          <div class="kb-articles">${articles}</div>
-        </div>
-      </div>`;
-    }).join('');
-
-    container.innerHTML = html;
-
-    container.querySelectorAll('.kb-section-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const section = header.closest('.kb-section');
-        const idx = parseInt(section.dataset.idx, 10);
-        const isNowOpen = !section.classList.contains('open');
-        section.classList.toggle('open', isNowOpen);
-        header.setAttribute('aria-expanded', isNowOpen);
-        const openSet = loadOpenState();
-        if (isNowOpen) openSet.add(idx); else openSet.delete(idx);
-        saveOpenState(openSet);
-      });
-    });
-
-    document.getElementById('status').textContent =
-      `${totalArticles} Artikel in ${KB.length} Kategorien · knowledge_base/`;
-  }
-
-  /* ── Gap tracker ─────────────────────────────── */
-  const STORAGE_KEY = 'wiesel_gaps_v1';
-  const TYPE_META = {
-    miss:   { label: 'Weiß nichts', cls: 'tag-miss' },
-    wrong:  { label: 'Falsch / ungenau', cls: 'tag-wrong' },
-    refuse: { label: 'Lehnt ab', cls: 'tag-refuse' },
-    other:  { label: 'Anderes', cls: 'tag-other' },
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const STATUS = {
+    'abgelaufen': 'Überfällig', 'ungueltig': 'Datum ungültig', 'bald': 'Bald prüfen', 'kein-datum': 'Kein Datum',
+    'ok': 'Aktuell', 'auto-aktuell': 'Automatisch · aktuell', 'auto-veraltet': 'Automatisch · veraltet', 'verhalten': 'Verhalten von WiSdom',
   };
+  const ACTION = { ausgangsstand:'Stand vor dem Editor', neu:'angelegt', geaendert:'geändert', geloescht:'gelöscht', wiederhergestellt:'wiederhergestellt' };
+  const state = { files: [], folders: [], filter: null, current: null, dirty: false, preview: true, versionId: null };
 
-  function loadGaps() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    catch { return []; }
-  }
-
-  function saveGaps(gaps) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gaps));
-  }
-
-  function formatDate(iso) {
-    const d = new Date(iso);
-    return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
-  }
-
-  function renderGaps() {
-    const gaps = loadGaps();
-    const list = document.getElementById('gap-list');
-    const label = document.getElementById('gap-count-label');
-
-    label.textContent = gaps.length === 0
-      ? 'Keine Einträge'
-      : `${gaps.length} Lücke${gaps.length !== 1 ? 'n' : ''} gemeldet`;
-
-    if (!gaps.length) {
-      list.innerHTML = '<p class="gap-empty">Noch keine Lücken gemeldet.</p>';
-      return;
+  async function api(method, url, body) {
+    const opts = { method, headers: {}, credentials: 'same-origin' };
+    if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts);
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 503) throw new Error('Nicht angemeldet. Bitte die Seite neu laden (Team-Login).');
+      throw new Error((data && data.detail && (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail))) || `Fehler ${res.status}`);
     }
+    return data;
+  }
+  function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', err ? 6000 : 2600); }
+  const fmtDate = s => { if (!s) return ''; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? `${m[3]}.${m[2]}.${m[1]}` : s; };
+  const fmtWhen = s => { if (!s) return ''; const d = new Date(s.replace(' ', 'T')); return isNaN(d) ? s : d.toLocaleString('de-DE', { dateStyle:'short', timeStyle:'short' }); };
+  const fmtMtime = ts => new Date(ts * 1000).toLocaleString('de-DE', { dateStyle:'short', timeStyle:'short' });
+  const isoPlus = months => { const d = new Date(); d.setMonth(d.getMonth() + months); return d.toISOString().slice(0, 10); };
 
-    list.innerHTML = gaps.slice().reverse().map((g, ri) => {
-      const i = gaps.length - 1 - ri; // real index for deletion
-      const meta = TYPE_META[g.type] || TYPE_META.other;
-      const notesHtml = g.notes
-        ? `<div class="gap-item-notes">${escHtml(g.notes)}</div>`
-        : '';
-      return `<div class="gap-item" data-index="${i}">
-        <div class="gap-item-top">
-          <div class="gap-item-topic">${escHtml(g.topic)}</div>
-          <button type="button" class="gap-item-delete" title="Löschen" data-delete="${i}">×</button>
+  /* ── Tabs ─────────────────────────────────────────────── */
+  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  function showTab(tab) {
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('is-hidden', p.dataset.panel !== tab));
+    if (tab === 'fragen') loadStandard();
+    if (tab === 'verlauf') loadHistory();
+    if (tab === 'geloescht') loadDeleted();
+  }
+
+  /* ── Dateiliste ───────────────────────────────────────── */
+  async function loadFiles() {
+    const data = await api('GET', '/api/kb/files');
+    state.files = data.files; state.folders = data.folders;
+    const s = data.summary;
+    const tokens = Math.round(data.total_chars / 3.6 / 1000);
+    $('#status').textContent = `${data.files.length} Dateien · ca. ${tokens}k Tokens pro Anfrage`;
+    const chips = [
+      ['abgelaufen', 'Überfällig', (s.abgelaufen || 0) + (s.ungueltig || 0)], ['bald', 'Bald prüfen', s.bald || 0],
+      ['kein-datum', 'Kein Datum', s['kein-datum'] || 0], ['quelle', 'Quelle geändert', s.quelle_geaendert || 0],
+      ['auto-veraltet', 'Automatisch veraltet', s['auto-veraltet'] || 0],
+    ];
+    $('#chips').innerHTML = `<span class="chip${state.filter ? '' : ' active'}" data-f="">Alle <strong>${data.files.length}</strong></span>` +
+      chips.filter(c => c[2] || state.filter === c[0]).map(c => `<span class="chip${state.filter === c[0] ? ' active' : ''}" data-f="${c[0]}"><span class="dot st-${c[0] === 'quelle' ? 'bald' : c[0]}"></span>${c[1]} <strong>${c[2]}</strong></span>`).join('');
+    document.querySelectorAll('#chips .chip').forEach(c => c.addEventListener('click', () => { state.filter = c.dataset.f || null; loadFiles(); }));
+    renderList();
+  }
+  function matchesFilter(f) {
+    if (!state.filter) return true;
+    if (state.filter === 'quelle') return !!f.quelle_geaendert_seit;
+    if (state.filter === 'abgelaufen') return f.status === 'abgelaufen' || f.status === 'ungueltig';
+    return f.status === state.filter;
+  }
+  function renderList() {
+    const q = $('#search').value.trim().toLowerCase();
+    const files = state.files.filter(f => matchesFilter(f) && (!q || f.title.toLowerCase().includes(q) || f.path.toLowerCase().includes(q)));
+    const groups = {};
+    files.forEach(f => (groups[f.behavior ? '!verhalten' : f.auto ? '~auto' : f.folder] ||= []).push(f));
+    const names = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+    const label = g => g === '!verhalten' ? 'Verhalten von WiSdom' : g === '~auto' ? 'Automatisch (nachts)' : g ? esc(g) : 'Allgemein';
+    $('#file-list').innerHTML = names.length ? names.map(g => `<div class="folder">${label(g)}</div>` +
+      groups[g].sort((a, b) => a.title.localeCompare(b.title, 'de')).map(f => `<button type="button" class="file${state.current && state.current.path === f.path ? ' active' : ''}" data-path="${esc(f.path)}" title="${esc(STATUS[f.status] || '')}${f.pruefen_bis ? ' · prüfen bis ' + fmtDate(f.pruefen_bis) : ''}">
+        <span class="dot st-${f.status}"></span><span class="name">${esc(f.title)}</span>${f.quelle_geaendert_seit ? '<span class="flag" title="Quelle hat sich geändert">● Quelle</span>' : ''}</button>`).join('')).join('')
+      : '<p class="small" style="padding:12px">Keine Treffer.</p>';
+    document.querySelectorAll('#file-list .file').forEach(b => b.addEventListener('click', () => openFile(b.dataset.path)));
+  }
+  $('#search').addEventListener('input', renderList);
+
+  /* ── Editor ───────────────────────────────────────────── */
+  function confirmLeave() { return !state.dirty || confirm('Du hast ungespeicherte Änderungen. Wirklich verwerfen?'); }
+  window.addEventListener('beforeunload', e => { if (state.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  async function openFile(path, force) {
+    if (!force && !confirmLeave()) return;
+    try {
+      const f = await api('GET', '/api/kb/file?path=' + encodeURIComponent(path));
+      state.current = f; state.dirty = false;
+      renderEditor(); renderList();
+      history.replaceState(null, '', '#' + encodeURIComponent(path));
+    } catch (e) { toast(e.message, true); }
+  }
+
+  function renderEditor() {
+    const f = state.current, ro = f.auto, beh = !!f.behavior;
+    const q = f.quelle_status || {};
+    let banners = '';
+    if (beh) banners += `<div class="banner warn"><span>Diese Datei steuert, <strong>wie</strong> WiSdom antwortet: Persönlichkeit, Ton, Grenzen und Sicherheitsregeln. Sie gilt für <em>jede</em> Antwort. Vorsichtig ändern, vor dem Speichern mit „Mit Entwurf fragen“ testen und danach die Standardfragen prüfen. Über „Verlauf“ lässt sich jeder frühere Stand zurückholen.</span></div>`;
+    if (ro) banners += `<div class="banner ${f.status === 'auto-veraltet' ? 'bad' : ''}"><span>Diese Datei wird jede Nacht automatisch erzeugt (zuletzt ${fmtMtime(f.mtime)}).${f.status === 'auto-veraltet' ? ' Sie ist älter als zwei Tage und wird WiSdom deshalb gerade <strong>nicht</strong> mitgegeben. Läuft der nächtliche Job auf der VM?' : ''}</span></div>`;
+    if (q.geaendert_seit) banners += `<div class="banner warn"><span>Die <strong>Quellseite hat sich geändert</strong> (bemerkt am ${fmtWhen(q.geaendert_seit)}). Bitte vergleichen und die Datei ggf. anpassen.</span><span class="btn-row"><a href="${esc(f.quelle)}" target="_blank" rel="noopener"><button type="button">Quelle öffnen</button></a><button type="button" id="btn-reviewed">Als geprüft markieren</button></span></div>`;
+    if (q.fehler) banners += `<div class="banner bad"><span>Die Quellseite war beim letzten Check nicht erreichbar (${esc(q.fehler)}). Vielleicht wurde sie verschoben – Link prüfen.</span></div>`;
+    if (!ro && (f.status === 'abgelaufen' || f.status === 'bald')) banners += `<div class="banner ${f.status === 'abgelaufen' ? 'bad' : 'warn'}"><span>Diese Datei sollte bis <strong>${fmtDate(f.pruefen_bis)}</strong> geprüft werden. Inhalt durchsehen, ggf. anpassen und danach ein neues „Prüfen bis“-Datum setzen.</span></div>`;
+
+    $('#editor').innerHTML = `
+      <div class="ed-head">
+        <div><h2>${esc(f.title)}</h2><div class="path">${esc(f.path)} · zuletzt geändert ${fmtMtime(f.mtime)}${f.quelle ? ` · <a href="${esc(f.quelle)}" target="_blank" rel="noopener">Quelle</a>` : ''}</div></div>
+        <div class="btn-row"><button type="button" id="btn-preview" class="${state.preview ? 'active' : ''}">Vorschau</button><button type="button" id="btn-hist">Verlauf</button>${ro || beh ? '' : '<button type="button" id="btn-del" class="danger">Löschen</button>'}</div>
+      </div>
+      ${ro || beh ? '' : `<div class="meta-row">
+        <label>Verantwortlich (Person oder Stelle)<input type="text" id="m-owner" value="${esc(f.verantwortlich)}" placeholder="z. B. Studienbüro WiSo" /></label>
+        <label>Prüfen bis<input type="date" id="m-due" value="${esc(/^\d{4}-\d{2}-\d{2}$/.test(f.pruefen_bis) ? f.pruefen_bis : '')}" /></label>
+        <div class="quick-dates"><button type="button" data-m="6">+6 Monate</button><button type="button" data-m="12">+1 Jahr</button></div>
+      </div>`}
+      ${banners}
+      <div class="editor-split ${state.preview ? '' : 'no-preview'}">
+        <textarea id="body" spellcheck="true" ${ro ? 'readonly' : ''}>${esc(f.body)}</textarea>
+        <div class="preview" id="preview"></div>
+      </div>
+      <div class="issues" id="issues"></div>
+      ${ro ? '' : `<div class="actions">
+        <label>Was hast du geändert? (für den Verlauf)<input type="text" id="comment" placeholder="z. B. Sprechzeiten Prüfungsamt aktualisiert" /></label>
+        <div class="btn-row"><button type="button" id="btn-reset">Verwerfen</button><button type="button" class="primary" id="btn-save">Speichern</button></div>
+      </div>`}
+      <div class="tools">
+        <div class="tool">
+          <h3>Ausprobieren: Was antwortet WiSdom?</h3>
+          <div class="probe-row"><input type="text" id="probe-q" placeholder="Frage so stellen, wie Studierende sie stellen würden" />
+          <button type="button" id="btn-probe">Fragen</button>${ro ? '' : '<button type="button" id="btn-probe-draft" title="Antwort mit deinem ungespeicherten Text">Mit Entwurf fragen</button>'}</div>
+          <p class="small" style="margin:6px 0 0">„Mit Entwurf fragen“ zeigt die Antwort mit deinem noch <em>nicht gespeicherten</em> Text. Kostet etwa 10 Cent, normales Fragen etwa 1 Cent.</p>
+          <div id="probe-out"></div>
         </div>
-        <div class="gap-item-meta">
-          <span class="tag ${meta.cls}">${meta.label}</span>
-          <span class="gap-item-date">${formatDate(g.created_at)}</span>
-        </div>
-        ${notesHtml}
+        <div class="tool"><h3>Links prüfen</h3><button type="button" id="btn-links">Alle Links in dieser Datei prüfen</button><div id="links-out"></div></div>
       </div>`;
-    }).join('');
 
-    list.querySelectorAll('[data-delete]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.delete, 10);
-        const gaps = loadGaps();
-        gaps.splice(idx, 1);
-        saveGaps(gaps);
-        renderGaps();
-      });
-    });
+    const body = $('#body');
+    renderPreview(); renderIssues(f.issues || []);
+    let t;
+    body.addEventListener('input', () => { setDirty(true); renderPreview(); clearTimeout(t); t = setTimeout(runCheck, 600); });
+    $('#btn-preview').onclick = () => { state.preview = !state.preview; renderEditor(); };
+    $('#btn-hist').onclick = showFileHistory;
+    $('#btn-probe').onclick = () => probe(false);
+    $('#probe-q').addEventListener('keydown', e => { if (e.key === 'Enter') probe(false); });
+    $('#btn-links').onclick = checkLinks;
+    if ($('#btn-reviewed')) $('#btn-reviewed').onclick = markReviewed;
+    if (ro) return;
+    $('#btn-probe-draft').onclick = () => probe(true);
+    if (!beh) {
+      ['#m-owner', '#m-due'].forEach(s => $(s).addEventListener('input', () => { setDirty(true); runCheck(); }));
+      document.querySelectorAll('.quick-dates button').forEach(b => b.onclick = () => { $('#m-due').value = isoPlus(+b.dataset.m); setDirty(true); runCheck(); });
+      $('#btn-del').onclick = del;
+    }
+    $('#btn-save').onclick = save;
+    $('#btn-reset').onclick = () => { if (confirmLeave()) openFile(f.path, true); };
   }
+  function setDirty(v) { state.dirty = v; const b = $('#btn-save'); if (b) b.textContent = v ? 'Speichern •' : 'Speichern'; }
+  function draft() { return { path: state.current.path, body: $('#body').value, verantwortlich: $('#m-owner') ? $('#m-owner').value : '', pruefen_bis: $('#m-due') ? $('#m-due').value : '' }; }
+  function renderPreview() { $('#preview').innerHTML = renderMarkdown($('#body').value); }
+  function renderIssues(list) {
+    $('#issues').innerHTML = list.length ? list.map(i => `<div class="issue ${i.level}">${esc(i.text)}</div>`).join('') : (state.current.auto ? '' : '<div class="small">Keine Auffälligkeiten.</div>');
+  }
+  async function runCheck() { if (state.current.auto) return; try { renderIssues((await api('POST', '/api/kb/check', draft())).issues); } catch (_) {} }
 
-  document.getElementById('gap-form').addEventListener('submit', e => {
+  async function save() {
+    const d = draft();
+    try {
+      const r = await api('PUT', '/api/kb/file', { ...d, base_mtime: state.current.base_mtime, kommentar: $('#comment').value });
+      if (!r.saved) { toast(r.message || 'Keine Änderung.'); setDirty(false); return; }
+      toast('Gespeichert – WiSdom nutzt ab sofort den neuen Stand.');
+      state.dirty = false; await openFile(d.path, true); loadFiles();
+    } catch (e) { toast(e.message, true); }
+  }
+  async function del() {
+    const why = prompt(`„${state.current.title}“ löschen?\n\nWiSdom kennt den Inhalt danach nicht mehr. Die Datei lässt sich unter „Gelöschte Dateien“ wiederherstellen.\n\nKurzer Grund (optional):`);
+    if (why === null) return;
+    try {
+      await api('DELETE', `/api/kb/file?path=${encodeURIComponent(state.current.path)}&kommentar=${encodeURIComponent(why)}`);
+      toast('Gelöscht.'); state.current = null; state.dirty = false;
+      $('#editor').innerHTML = '<div class="ed-empty"><h2>Datei gelöscht</h2><p>Unter „Gelöschte Dateien“ kann sie wiederhergestellt werden.</p></div>';
+      loadFiles();
+    } catch (e) { toast(e.message, true); }
+  }
+  async function probe(withDraft) {
+    const frage = $('#probe-q').value.trim();
+    if (!frage) { $('#probe-q').focus(); return; }
+    $('#probe-out').innerHTML = '<p class="small">WiSdom denkt nach …</p>';
+    try {
+      const r = await api('POST', '/api/kb/probe', withDraft ? { frage, ...draft() } : { frage });
+      $('#probe-out').innerHTML = `<div class="answer">${esc(r.antwort)}</div><p class="small">${r.mit_entwurf ? 'Antwort mit deinem Entwurf (noch nicht gespeichert).' : 'Antwort mit dem gespeicherten Stand.'}</p>`;
+    } catch (e) { $('#probe-out').innerHTML = `<p class="small" style="color:var(--st-ab)">${esc(e.message)}</p>`; }
+  }
+  async function checkLinks() {
+    $('#links-out').innerHTML = '<p class="small">Prüfe …</p>';
+    try {
+      const r = await api('POST', '/api/kb/links', { body: $('#body').value });
+      if (!r.links.length) { $('#links-out').innerHTML = '<p class="small">Keine Links gefunden.</p>'; return; }
+      const bad = r.links.filter(l => !l.ok);
+      $('#links-out').innerHTML = `<p class="small">${r.links.length} Links, ${bad.length ? `<strong style="color:var(--st-ab)">${bad.length} mit Problem</strong>` : 'alle erreichbar'}.</p><ul class="links">` +
+        r.links.sort((a, b) => a.ok - b.ok).map(l => `<li><span class="${l.ok ? 'ok' : 'bad'}">${l.ok ? '✓' : '✗ ' + esc(l.hinweis)}</span> <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></li>`).join('') + '</ul>';
+    } catch (e) { $('#links-out').innerHTML = `<p class="small" style="color:var(--st-ab)">${esc(e.message)}</p>`; }
+  }
+  async function markReviewed() {
+    try { await api('POST', '/api/kb/quelle-geprueft?path=' + encodeURIComponent(state.current.path)); toast('Als geprüft markiert.'); openFile(state.current.path, true); loadFiles(); }
+    catch (e) { toast(e.message, true); }
+  }
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.current && !state.current.auto) { e.preventDefault(); save(); } });
+
+  /* ── Neue Datei ───────────────────────────────────────── */
+  $('#btn-new').onclick = () => {
+    if (!confirmLeave()) return;
+    $('#new-folder').innerHTML = state.folders.map(f => `<option value="${esc(f)}">${f ? esc(f) : 'Allgemein (oberste Ebene)'}</option>`).join('');
+    $('#new-title').value = ''; $('#new-owner').value = ''; $('#new-due').value = isoPlus(12);
+    $('#dlg-new').showModal();
+  };
+  $('#new-cancel').onclick = () => $('#dlg-new').close();
+  $('#new-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const topic = document.getElementById('gap-topic').value.trim();
-    const type  = document.getElementById('gap-type').value;
-    const notes = document.getElementById('gap-notes').value.trim();
-    if (!topic) return;
-    const gaps = loadGaps();
-    gaps.push({ topic, type, notes, created_at: new Date().toISOString() });
-    saveGaps(gaps);
-    document.getElementById('gap-topic').value = '';
-    document.getElementById('gap-notes').value = '';
-    renderGaps();
+    try {
+      const r = await api('POST', '/api/kb/new', { title: $('#new-title').value, folder: $('#new-folder').value, verantwortlich: $('#new-owner').value, pruefen_bis: $('#new-due').value });
+      $('#dlg-new').close(); await loadFiles(); state.dirty = false; openFile(r.path, true); toast('Angelegt – jetzt Inhalt eintragen und speichern.');
+    } catch (err) { toast(err.message, true); }
   });
 
-  document.getElementById('btn-clear-all').addEventListener('click', () => {
-    if (!confirm('Alle Lücken löschen?')) return;
-    saveGaps([]);
-    renderGaps();
-  });
+  /* ── Verlauf / Versionen ──────────────────────────────── */
+  function versionRow(v, showPath) {
+    return `<div class="vrow"><span class="when">${fmtWhen(v.created_at)}</span>
+      <span>${showPath ? `<strong>${esc(v.path)}</strong> · ` : ''}${esc(ACTION[v.action] || v.action)} von ${esc(v.author || '–')}${v.comment ? ` – „${esc(v.comment)}“` : ''}</span>
+      <button type="button" data-v="${v.id}">Ansehen</button></div>`;
+  }
+  function wireVersions(root) { root.querySelectorAll('[data-v]').forEach(b => b.onclick = () => openVersion(+b.dataset.v)); }
+  async function showFileHistory() {
+    try {
+      const r = await api('GET', '/api/kb/history?path=' + encodeURIComponent(state.current.path));
+      const out = $('#probe-out').closest('.tools');
+      let box = $('#hist-box');
+      if (!box) { box = document.createElement('div'); box.className = 'tool'; box.id = 'hist-box'; out.prepend(box); }
+      box.innerHTML = `<h3>Verlauf dieser Datei</h3>${r.versions.length ? '<div class="row-list">' + r.versions.map(v => versionRow(v, false)).join('') + '</div>' : '<p class="small">Noch keine Änderungen über den Editor.</p>'}`;
+      wireVersions(box); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) { toast(e.message, true); }
+  }
+  async function openVersion(id) {
+    try {
+      const v = await api('GET', '/api/kb/version/' + id);
+      state.versionId = id;
+      $('#ver-title').textContent = v.path;
+      $('#ver-meta').textContent = `${fmtWhen(v.created_at)} · ${ACTION[v.action] || v.action} von ${v.author || '–'}${v.comment ? ' · „' + v.comment + '“' : ''}`;
+      $('#ver-diff').innerHTML = v.diff.length ? v.diff.map(l => `<span class="${l.startsWith('+') ? 'add' : l.startsWith('-') ? 'del' : l.startsWith('@@') ? 'hunk' : ''}">${esc(l) || ' '}</span>`).join('\n')
+        : esc(v.content || '(leer)');
+      $('#ver-restore').textContent = v.action === 'geloescht' ? 'Datei wiederherstellen' : 'Diesen Stand wiederherstellen';
+      $('#dlg-version').showModal();
+    } catch (e) { toast(e.message, true); }
+  }
+  $('#ver-close').onclick = () => $('#dlg-version').close();
+  $('#ver-restore').onclick = async () => {
+    if (!confirm('Diesen Stand wiederherstellen? Der aktuelle Stand bleibt im Verlauf erhalten.')) return;
+    try {
+      const r = await api('POST', '/api/kb/restore/' + state.versionId);
+      $('#dlg-version').close(); toast('Wiederhergestellt.'); state.dirty = false;
+      await loadFiles(); showTab('dateien'); openFile(r.restored, true);
+    } catch (e) { toast(e.message, true); }
+  };
+  async function loadHistory() {
+    try { const r = await api('GET', '/api/kb/history?limit=150'); $('#history-list').innerHTML = r.versions.length ? r.versions.map(v => versionRow(v, true)).join('') : '<p class="small">Noch keine Änderungen über den Editor.</p>'; wireVersions($('#history-list')); }
+    catch (e) { toast(e.message, true); }
+  }
+  async function loadDeleted() {
+    try {
+      const r = await api('GET', '/api/kb/deleted');
+      $('#deleted-list').innerHTML = r.deleted.length ? r.deleted.map(v => `<div class="vrow"><span class="when">${fmtWhen(v.created_at)}</span><span><strong>${esc(v.title)}</strong> · ${esc(v.path)} · gelöscht von ${esc(v.author || '–')}${v.comment ? ` – „${esc(v.comment)}“` : ''}</span><button type="button" data-v="${v.id}">Ansehen / wiederherstellen</button></div>`).join('') : '<p class="small">Keine gelöschten Dateien.</p>';
+      wireVersions($('#deleted-list'));
+    } catch (e) { toast(e.message, true); }
+  }
 
-  /* ── Drawer ──────────────────────────────────── */
-  const drawer        = document.getElementById('drawer');
-  const drawerOverlay = document.getElementById('drawer-overlay');
-  const drawerTitle   = document.getElementById('drawer-title');
-  const drawerPath    = document.getElementById('drawer-path');
-  const drawerBody    = document.getElementById('drawer-body');
-  let activeArticleEl = null;
-
-  function openDrawer(name, file) {
-    drawerTitle.textContent = name;
-    drawerPath.textContent  = `knowledge_base/${file}`;
-    drawerBody.innerHTML    = '<p class="drawer-loading">Lade…</p>';
-    drawer.classList.add('open');
-    drawerOverlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-
-    fetch(`/api/wiki/file?path=${encodeURIComponent(file)}`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(data => {
-        drawerBody.innerHTML = `<div class="md">${data.format === 'json'
-          ? `<pre class="json-block">${escHtml(JSON.stringify(JSON.parse(data.content), null, 2))}</pre>`
-          : renderMarkdown(data.content)
-        }</div>`;
-      })
-      .catch(err => {
-        drawerBody.innerHTML = `<div class="drawer-error">Fehler beim Laden: ${escHtml(err.message)}</div>`;
+  /* ── Standardfragen ───────────────────────────────────── */
+  function sfRow(f) {
+    const miss = new Set(f.fehlende);
+    const badge = f.letztes_ok === true ? '<span class="badge ok">✓ bestanden</span>' : f.letztes_ok === false ? '<span class="badge bad">✗ Stichworte fehlen</span>' : '<span class="badge none">noch nicht geprüft</span>';
+    return `<div class="sf" data-id="${f.id}"><div class="sf-head"><div><div class="sf-q">${esc(f.frage)}</div>
+      <div>${f.stichworte.map(k => `<span class="kw${miss.has(k) ? ' miss' : ''}">${esc(k)}</span>`).join('') || '<span class="small">keine Stichworte</span>'}</div></div>
+      <div class="btn-row">${badge}<button type="button" data-run>Prüfen</button><button type="button" data-edit>Bearbeiten</button><button type="button" data-del class="danger">Entfernen</button></div></div>
+      ${f.letzte_antwort ? `<details style="margin-top:8px"><summary class="small">Letzte Antwort (${fmtWhen(f.letzter_lauf)})</summary><div class="answer">${esc(f.letzte_antwort)}</div></details>` : ''}</div>`;
+  }
+  async function loadStandard() {
+    try {
+      const r = await api('GET', '/api/kb/standardfragen');
+      const ok = r.fragen.filter(f => f.letztes_ok === true).length, bad = r.fragen.filter(f => f.letztes_ok === false).length;
+      $('#sf-status').textContent = r.fragen.length ? `${r.fragen.length} Fragen · ${ok} bestanden · ${bad} mit fehlenden Stichworten` : '';
+      $('#sf-list').innerHTML = r.fragen.length ? r.fragen.map(sfRow).join('') : '<p class="small">Noch keine Standardfragen. Oben die wichtigsten Fragen der Erstis eintragen.</p>';
+      $('#sf-list').querySelectorAll('.sf').forEach(el => {
+        const id = +el.dataset.id, f = r.fragen.find(x => x.id === id);
+        el.querySelector('[data-run]').onclick = () => runStandard(id);
+        el.querySelector('[data-del]').onclick = async () => { if (confirm('Frage entfernen?')) { await api('DELETE', '/api/kb/standardfragen/' + id); loadStandard(); } };
+        el.querySelector('[data-edit]').onclick = async () => {
+          const frage = prompt('Frage:', f.frage); if (frage === null) return;
+          const kw = prompt('Stichworte (Komma-getrennt, Alternativen mit |):', f.stichworte.join(', ')); if (kw === null) return;
+          try { await api('PUT', '/api/kb/standardfragen/' + id, { frage, stichworte: kw }); loadStandard(); } catch (e) { toast(e.message, true); }
+        };
       });
+    } catch (e) { toast(e.message, true); }
   }
-
-  function closeDrawer() {
-    drawer.classList.remove('open');
-    drawerOverlay.classList.remove('open');
-    document.body.style.overflow = '';
-    if (activeArticleEl) { activeArticleEl.classList.remove('active'); activeArticleEl = null; }
+  async function runStandard(id) {
+    $('#sf-status').textContent = id ? 'Prüfe Frage …' : 'Prüfe alle Fragen … (dauert etwas)';
+    try { await api('POST', '/api/kb/standardfragen/run' + (id ? '?fid=' + id : '')); loadStandard(); }
+    catch (e) { toast(e.message, true); loadStandard(); }
   }
+  $('#sf-run-all').onclick = () => runStandard(null);
+  $('#sf-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await api('POST', '/api/kb/standardfragen', { frage: $('#sf-frage').value, stichworte: $('#sf-kw').value }); $('#sf-frage').value = ''; $('#sf-kw').value = ''; loadStandard(); }
+    catch (err) { toast(err.message, true); }
+  });
 
-  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
-  drawerOverlay.addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
-
-  /* ── Simple Markdown renderer ────────────────── */
+  /* ── Markdown-Vorschau (bewusst einfach) ──────────────── */
+  function inline(s) {
+    return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  }
   function renderMarkdown(md) {
-    let html = escHtml(md);
-
-    // Code blocks (before inline code)
-    html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
-      `<pre><code>${code.trimEnd()}</code></pre>`);
-
-    // Headings
-    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-    html = html.replace(/^### (.+)$/gm,  '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm,   '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm,    '<h1>$1</h1>');
-
-    // HR
-    html = html.replace(/^---$/gm, '<hr>');
-
-    // Blockquote
-    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-
-    // Inline: bold, italic, code, links
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*([^*]+)\*/g,     '<em>$1</em>');
-    html = html.replace(/`([^`]+)`/g,       '<code>$1</code>');
-    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-    // Lists
-    html = html.replace(/((?:^[-*] .+\n?)+)/gm, (block) => {
-      const items = block.trim().split('\n')
-        .map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('');
-      return `<ul>${items}</ul>`;
-    });
-    html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
-      const items = block.trim().split('\n')
-        .map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('');
-      return `<ol>${items}</ol>`;
-    });
-
-    // Paragraphs: double newline → <p>
-    html = html.split(/\n{2,}/).map(block => {
-      block = block.trim();
-      if (!block) return '';
-      if (/^<(h[1-4]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
-      return `<p>${block.replace(/\n/g, '<br>')}</p>`;
-    }).join('\n');
-
-    return html;
+    const lines = esc(md).split('\n'); const out = []; let list = null, para = [], table = null;
+    const flushPara = () => { if (para.length) { out.push('<p>' + para.map(inline).join('<br>') + '</p>'); para = []; } };
+    const flushList = () => { if (list) { out.push(`<${list.t}>` + list.items.map(i => `<li>${inline(i)}</li>`).join('') + `</${list.t}>`); list = null; } };
+    const flushTable = () => { if (table) { out.push('<table>' + table.filter(r => !/^\s*\|?\s*:?-{2,}/.test(r)).map(r => '<tr>' + r.replace(/^\||\|$/g, '').split('|').map(c => `<td>${inline(c.trim())}</td>`).join('') + '</tr>').join('') + '</table>'); table = null; } };
+    const flush = () => { flushPara(); flushList(); flushTable(); };
+    for (const raw of lines) {
+      const l = raw.trimEnd(); let m;
+      if (!l.trim()) { flush(); continue; }
+      if ((m = /^(#{1,4}) (.+)/.exec(l))) { flush(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); continue; }
+      if (/^-{3,}$/.test(l)) { flush(); out.push('<hr>'); continue; }
+      if (/^\s*\|/.test(l)) { flushPara(); flushList(); (table ||= []).push(l.trim()); continue; }
+      if ((m = /^\s*[-*] (.+)/.exec(l))) { flushPara(); flushTable(); if (!list || list.t !== 'ul') { flushList(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = /^\s*\d+\. (.+)/.exec(l))) { flushPara(); flushTable(); if (!list || list.t !== 'ol') { flushList(); list = { t: 'ol', items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = /^&gt; ?(.*)/.exec(l))) { flush(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); continue; }
+      flushList(); flushTable(); para.push(l);
+    }
+    flush();
+    return out.join('\n');
   }
 
-  /* ── Utils ───────────────────────────────────── */
-  function escHtml(v) {
-    return String(v ?? '').replace(/[&<>'"]/g, c =>
-      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
-  }
-
-  /* ── Wire up article clicks (called after renderKB) ── */
-  function wireArticleClicks() {
-    document.querySelectorAll('.kb-article[data-file]').forEach(el => {
-      const open = () => {
-        if (activeArticleEl) activeArticleEl.classList.remove('active');
-        activeArticleEl = el;
-        el.classList.add('active');
-        openDrawer(el.dataset.name, el.dataset.file);
-      };
-      el.addEventListener('click', open);
-      el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-    });
-  }
-
-  /* ── Init ────────────────────────────────────── */
-  renderKB();
-  wireArticleClicks();
-  renderGaps();
+  /* ── Start ────────────────────────────────────────────── */
+  loadFiles().then(() => { const p = decodeURIComponent(location.hash.slice(1)); if (p && state.files.some(f => f.path === p)) openFile(p, true); })
+    .catch(e => { $('#status').textContent = e.message; toast(e.message, true); });
 })();
 </script>
 </body>

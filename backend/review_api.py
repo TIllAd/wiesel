@@ -1,4 +1,4 @@
-"""Read-only helpers for Hermes' daily Wisdom chat-review retrieval."""
+"""Read-only helpers for the nightly chat review (jobs/chat_review.py)."""
 from __future__ import annotations
 
 import json
@@ -79,6 +79,22 @@ def load_evaluations(evaluations_dir: Path, db_path: Path, since: date) -> list[
     for record in records:
         record["letzte_nachricht_am"] = last_dates.get(record["session_id"])
     return records
+
+
+def load_summaries(reviews_dir: Path, limit: int = 30) -> list[dict[str, str]]:
+    """Tageszusammenfassungen (reviews/YYYY-MM-DD.md), neueste zuerst."""
+    if not reviews_dir.exists():
+        return []
+    out = []
+    for path in sorted(reviews_dir.glob("*.md"), reverse=True):
+        try:
+            date.fromisoformat(path.stem)
+        except ValueError:
+            continue
+        out.append({"datum": path.stem, "markdown": path.read_text(encoding="utf-8", errors="replace")})
+        if len(out) >= limit:
+            break
+    return out
 
 
 def load_session_messages(db_path: Path, session_id: str) -> list[dict[str, str]]:

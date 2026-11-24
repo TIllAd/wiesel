@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # FAU-Starthilfe für WiSo-Studierende (WS 2026/27)
 Quelle: https://www.fau.de/studium/studienorganisation/studienstart/faqs-semesterbeginn/
 Ergänzende Übersicht: https://www.fau.de/studium/studienorganisation/studienstart/

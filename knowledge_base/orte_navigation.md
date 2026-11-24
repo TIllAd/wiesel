@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Wichtige Orte & Navigation – FAU WiSo
 
 Wenn jemand fragt wo etwas ist oder wie er hinkommt, gib den Google Maps Link direkt im Satz mit. Auf dem Handy öffnet das sofort die Navigation.

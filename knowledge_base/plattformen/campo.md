@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # campo – Verwaltungsportal
 Gecrawlt am: 2026-06-26
 

@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Prüfungsamt WiSo
 Gecrawlt am: 2026-06-27
 

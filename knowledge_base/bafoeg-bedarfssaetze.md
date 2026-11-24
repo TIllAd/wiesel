@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # BAföG – Bedarfssätze & Infos für Studierende
 
 *Datenstand: Oktober 2024 (29. BAföG-Novelle, gültig ab WiSe 2024/25)*

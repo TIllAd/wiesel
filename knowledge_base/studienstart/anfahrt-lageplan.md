@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Anfahrt und Lageplan
 Quelle: https://www.wiso.rw.fau.de/anfahrt-und-lageplan/
 Gecrawlt am: 2026-06-26

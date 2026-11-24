@@ -4,13 +4,6 @@ window.WIESEL_DOCS = {
   ],
   internalDocs: [
     {
-      title: 'Betriebskosten',
-      path: 'cost-cache-model.html',
-      kicker: 'Kosten',
-      description: 'Token-, Cache- und Sitzungs-Kosten im Berichtszeitraum.',
-      foot: 'Kostenmodell',
-    },
-    {
       title: 'Auffälligkeiten',
       path: 'reports.html',
       kicker: 'Review',
@@ -28,15 +21,8 @@ window.WIESEL_DOCS = {
       title: 'Wissensbasis',
       path: 'knowledge-base.html',
       kicker: 'Inhalt',
-      description: 'Was Wisdom kennt — und wo Lücken oder falsche Antworten gemeldet wurden.',
-      foot: 'KB & Lücken',
-    },
-    {
-      title: 'Mentorenprogramm',
-      path: 'mentorenprogramm.html',
-      kicker: 'Testphase',
-      description: 'Offene Team-Notizen für Mentorentest, Fragen und nächste Absprachen.',
-      foot: 'Arbeitsfläche',
+      description: 'Was WiSdom weiß — bearbeiten, prüfen, Verlauf und Standardfragen.',
+      foot: 'Editor',
     },
   ],
 };

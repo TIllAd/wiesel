@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Stipendien & Preise WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenservice/preise-und-auszeichnungen/#panel_7c29e38b
 Gecrawlt am: 2026-06-26

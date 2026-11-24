@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Einstiegstag „Willkommen an Bord!“ – 2. Oktober 2026
 Quelle: https://www.fau.de/studium/studienorganisation/studienstart/vorkurse-und-einfuehrungsveranstaltungen/
 Gecrawlt am: 2026-09-21

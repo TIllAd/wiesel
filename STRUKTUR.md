@@ -20,7 +20,7 @@ backend/
   main.py                  # FastAPI, LTI, Chat API, SQLite, Healthcheck
   requirements.txt         # Python Dependencies
   static/chat.html         # Chat-UI
-  scraper/                 # Hilfsskripte für Wissensquellen
+  jobs/                    # Nächtliche Jobs: Crawler, Quellen-Wächter, Chat-Review
 
 knowledge_base/
   *.md                     # Faktenbasis für Studienstart, Portale, Orte, BAföG usw.

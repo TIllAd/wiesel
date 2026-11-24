@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Prüfungsordnungen WiSo
 Quelle: https://www.fau.de/universitaet/universitaetsorganisation/rechtliche-grundlagen/pruefungsordnungen
 WiSo-Detailseite: https://www.fau.de/universitaet/universitaetsorganisation/rechtliche-grundlagen/pruefungsordnungen/rw/wiso/

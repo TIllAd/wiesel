@@ -77,8 +77,32 @@ def report_dir() -> Path:
 
 
 def summary_enabled() -> bool:
-    """Only the literal opt-in value keeps the legacy LLM reduce step alive."""
-    return os.getenv("CHAT_REVIEW_SUMMARY", "0").strip() == "1"
+    """Tageszusammenfassung (ersetzt Hermes). Abschalten mit CHAT_REVIEW_SUMMARY=0."""
+    return os.getenv("CHAT_REVIEW_SUMMARY", "1").strip() != "0"
+
+
+def kb_overview() -> str:
+    """Titel + Pfad aller Wissensbasis-Dateien, damit die Zusammenfassung sagen kann,
+    WELCHE Datei das Team ergänzen sollte. Nur Titel, nicht der Inhalt: billig."""
+    try:
+        try:
+            from backend import kb_store
+        except ImportError:
+            import kb_store
+        base = kb_store.kb_dir()
+        if not base:
+            return ""
+        lines = []
+        for path in kb_store.md_files(base):
+            relative = kb_store.rel(base, path)
+            if kb_store.is_auto(relative):
+                continue
+            _, body = kb_store.parse(path.read_text(encoding="utf-8", errors="replace"))
+            lines.append(f"- {kb_store.title_of(body, path.stem)} ({relative})")
+        return "\n".join(lines)
+    except Exception:
+        LOGGER.warning("Wissensbasis-Übersicht für die Zusammenfassung nicht verfügbar", exc_info=True)
+        return ""
 
 
 def database_path() -> Path:
@@ -259,15 +283,24 @@ Formatregeln: `kb_vorschlag` ist entweder ein String oder das JSON-Literal null.
 
 
 def reduce_prompt(
-    evaluations: list[dict[str, Any]], reviewed_count: int, category_counts: Counter[str]
+    evaluations: list[dict[str, Any]], reviewed_count: int, category_counts: Counter[str], kb_files: str = ""
 ) -> str:
     serialized = json.dumps(evaluations, ensure_ascii=False, indent=2)
     overview = ", ".join(
         f"{category}={count}" for category, count in sorted(category_counts.items())
     ) or "keine"
-    return f"""Schreibe eine knappe interne Markdown-Review für Wisdom. Du erhältst
-nur strukturierte Meta-Bewertungen, keine vollständigen Gespräche. Erfinde keine
-Fakten oder Zitate. Nenne bei jedem konkreten Befund die vorhandene Session-ID.
+    kb_block = (
+        "\nDiese Dateien gibt es in der Wissensbasis (Titel und Pfad). Ordne jede "
+        "Wissenslücke und jeden Vorschlag der passenden Datei zu, mit Titel; passt keine, "
+        "schlage einen Titel für eine neue Datei vor:\n<wissensbasis_dateien>\n"
+        f"{kb_files}\n</wissensbasis_dateien>\n"
+    ) if kb_files else ""
+    return f"""Schreibe eine knappe interne Markdown-Review für Wisdom. Lesende sind
+Teammitglieder ohne IT-Hintergrund, die daraus direkt Aufgaben für die Wissensbasis
+ableiten: klare Sätze, keine Fachbegriffe. Du erhältst nur strukturierte
+Meta-Bewertungen, keine vollständigen Gespräche. Erfinde keine Fakten oder Zitate.
+Nenne bei jedem konkreten Befund die vorhandene Session-ID.
+{kb_block}
 
 Gliedere genau in diese Abschnitte:
 # Kurzüberblick
@@ -444,7 +477,7 @@ def reduce_review(
     reviewed_count: int,
     category_counts: Counter[str],
 ) -> tuple[str, dict[str, int | float]]:
-    return claude_text(conn, reduce_prompt(evaluations, reviewed_count, category_counts), max_tokens=3000, schema=None)
+    return claude_text(conn, reduce_prompt(evaluations, reviewed_count, category_counts, kb_overview()), max_tokens=3000, schema=None)
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:

@@ -76,3 +76,6 @@ wiesel-reports/
 
 #Sonstiges 
 *.ps1
+# Vom Editor verwaltet (System-Prompt/Regeln, Quellen-Wächter) – lebt auf der VM, nicht in Git
+knowledge_base/_wisdom/
+knowledge_base/.quellen-status.json

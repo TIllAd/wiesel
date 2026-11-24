@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Gut zu wissen – Studienstart-Tipps
 Quelle: https://www.studienstart.wiso.rw.fau.de/gut-zu-wissen/
 Gecrawlt am: 2026-06-26

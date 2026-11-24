@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # eduroam / WLAN einrichten
 Quelle: https://www.anleitungen.rrze.fau.de/internet-zugang/wlan/
 Gecrawlt am: 2026-06-26

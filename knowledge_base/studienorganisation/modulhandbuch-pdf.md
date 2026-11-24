@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Modulhandbuch BA WiWi (PO 20252)
 Gecrawlt am: 2026-06-26
 

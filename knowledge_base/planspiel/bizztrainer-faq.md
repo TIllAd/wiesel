@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # bizz.trainer – FAQ zur Einführungsveranstaltung „Perspektiven der Wirtschaftswissenschaften" (WS 26/27)
 
 Quelle: Team-Dokument zur Einführung „Perspektiven der Wirtschaftswissenschaften" (eigenständig formuliert auf Basis interner Materialien: Vorlesungsfolien Übung, Hospitationsdokumentation, Kompaktübersicht)

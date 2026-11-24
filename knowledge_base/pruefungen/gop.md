@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # GOP – Grundlagen- und Orientierungsprüfung
 Quelle: https://www.fau.de/glossary/gop-grundlagen-und-orientierungspruefung/
 Gecrawlt am: 2026-07-04

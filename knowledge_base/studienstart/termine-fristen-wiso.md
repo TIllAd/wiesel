@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-02-28
+---
 # Termine und Fristen WiSo
 Quelle: https://www.fau.de/studium/bewerbung-und-zulassung/alle-fristen-und-termine/
 Ergänzende WiSo-Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studierendenservice/termine-und-fristen/

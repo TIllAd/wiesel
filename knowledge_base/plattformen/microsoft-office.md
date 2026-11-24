@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Microsoft Office 365 (RRZE)
 Quelle: https://www.rrze.fau.de/hard-software/software/microsoft/
 Gecrawlt am: 2026-06-26

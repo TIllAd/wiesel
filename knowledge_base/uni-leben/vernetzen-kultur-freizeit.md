@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Vernetzen, Kultur und Freizeit an der FAU
 Quelle: https://www.fau.de/studium/studentisches-leben/vernetzen-und-engagieren/
 Ergänzende Quelle: https://www.fau.de/studium/studentisches-leben/kultur-und-freizeit/

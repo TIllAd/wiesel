@@ -10,13 +10,15 @@ services:
       - "8001:8001"
     env_file:
       - ./backend/.env
+    environment:
+      - WISDOM_KB_DIR=/knowledge_base
     volumes:
       - ./backend:/app/backend
-      - ./knowledge_base:/knowledge_base
+      # Wissensbasis: auf der VM außerhalb des Git-Checkouts (WISDOM_KB_HOST_DIR in ./.env),
+      # weil das Team sie über den Editor ändert. Lokal reicht der Repo-Ordner.
+      - ${WISDOM_KB_HOST_DIR:-./knowledge_base}:/knowledge_base
       - ./system-prompt.md:/system-prompt.md
       - ./backend/wiesel.db:/app/wiesel.db
-      - ./quality_review.py:/app/quality_review.py:ro
-      - ${WISDOM_QUALITY_DIR:-${HOME}/wisdom-quality}:/wisdom-quality
       # Chat-review artifacts contain operational metadata and must never enter Git.
       - ${WISDOM_CHAT_REVIEW_DIR:-${HOME}/wiesel-reports}:/app/reports
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload

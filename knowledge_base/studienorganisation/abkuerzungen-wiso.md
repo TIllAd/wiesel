@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # WiSo-Abkürzungen
 
 *Stand: 27.03.2026. Modulnamen beziehen sich auf den Bachelor Wirtschaftswissenschaften, Prüfungsordnung 20252. Andere Studiengänge oder Prüfungsordnungen können abweichende Bezeichnungen verwenden.*

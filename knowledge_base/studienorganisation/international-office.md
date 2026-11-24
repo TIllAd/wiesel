@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # International Office WiSo
 Quelle: https://ib.wiso.fau.de
 Gecrawlt am: 2026-06-26

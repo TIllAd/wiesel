@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Psychologisch-Psychotherapeutische Beratung
 Quelle: https://www.werkswelt.de/ppb
 Gecrawlt am: 2026-06-26

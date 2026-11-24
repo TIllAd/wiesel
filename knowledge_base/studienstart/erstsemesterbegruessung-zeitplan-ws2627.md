@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Erstsemesterbegrüßung & Einführungsveranstaltungen: Zeit- und Raumplan (Montag, 12.10.2026, WS 26/27)
 
 Quelle: Team-Dokument „Informationen zum Studienstart" (Fachbereich WiSo)

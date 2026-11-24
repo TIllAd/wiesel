@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # IdM – Identity Management
 Quelle: https://www.idm.fau.de/
 Gecrawlt am: 2026-06-26

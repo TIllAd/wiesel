@@ -18,7 +18,7 @@ backend/
 ├── main.py             # FastAPI app, alle zentralen Endpunkte
 ├── requirements.txt    # Python dependencies
 ├── static/chat.html    # statische Chat-UI
-└── scraper/            # Hilfsskripte für Wissensquellen
+└── jobs/               # Nächtliche Jobs: Crawler, Quellen-Wächter, Chat-Review
 ```
 
 ## Endpunkte

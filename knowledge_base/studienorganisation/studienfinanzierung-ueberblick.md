@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Studienfinanzierung: Überblick und Anlaufstellen
 Quelle: https://www.fau.de/studium/studienorganisation/studienfinanzierung/
 Gecrawlt am: 2026-09-21

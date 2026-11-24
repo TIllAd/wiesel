@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Studienstart WiSo
 Quelle: https://www.wiso.rw.fau.de/studium/studienorganisation/studienstart/
 Gecrawlt am: 2026-06-26 · Zeitplan-Block übernommen aus wissen-basis.md am 2026-07-04

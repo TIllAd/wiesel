@@ -31,16 +31,16 @@ from pydantic import BaseModel
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, Float, text, or_
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session as SQLSession
+from sqlalchemy.orm import sessionmaker
 
 import anthropic
 import jwt
 import hmac as hmac_lib
 from backend.evidence_guard import apply_evidence_guard
-from backend.review_api import load_evaluations, load_session_messages
+from backend import kb_store
+from backend.review_api import load_evaluations, load_session_messages, load_summaries
 from backend.config import (
     ANTHROPIC_MODEL,
-    MODEL_PRICING,
     PROMPT_TIER_THRESHOLD,
     estimate_cost_usd as configured_estimate_cost_usd,
     prompt_tokens,
@@ -109,7 +109,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    if exc.status_code in {400, 413, 429}:
+    # Editor (internes Team-Tool): verständliche Meldungen auch bei 404/409/422.
+    if exc.status_code in {400, 413, 429} or (request.url.path.startswith("/api/kb/") and exc.status_code < 500):
         detail = exc.detail
     else:
         if exc.status_code >= 500:
@@ -407,16 +408,13 @@ def _get_cf_jwks_client():
     return _cf_jwks_client
 
 
-def verify_cf_access_jwt(token: str) -> bool:
-    """Verify a Cloudflare Access `Cf-Access-Jwt-Assertion` header against the
-    team's public JWKS. Signature, exp, audience (Access-Application) und
-    issuer (Team-Domain) werden geprüft — ein gefälschter Header ohne gültiges
-    Access-Login scheitert also auch dann, wenn er den Origin direkt erreicht."""
+def cf_access_claims(token: str) -> Optional[dict]:
+    """Verifizierte Claims eines Cloudflare-Access-JWT (u. a. `email`) oder None."""
     if not (CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD and token):
-        return False
+        return None
     try:
         signing_key = _get_cf_jwks_client().get_signing_key_from_jwt(token)
-        jwt.decode(
+        return jwt.decode(
             token,
             signing_key.key,
             algorithms=["RS256", "ES256"],
@@ -424,19 +422,26 @@ def verify_cf_access_jwt(token: str) -> bool:
             issuer=_cf_access_issuer(),
             options={"require": ["exp", "aud", "iss"]},
         )
-        return True
     except Exception as e:
         logger.warning(f"Cloudflare Access JWT rejected: {e.__class__.__name__}: {e}")
-        return False
+        return None
 
 
-def _mint_admin_cookie() -> str:
+def verify_cf_access_jwt(token: str) -> bool:
+    """Verify a Cloudflare Access `Cf-Access-Jwt-Assertion` header against the
+    team's public JWKS. Signature, exp, audience (Access-Application) und
+    issuer (Team-Domain) werden geprüft — ein gefälschter Header ohne gültiges
+    Access-Login scheitert also auch dann, wenn er den Origin direkt erreicht."""
+    return cf_access_claims(token) is not None
+
+
+def _mint_admin_cookie(email: str = "") -> str:
     """Kurzlebiges, signiertes Admin-Session-Token fürs Cookie. Bewusst NICHT
     der rohe ADMIN_API_KEY: der Auto-Mint über Cloudflare Access würde den
     echten Key sonst auf jeden Team-Browser verteilen, und jede Key-Rotation
     würde alle Cookies gleich mit betreffen."""
     return jwt.encode(
-        {"scope": "admin", "iat": datetime.utcnow(), "exp": datetime.utcnow() + timedelta(hours=8)},
+        {"scope": "admin", "email": email or "", "iat": datetime.utcnow(), "exp": datetime.utcnow() + timedelta(hours=8)},
         JWT_SECRET,
         algorithm=JWT_ALGORITHM,
     )
@@ -470,9 +475,9 @@ def _admin_auth_method(request: Request) -> Optional[str]:
     return None
 
 
-def _set_admin_cookie(response) -> None:
+def _set_admin_cookie(response, email: str = "") -> None:
     response.set_cookie(
-        ADMIN_COOKIE_NAME, _mint_admin_cookie(),
+        ADMIN_COOKIE_NAME, _mint_admin_cookie(email),
         httponly=True, samesite="lax",
         secure=(ENVIRONMENT == "production"),
         max_age=8 * 3600,
@@ -484,6 +489,22 @@ def _raise_admin_unauthorized() -> None:
     if not ADMIN_API_KEY and not cf_configured:
         raise HTTPException(status_code=503, detail="Admin API not configured")
     raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+
+def admin_identity(request: Request) -> str:
+    """Wer arbeitet gerade im internen Bereich? Für die Änderungshistorie."""
+    claims = cf_access_claims(request.headers.get("cf-access-jwt-assertion", ""))
+    if claims and claims.get("email"):
+        return str(claims["email"])
+    try:
+        cookie = jwt.decode(request.cookies.get(ADMIN_COOKIE_NAME) or "", JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if cookie.get("email"):
+            return str(cookie["email"])
+    except Exception:
+        pass
+    if request.headers.get("x-admin-key"):
+        return "Admin-Key"
+    return "Team"
 
 
 def require_admin(request: Request) -> None:
@@ -555,9 +576,14 @@ def budget_exhausted() -> bool:
     return False
 
 
-from backend.routers import mentor as mentor_router
-mentor_router.init(Base, get_db, json_timestamp, engine)
-app.include_router(mentor_router.router)
+from backend.routers import kb_editor as kb_editor_router
+kb_editor_router.init(
+    Base, SessionLocal, json_timestamp, engine,
+    identity=lambda request: admin_identity(request),
+    ask=lambda question, overrides=None: kb_probe_answer(question, overrides),
+    invalidate=lambda: _kb_cache.update({"signature": None}),
+)
+app.include_router(kb_editor_router.router, dependencies=[Depends(require_admin)])
 
 
 def create_jwt_token(session_id: str) -> str:
@@ -652,40 +678,31 @@ def validate_image_base64(image_base64: str, requested_mime: str = "image/jpeg")
 _kb_cache: dict = {"signature": None, "content": None}
 
 
-def load_knowledge_base() -> str:
-    """Concatenate all KB markdown files. Cached in memory and invalidated via
-    file mtimes, instead of re-reading ~60 files on every chat request."""
-    kb_dirs = [
-        Path(__file__).parent.parent / "knowledge_base",
-        Path("/knowledge_base"),
-        Path("/app/knowledge_base"),
-    ]
-    kb_dir = None
-    for d in kb_dirs:
-        if d.exists():
-            kb_dir = d
-            break
-    if not kb_dir:
-        return "# Wissensbasis nicht gefunden"
+def load_knowledge_base(overrides: Optional[dict] = None) -> str:
+    """Alle Wissensbasis-Dateien als ein Text (ohne den Editor-Kopfbereich).
 
-    md_files = sorted(kb_dir.glob("**/*.md"), key=lambda p: str(p))
+    Normalfall: im Speicher gecacht und über Datei-Zeitstempel invalidiert –
+    eine im Editor gespeicherte Änderung gilt also sofort, ohne Neustart.
+    `overrides` (Probe-Antwort mit ungespeichertem Entwurf) umgeht den Cache.
+    """
+    base = kb_store.kb_dir()
+    if not base:
+        return "# Wissensbasis nicht gefunden"
+    if overrides:
+        content, _ = kb_store.prompt_content(base, overrides)
+        return content or "# Wissensbasis nicht gefunden"
     try:
-        signature = tuple((str(p), p.stat().st_mtime_ns) for p in md_files)
+        signature = kb_store.signature(base)
     except OSError:
         signature = None
     if signature is not None and signature == _kb_cache["signature"] and _kb_cache["content"]:
         return _kb_cache["content"]
-
-    parts = []
-    for md_file in md_files:
-        try:
-            parts.append(md_file.read_text(encoding="utf-8"))
-        except Exception as e:
-            logger.warning(f"KB skip {md_file.name}: {e}")
-
-    content = "\n\n---\n\n".join(parts) if parts else "# Wissensbasis nicht gefunden"
+    content, skipped = kb_store.prompt_content(base)
+    content = content or "# Wissensbasis nicht gefunden"
+    if skipped:
+        logger.warning("Veraltete Auto-Dateien nicht geladen: %s", ", ".join(skipped))
     _kb_cache.update({"signature": signature, "content": content})
-    logger.info(f"KB (re)loaded: {len(md_files)} Dateien, {len(content)} Zeichen")
+    logger.info(f"KB (re)loaded: {len(signature or ())} Dateien, {len(content)} Zeichen")
     return content
 
 
@@ -698,35 +715,57 @@ Für Sozialökonomik haben die Regeln aus `studienstart/sozialoekonomik-ba-faq.m
 """.strip()
 
 
-def build_system_prompt(kb_content: str = "") -> str:
+def _repo_system_prompt_path() -> Optional[Path]:
+    """Startstand des System-Prompts im Repo/Image (nur noch Vorlage)."""
     candidates = [
         Path(__file__).parent.parent / "system-prompt.md",
         Path("/system-prompt.md"),
         Path("/app/system-prompt.md"),
     ]
-    for path in candidates:
-        if path.exists():
-            base = path.read_text(encoding="utf-8")
-            if kb_content:
-                return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}\n\n---\n\n{STUDY_START_ROUTING_RULES}"
-            return base + f"\n\n---\n\n{STUDY_START_ROUTING_RULES}"
-    return "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg.\n\n" + STUDY_START_ROUTING_RULES
+    return next((p for p in candidates if p.exists()), None)
 
 
-LEARNING_LAYER_PREAMBLE = (
-    "Die folgenden Hinweise stammen aus der automatischen Auswertung von Nutzergesprächen. "
-    "Bei Widerspruch zur Wissensbasis oben gilt die Wissensbasis."
-)
-
-
-def load_learning_layer() -> str:
-    """Load the generated, non-versioned learning layer without touching the KB cache."""
-    path = Path(os.getenv("WISDOM_QUALITY_DIR", "/wisdom-quality")) / "gelerntes.md"
+def ensure_behavior_files() -> None:
+    """Legt System-Prompt und Zusatzregeln einmalig im Wissensbasis-Ordner an,
+    damit das Team sie im Editor bearbeiten kann. Danach gilt nur noch diese Kopie."""
+    base = kb_store.kb_dir()
+    if not base:
+        return
+    repo_prompt = _repo_system_prompt_path()
     try:
-        content = path.read_text(encoding="utf-8").strip()
+        kb_store.ensure_behavior_files(base, {
+            "_wisdom/system-prompt.md": repo_prompt.read_text(encoding="utf-8") if repo_prompt else "",
+            "_wisdom/regeln.md": "# Zusatzregeln\n\n" + STUDY_START_ROUTING_RULES,
+        })
     except OSError:
-        return ""
-    return content
+        logger.error("Verhaltens-Dateien konnten nicht angelegt werden", exc_info=True)
+
+
+def live_system_prompt_path() -> Optional[Path]:
+    base = kb_store.kb_dir()
+    if base and (base / "_wisdom" / "system-prompt.md").exists():
+        return base / "_wisdom" / "system-prompt.md"
+    return _repo_system_prompt_path()
+
+
+def build_system_prompt(kb_content: str = "", overrides: Optional[dict] = None) -> str:
+    """System-Prompt + Faktenbasis + Zusatzregeln. Prompt und Regeln kommen aus dem
+    Editor (_wisdom/ im Wissensbasis-Ordner); fehlen sie, gilt der Startstand."""
+    base_dir = kb_store.kb_dir()
+    base = kb_store.behavior_body(base_dir, "_wisdom/system-prompt.md", overrides)
+    if base is None:
+        repo_prompt = _repo_system_prompt_path()
+        base = repo_prompt.read_text(encoding="utf-8") if repo_prompt else (
+            "Du bist Wisdom, ein Studienbegleiter und Navigator für WiSo-Erstsemester an der FAU Erlangen-Nürnberg."
+        )
+    rules = kb_store.behavior_body(base_dir, "_wisdom/regeln.md", overrides)
+    if rules is None:
+        rules = STUDY_START_ROUTING_RULES
+    rules = rules.removeprefix("# Zusatzregeln").strip()
+    tail = f"\n\n---\n\n{rules}" if rules else ""
+    if kb_content:
+        return base + f"\n\n---\n\n## Faktenbasis (NUR zur Informationsgewinnung)\n\n{kb_content}" + tail
+    return base + tail
 
 
 _STATIC_LEAK_MARKERS = [
@@ -744,12 +783,7 @@ _leak_marker_cache: dict = {"mtime": None, "markers": _STATIC_LEAK_MARKERS}
 def _leak_markers() -> list[str]:
     """Static markers + all `## ` section headers of the *current* prompt file,
     so the detector follows prompt versions instead of matching stale headers."""
-    candidates = [
-        Path(__file__).parent.parent / "system-prompt.md",
-        Path("/system-prompt.md"),
-        Path("/app/system-prompt.md"),
-    ]
-    path = next((p for p in candidates if p.exists()), None)
+    path = live_system_prompt_path()
     if path is None:
         return _STATIC_LEAK_MARKERS
     try:
@@ -957,7 +991,7 @@ def response_text_blocks(content) -> str:
 _anthropic_client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
 
-async def call_claude(session_id: str, query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg") -> str:
+async def call_claude(session_id: str, query: str, chat_history: list = None, kb_content: str = "", image_base64: str = None, image_type: str = "image/jpeg", prompt_overrides: Optional[dict] = None) -> str:
     if _anthropic_client is None:
         logger.error("ANTHROPIC_API_KEY fehlt — kein LLM-Call möglich")
         return TECHNICAL_ERROR_FALLBACK
@@ -992,7 +1026,7 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
     system_blocks = [
         {
             "type": "text",
-            "text": build_system_prompt(kb_content),
+            "text": build_system_prompt(kb_content, prompt_overrides),
             "cache_control": {"type": "ephemeral"}
         }
     ]
@@ -1002,14 +1036,6 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
         "type": "text",
         "text": build_current_datetime_context(),
     })
-    learning_layer = load_learning_layer()
-    if learning_layer:
-        # Separate, uncached block: changing the daily layer must not invalidate
-        # the stable system-prompt/knowledge-base cache above.
-        system_blocks.append({
-            "type": "text",
-            "text": f"{LEARNING_LAYER_PREAMBLE}\n\n{learning_layer}",
-        })
     # ────────────────────────────────────────────────────────────────────────
 
     try:
@@ -1058,6 +1084,15 @@ async def call_claude(session_id: str, query: str, chat_history: list = None, kb
         record_llm_usage(session_id=session_id, model=ANTHROPIC_MODEL, error_type=e.__class__.__name__)
         LLM_HEALTH.update({"ok": False, "last_error": json_timestamp(datetime.utcnow())})
         return TECHNICAL_ERROR_FALLBACK
+
+
+async def kb_probe_answer(question: str, overrides: Optional[dict] = None) -> str:
+    """Probe-Antwort für den Editor: wie WiSdom mit dem aktuellen (oder einem
+    ungespeicherten) Stand der Wissensbasis antworten würde. Wird nicht als Chat
+    gespeichert; die Kosten erscheinen als Sitzung `kb_probe_…`."""
+    kb_content = load_knowledge_base(overrides)
+    session_id = f"kb_probe_{datetime.utcnow():%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}"
+    return await call_claude(session_id=session_id, query=question, chat_history=[], kb_content=kb_content, prompt_overrides=overrides)
 
 
 # ============================================================================
@@ -1298,8 +1333,16 @@ async def internal_docs(request: Request, path: str = "", key: Optional[str] = N
     # /internal/* begrenzt — die /api/*-Fetches der Dashboards bekommen deshalb
     # NIE den Cf-Access-JWT-Header. Beim ersten CF-verifizierten Seitenaufruf
     # setzen wir daher das Admin-Cookie, das die folgenden /api/*-Calls trägt.
-    if auth_method == "cf" and not _admin_cookie_valid(request.cookies.get(ADMIN_COOKIE_NAME) or ""):
-        _set_admin_cookie(response)
+    if auth_method == "cf":
+        email = admin_identity(request)
+        current = request.cookies.get(ADMIN_COOKIE_NAME) or ""
+        try:
+            current_email = jwt.decode(current, JWT_SECRET, algorithms=[JWT_ALGORITHM]).get("email", "")
+        except Exception:
+            current_email = ""
+        # Neu ausstellen, wenn ungültig oder ohne/mit anderer E-Mail (Historie).
+        if not _admin_cookie_valid(current) or current_email != email:
+            _set_admin_cookie(response, email)
     return response
 
 
@@ -1311,148 +1354,6 @@ async def wiki_endpoint():
     except Exception:
         logger.error("Wiki endpoint error", exc_info=True)
         raise HTTPException(status_code=500)
-
-
-@app.get("/api/wiki/file")
-async def wiki_file_endpoint(path: str):
-    """Return the raw content of a single knowledge_base file by relative path."""
-    kb_dirs = [
-        Path(__file__).parent.parent / "knowledge_base",
-        Path("/knowledge_base"),
-        Path("/app/knowledge_base"),
-    ]
-    kb_dir = next((d for d in kb_dirs if d.is_dir()), None)
-    if not kb_dir:
-        raise HTTPException(status_code=503, detail="Knowledge base not found")
-
-    # Prevent directory traversal
-    try:
-        target = (kb_dir / path).resolve()
-        target.relative_to(kb_dir.resolve())
-    except (ValueError, Exception):
-        raise HTTPException(status_code=400, detail="Invalid path")
-
-    if not target.exists() or not target.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    if target.suffix not in {".md", ".json"}:
-        raise HTTPException(status_code=400, detail="Only .md and .json files allowed")
-
-    content = target.read_text(encoding="utf-8")
-    return {"path": path, "content": content, "format": target.suffix.lstrip(".")}
-
-
-def _cost_period_bounds(start: datetime, end: datetime) -> tuple[datetime, datetime]:
-    """Translate app-local period bounds for the naive-UTC SQLite columns."""
-    return app_time_to_utc_naive(start), app_time_to_utc_naive(end)
-
-
-def _cost_usage_summary(usage_rows: list[LLMUsage], sessions: int, messages: int) -> dict:
-    successful = [row for row in usage_rows if row.error_type is None]
-    return {
-        "sessions": sessions,
-        "nachrichten": messages,
-        "requests_erfolgreich": len(successful),
-        "requests_fehler": len(usage_rows) - len(successful),
-        "cache_write_requests": sum(1 for row in usage_rows if (row.cache_creation_input_tokens or 0) > 0),
-        "input_tokens": sum(row.input_tokens or 0 for row in usage_rows),
-        "output_tokens": sum(row.output_tokens or 0 for row in usage_rows),
-        "cache_creation_input_tokens": sum(row.cache_creation_input_tokens or 0 for row in usage_rows),
-        "cache_read_input_tokens": sum(row.cache_read_input_tokens or 0 for row in usage_rows),
-        "kosten_eur": sum(row.estimated_cost_eur or 0.0 for row in usage_rows),
-        "kosten_usd": sum(row.estimated_cost_usd or 0.0 for row in usage_rows),
-        "modelle": sorted({row.model for row in usage_rows if row.model}),
-    }
-
-
-@app.get("/api/costs/summary", dependencies=[Depends(require_admin)])
-async def costs_summary():
-    """Database-backed cost aggregates for the internal operating-cost dashboard."""
-    now_app = datetime.now(APP_TIMEZONE)
-    today_start = now_app.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = today_start.replace(day=1)
-    next_month_start = (month_start + timedelta(days=32)).replace(day=1)
-    previous_month_end = month_start - timedelta(microseconds=1)
-    previous_month_start = previous_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    def period_summary(db: SQLSession, start: datetime, end: datetime, usage_type: str = "chat") -> dict:
-        start_utc, end_utc = _cost_period_bounds(start, end)
-        usage_rows = db.query(LLMUsage).filter(
-            LLMUsage.created_at >= start_utc,
-            LLMUsage.created_at <= end_utc,
-            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type == usage_type),
-        ).all()
-        sessions = db.query(SessionRecord).filter(
-            SessionRecord.created_at >= start_utc,
-            SessionRecord.created_at <= end_utc,
-        ).count() if usage_type == "chat" else 0
-        messages = db.query(ChatMessage).filter(
-            ChatMessage.created_at >= start_utc,
-            ChatMessage.created_at <= end_utc,
-        ).count() if usage_type == "chat" else 0
-        return _cost_usage_summary(usage_rows, sessions, messages)
-
-    db = SessionLocal()
-    try:
-        all_usage = db.query(LLMUsage).filter(
-            or_(LLMUsage.usage_type.is_(None), LLMUsage.usage_type == "chat")
-        ).order_by(LLMUsage.created_at.asc()).all()
-        total = _cost_usage_summary(
-            all_usage,
-            db.query(SessionRecord).count(),
-            db.query(ChatMessage).count(),
-        )
-        app_dates = [utc_naive_to_app_time(row.created_at).date() for row in all_usage if row.created_at]
-        if app_dates:
-            total_start, total_end = min(app_dates), max(app_dates)
-            total.update({
-                "start": total_start.isoformat(),
-                "ende": total_end.isoformat(),
-                "tage": (total_end - total_start).days + 1,
-            })
-        else:
-            total.update({"start": None, "ende": None, "tage": 0})
-
-        today = period_summary(db, today_start, now_app)
-        month = period_summary(db, month_start, now_app)
-        month.update({
-            "monat": month_start.strftime("%Y-%m"),
-            "tage_erfasst": len({
-                utc_naive_to_app_time(row.created_at).date()
-                for row in all_usage
-                if row.created_at and month_start <= utc_naive_to_app_time(row.created_at) <= now_app
-            }),
-            "tage_im_monat": (next_month_start.date() - month_start.date()).days,
-        })
-        previous_month = period_summary(db, previous_month_start, previous_month_end)
-        quality_today = period_summary(db, today_start, now_app, "quality_review")
-        quality_month = period_summary(db, month_start, now_app, "quality_review")
-        previous_month.update({
-            "monat": previous_month_start.strftime("%Y-%m"),
-            "tage_erfasst": len({
-                utc_naive_to_app_time(row.created_at).date()
-                for row in all_usage
-                if row.created_at and previous_month_start <= utc_naive_to_app_time(row.created_at) <= previous_month_end
-            }),
-            "tage_im_monat": (month_start.date() - previous_month_start.date()).days,
-        })
-        return {
-            "generated_at": now_app.isoformat(),
-            "timezone": APP_TIMEZONE.key,
-            "preise": {
-                "modell": ANTHROPIC_MODEL,
-                "staffel_ab_prompt_tokens": PROMPT_TIER_THRESHOLD,
-                "staffeln_usd_per_mtok": MODEL_PRICING.get(ANTHROPIC_MODEL, MODEL_PRICING["claude-haiku-5-5"]),
-                "usd_per_eur": USD_PER_EUR,
-            },
-            "gesamt": total,
-            "heute": today,
-            "monat": month,
-            "vormonat": previous_month,
-            "qualitaetsanalyse": {"heute": quality_today, "monat": quality_month},
-        }
-    finally:
-        db.close()
 
 
 @app.get("/api/reports/range", dependencies=[Depends(require_admin)])
@@ -1748,6 +1649,13 @@ async def review_evaluations_endpoint(since: Optional[str] = None):
     return {"since": since_date.isoformat(), "evaluations": evaluations}
 
 
+@app.get("/api/review/summaries", dependencies=[Depends(require_admin)])
+async def review_summaries_endpoint(limit: int = 30):
+    """Tageszusammenfassungen des nächtlichen Chat-Reviews für die Seite „Auffälligkeiten“."""
+    reviews_dir = Path(os.getenv("CHAT_REVIEW_DIR", "/app/reports")) / "reviews"
+    return {"zusammenfassungen": load_summaries(reviews_dir, max(1, min(limit, 90)))}
+
+
 @app.get("/api/review/session/{session_id}", dependencies=[Depends(require_admin)])
 async def review_session_endpoint(session_id: str):
     if review_session_limit_exceeded():
@@ -1836,6 +1744,7 @@ async def get_daily_logs(date: Optional[str] = None):
 
 @app.on_event("startup")
 async def startup_event():
+    ensure_behavior_files()
     logger.info("Wiesel Backend starting...")
     cleanup_expired_data()
     logger.info(f"Environment: {ENVIRONMENT}")

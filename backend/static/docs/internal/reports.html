@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wisdom Auffälligkeiten</title>
 <link rel="stylesheet" href="../assets/docs-theme.css" />
+<style>
+  .summary-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:18px 22px; margin:24px 24px 22px; }
+  .summary-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:12px; }
+  .summary-head h2 { margin:0 0 4px; }
+  .summary-sub { margin:0; color:var(--muted); font-size:13px; line-height:1.5; max-width:760px; }
+  .summary-body { font-size:14px; line-height:1.65; color:var(--text); max-height:70vh; overflow:auto; }
+  .summary-body h1 { font-family:var(--sans); font-size:16px; font-weight:700; margin:18px 0 6px; letter-spacing:0; }
+  .summary-body h1:first-child { margin-top:0; }
+  .summary-body h2, .summary-body h3 { font-family:var(--sans); font-size:14px; font-weight:700; margin:14px 0 4px; }
+  .summary-body ul, .summary-body ol { padding-left:22px; margin:0 0 10px; }
+  .summary-body p { margin:0 0 10px; }
+  .summary-body code { background:var(--panel-3); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:12px; }
+  .summary-body hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
+  .summary-body .foot { color:var(--muted); font-size:12px; }
+</style>
 </head>
 <body>
 <div class="page">
@@ -12,7 +27,7 @@
     <div class="title-row">
       <div>
         <h1>Auffälligkeiten</h1>
-        <p class="subline">Diese Ansicht zeigt nur geflaggte Sessions und rendert live aus der Datenbank über <code>/api/reports/range</code>. Der vollständige Tagesreport liegt als Markdown in GitHub unter <code>reports/YYYY-MM-DD.md</code>.</p>
+        <p class="subline">Oben die automatische Tageszusammenfassung aller Chats der Nacht. Darunter die Chats, die Studierende über den Melde-Knopf markiert haben.</p>
       </div>
     </div>
 
@@ -46,6 +61,16 @@
   </header>
 
   <main class="content reports-content">
+    <section class="summary-card" id="summary-card">
+      <div class="summary-head">
+        <div>
+          <h2>Tageszusammenfassung</h2>
+          <p class="summary-sub">Jede Nacht liest Claude alle abgeschlossenen Chats und fasst zusammen: Wissenslücken, Vorschläge für die Wissensbasis, falsche Antworten, heikle Fälle. Kosten: wenige Cent pro Tag.</p>
+        </div>
+        <label>Tag <select id="summary-date"></select></label>
+      </div>
+      <div class="summary-body" id="summary-body"><p class="summary-sub">Lädt …</p></div>
+    </section>
     <div class="empty-state" id="empty-state">
       <div class="empty-card">
         <h2>Wähle einen Zeitraum</h2>
@@ -381,6 +406,42 @@
     dayStrip.innerHTML = '';
     status.textContent = `Tagesmarkierungen konnten nicht geladen werden: ${error.message}`;
   }).finally(restoreFromHash);
+})();
+</script>
+<script>
+(() => {
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const inline = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  function md(text) {
+    const out = []; let list = null, para = [];
+    const flush = () => { if (para.length) { out.push('<p>' + para.map(inline).join('<br>') + '</p>'); para = []; } if (list) { out.push(`<${list.t}>` + list.items.map(i => `<li>${inline(i)}</li>`).join('') + `</${list.t}>`); list = null; } };
+    for (const raw of esc(text).split('\n')) {
+      const l = raw.trimEnd(); let m;
+      if (!l.trim()) { flush(); continue; }
+      if ((m = /^(#{1,3}) (.+)/.exec(l))) { flush(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); continue; }
+      if (/^-{3,}$/.test(l)) { flush(); out.push('<hr>'); continue; }
+      if ((m = /^\s*[-*] (.+)/.exec(l))) { if (para.length) { const p = para; para = []; out.push('<p>' + p.map(inline).join('<br>') + '</p>'); } if (!list || list.t !== 'ul') { if (list) flush(); list = { t: 'ul', items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = /^\s*\d+\. (.+)/.exec(l))) { if (!list || list.t !== 'ol') { flush(); list = { t: 'ol', items: [] }; } list.items.push(m[1]); continue; }
+      if (list) flush();
+      para.push(l);
+    }
+    flush();
+    return out.join('\n');
+  }
+  const sel = document.getElementById('summary-date'), body = document.getElementById('summary-body');
+  let items = [];
+  const fmt = d => { const [y, m, t] = d.split('-'); return `${t}.${m}.${y}`; };
+  function show(i) { body.innerHTML = items[i] ? md(items[i].markdown) : ''; }
+  fetch('/api/review/summaries?limit=30', { credentials: 'same-origin', cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error(r.status === 401 ? 'Nicht angemeldet – Seite neu laden.' : 'Fehler ' + r.status); return r.json(); })
+    .then(d => {
+      items = d.zusammenfassungen || [];
+      if (!items.length) { sel.disabled = true; body.innerHTML = '<p class="summary-sub">Noch keine Zusammenfassung vorhanden. Sie entsteht jede Nacht durch den Job <code>jobs.chat_review</code> auf dem Server.</p>'; return; }
+      sel.innerHTML = items.map((it, i) => `<option value="${i}">${fmt(it.datum)}</option>`).join('');
+      sel.onchange = () => show(+sel.value); show(0);
+    })
+    .catch(e => { body.innerHTML = `<p class="summary-sub">${esc(e.message)}</p>`; });
 })();
 </script>
 </body>

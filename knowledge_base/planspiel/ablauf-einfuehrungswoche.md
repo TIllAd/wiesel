@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Ablauf & Zeitplan Einführungswoche (12.10.–16.10.2026)
 
 Quelle: PDF "Ablauf & Inhalt Einführungswoche 12.10.2026" (Fachbereich WiSo)

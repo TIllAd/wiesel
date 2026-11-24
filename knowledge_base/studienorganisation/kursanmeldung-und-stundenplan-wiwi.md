@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Kursanmeldung & Stundenplan – Bachelor Wirtschaftswissenschaften
 
 Kuratiert am: 2026-11-03

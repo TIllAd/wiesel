@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Prüfungsamt WiSo
 Quelle: https://www.fau.de/studium/studienorganisation/pruefungen/pruefungsamt-rw/wirtschafts-und-sozialwissenschaften/
 Gecrawlt am: 2026-07-04

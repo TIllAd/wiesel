@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # FSI WiSo – Beratung
 Quelle: https://www.fsi-wiso.de/beratung/
 Gecrawlt am: 2026-06-27

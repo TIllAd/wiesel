@@ -95,13 +95,7 @@ Erwartung bei funktionierendem API-Key und erfolgreichem/noch nicht fehlgeschlag
 
 Der Healthcheck ist technisch. Er wird nicht als Online/Offline-Status im UI angezeigt.
 
-Kosten-/Usage-Check nach ein paar Requests:
-
-```bash
-python export_analytics.py
-```
-
-Der Export enthält dann die Tagesdaten für heute mit `llm_usage`: Request-Zahl, Tokenverbrauch, Cache-Nutzung, geschätzte EUR-Kosten, P95-Latenz und Fehleranzahl. Für einen bestimmten Tag kann `WIESEL_ANALYTICS_DATE=YYYY-MM-DD python export_analytics.py` genutzt werden. Für Analysen wird diese JSON-Datei verwendet, nicht die Roh-DB. Ja, das ist Absicht.
+Kosten nach ein paar Requests in der Claude Console des Anthropic-Kontos prüfen, Nutzung im internen Bereich unter „Nutzungszeiten“.
 
 ## Start ohne Docker
 
@@ -234,6 +228,41 @@ Für parallele Nutzung WAL aktivieren:
 sqlite3 backend/wiesel.db "PRAGMA journal_mode=WAL;"
 ```
 
+## Wissensbasis-Editor, Crawler und Quellen-Wächter
+
+Das Team pflegt die Wissensbasis im internen Bereich (`/internal/knowledge-base.html`). Gespeicherte Änderungen gelten sofort, ohne Neustart. Jede Version landet in der Tabelle `kb_versions` der SQLite-DB – das DB-Backup sichert damit auch den Verlauf.
+
+**Einmalige Umstellung auf der VM** (danach nie wieder `knowledge_base/` im Repo anfassen):
+
+```bash
+cp -a ~/wiesel/knowledge_base ~/wisdom-kb
+echo "WISDOM_KB_HOST_DIR=$HOME/wisdom-kb" >> ~/wiesel/.env   # .env neben docker-compose.yml, nicht backend/.env
+cd ~/wiesel && docker compose up -d --build
+docker exec wiesel-backend python -c "import os; print(os.listdir('/knowledge_base'))"
+```
+
+Warum: Würde der Editor in den Git-Checkout schreiben, kollidiert jeder `git pull` mit Änderungen des Teams. Der Ordner `knowledge_base/` im Repo ist ab dann nur noch der Startstand.
+
+**Cronjobs** (`crontab -e` auf der VM):
+
+```cron
+# Mensa, Wetter, ÖPNV, FAU Aktuell – vorher liefen sie auf Tills PC
+30 5 * * * docker exec -w /app/backend wiesel-backend python -m jobs.crawl_daily >> "$HOME/wiesel-reports/crawl.log" 2>&1
+# Quellen-Wächter: meldet im Editor, wenn sich eine offizielle Quellseite geändert hat (ändert keine Dateien)
+45 4 * * * docker exec -w /app/backend wiesel-backend python -m jobs.source_watch >> "$HOME/wiesel-reports/quellen.log" 2>&1
+```
+
+Automatische Dateien, die älter als `KB_AUTO_MAX_AGE_HOURS` (Standard 48) sind, gibt WiSdom nicht mehr an das Modell weiter und der Editor zeigt sie rot. Fällt ein Crawler aus, sagt WiSdom also lieber nichts als etwas Veraltetes.
+
+Einmal von Hand testen:
+
+```bash
+docker exec -w /app/backend wiesel-backend python -m jobs.crawl_daily
+docker exec -w /app/backend wiesel-backend python -m jobs.source_watch
+```
+
+Wer im Verlauf steht: Bei Anmeldung über Cloudflare Access die E-Mail-Adresse, beim Zugang mit Admin-Key „Team“ bzw. „Admin-Key“.
+
 ## Täglicher Chat-Review
 
 Die Artefakte bleiben außerhalb des Repos in `~/wiesel-reports`. Das Verzeichnis muss einmal dem Benutzer gehören, der den Cronjob installiert; sonst erzeugt Docker wieder Root-Dateien, weil offenbar selbst Dateirechte ein Abenteuer sein müssen.
@@ -253,6 +282,8 @@ Ein Test ohne Anthropic-Aufrufe:
 ```bash
 docker exec -u "$(id -u):$(id -g)" -w /app/backend wiesel-backend python -m jobs.chat_review --dry-run
 ```
+
+Der Job bewertet jede abgeschlossene Session einzeln und schreibt danach eine **Tageszusammenfassung** nach `~/wiesel-reports/reviews/YYYY-MM-DD.md`. Das Team sieht sie im internen Bereich auf „Auffälligkeiten“. Sie ersetzt den früheren Hermes-Bericht. Abschalten mit `CHAT_REVIEW_SUMMARY=0`. Kosten mit Haiku 5.5: rund 0,03 Cent pro Session plus etwa 0,2 Cent für die Zusammenfassung, also wenige Cent pro Tag.
 
 ## Logs und Fehleranalyse
 
@@ -328,6 +359,6 @@ Für O-Woche/Lastspitzen:
 - Kein sichtbarer Online/Offline-Badge im UI.
 - Keine Provider-Namen in Nutzerantworten.
 - Keine Rohchats in Berichten zitieren.
-- Faktenänderungen zuerst in `knowledge_base/` pflegen.
-- Tonänderungen zuerst in `system-prompt.md` pflegen.
+- Faktenänderungen im Editor pflegen (interner Bereich → Wissensbasis).
+- Ton- und Regeländerungen im Editor unter „Verhalten von WiSdom“ pflegen. Die Dateien liegen im Wissensbasis-Ordner unter `_wisdom/`. Das `system-prompt.md` im Repo ist nur noch der Startstand, mit dem beim ersten Start die Datei angelegt wird.
 - Deployments nach Änderungen immer mit echtem Chat-Request testen, nicht nur mit „Container läuft“. Container laufen auch, während innen Unsinn passiert. Das ist ihr Talent.

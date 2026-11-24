@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # FAU International Student Servicepoint (ISS)
 Quelle: https://www.studon.fau.de/studon/ilias.php?baseClass=ilrepositorygui&cmdNode=13a:qe&cmdClass=ilObjCategoryGUI&ref_id=6292770
 Stand: 2026-11-24

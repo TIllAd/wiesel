@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # BAföG – Studienfinanzierung
 Quelle: https://www.fau.de/studium/studienorganisation/studienfinanzierung/studienfinanzierung-mit-bafoeg/
 Gecrawlt am: 2026-06-26

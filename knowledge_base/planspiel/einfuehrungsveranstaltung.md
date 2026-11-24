@@ -1,3 +1,6 @@
+---
+pruefen_bis: 2027-08-31
+---
 # Einführungsveranstaltung Perspektiven WiWi
 Quelle: https://www.professur-wirtschaftspaedagogik.rw.fau.de/en/einfuhrung-perspektiven-der-wirtschaftswissenschaften/
 Gecrawlt am: 2026-06-26
