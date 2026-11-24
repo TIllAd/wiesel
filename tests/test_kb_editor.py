@@ -265,3 +265,11 @@ def test_source_watch_ignores_network_errors_but_flags_dead_pages(tmp_path):
     assert state["b.md"].get("nicht_pruefbar")
     assert calls.count("https://www.fau.de/b") == 0  # Server nach erstem Timeout übersprungen
     assert state["c.md"]["fehler"] == "HTTP 404"
+
+
+def test_database_is_mounted_as_folder_not_single_file():
+    """Regression 24.11.2026: Einzeldatei-Mount + WAL = Datenverlust bei jedem Neustart."""
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "wiesel.db:/app/wiesel.db" not in compose
+    assert "DATABASE_URL=sqlite:////app/backend/wiesel.db" in compose
+    assert "./backend:/app/backend" in compose

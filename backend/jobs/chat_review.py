@@ -109,7 +109,7 @@ def kb_overview() -> str:
 
 
 def database_path() -> Path:
-    return Path(os.getenv("WIESEL_DB_PATH", "/app/wiesel.db"))
+    return Path(os.getenv("WIESEL_DB_PATH", "/app/backend/wiesel.db"))
 
 
 def _clean_text(value: object, limit: int) -> str:

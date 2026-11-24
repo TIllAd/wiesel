@@ -1748,7 +1748,7 @@ async def startup_event():
     logger.info("Wiesel Backend starting...")
     cleanup_expired_data()
     logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"Database: {DATABASE_URL}")
+    logger.info(f"Database: {DATABASE_URL} (Datei: {engine.url.database and Path(engine.url.database).resolve()})")
     # SQLite härten: WAL-Mode reduziert Korruptionsrisiko bei parallelen
     # Zugriffen; quick_check erkennt eine kaputte DB beim Start statt im Betrieb.
     if DATABASE_URL.startswith("sqlite"):
@@ -1767,7 +1767,18 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    """WAL vor dem Beenden in die Datenbankdatei schreiben, damit nichts nur im
+    -wal-Nebenfile liegt, falls dieses einmal nicht dauerhaft gespeichert ist."""
     logger.info("Wiesel Backend shutting down...")
+    if DATABASE_URL.startswith("sqlite"):
+        try:
+            from sqlalchemy import text as sa_text
+            with engine.connect() as conn:
+                conn.execute(sa_text("PRAGMA wal_checkpoint(TRUNCATE)"))
+            engine.dispose()
+            logger.info("SQLite WAL checkpoint beim Beenden: ok")
+        except Exception:
+            logger.error("SQLite WAL checkpoint beim Beenden fehlgeschlagen", exc_info=True)
 
 
 # Broad docs mount: keep this after every API/page route, or it will eat the app.

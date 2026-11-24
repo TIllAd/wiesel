@@ -12,13 +12,18 @@ services:
       - ./backend/.env
     environment:
       - WISDOM_KB_DIR=/knowledge_base
+      # Datenbank liegt im gemounteten ORDNER ./backend, nicht als Einzeldatei-Mount:
+      # SQLite schreibt im WAL-Modus zusätzlich wiesel.db-wal/-shm daneben. Bei einem
+      # Einzeldatei-Mount landeten diese im Container und gingen bei jedem Neustart
+      # verloren (Ursache der „fehlenden Chats“, gefunden 24.11.2026).
+      - DATABASE_URL=sqlite:////app/backend/wiesel.db
+      - WIESEL_DB_PATH=/app/backend/wiesel.db
     volumes:
       - ./backend:/app/backend
       # Wissensbasis: auf der VM außerhalb des Git-Checkouts (WISDOM_KB_HOST_DIR in ./.env),
       # weil das Team sie über den Editor ändert. Lokal reicht der Repo-Ordner.
       - ${WISDOM_KB_HOST_DIR:-./knowledge_base}:/knowledge_base
       - ./system-prompt.md:/system-prompt.md
-      - ./backend/wiesel.db:/app/wiesel.db
       # Chat-review artifacts contain operational metadata and must never enter Git.
       - ${WISDOM_CHAT_REVIEW_DIR:-${HOME}/wiesel-reports}:/app/reports
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload

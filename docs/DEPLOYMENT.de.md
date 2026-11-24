@@ -203,29 +203,20 @@ Debug-URLs nicht breit an Studierende verteilen. Überraschung: Debug ist Debug.
 
 ## Daten und Backups
 
-Aktuell wird SQLite genutzt. Im Compose-Setup liegt die DB über Volume-Mapping bei:
+Die Datenbank ist SQLite im WAL-Modus. Sie liegt auf dem Host unter `~/wiesel/backend/wiesel.db` und im Container unter `/app/backend/wiesel.db` (`DATABASE_URL` in `docker-compose.yml`).
 
-```text
-backend/wiesel.db -> /app/wiesel.db
-```
+**Wichtig:** Die DB muss über ihren **Ordner** gemountet sein, nie als Einzeldatei. SQLite schreibt neue Daten zuerst in `wiesel.db-wal` daneben. Bei einem Einzeldatei-Mount (`./backend/wiesel.db:/app/wiesel.db`, so war es bis 24.11.2026) lag diese Datei nur im Container, und bei jedem Neustart gingen alle Chats seit dem letzten Checkpoint verloren. Das war die Ursache der „fehlenden Chats“.
 
-Ein einfaches Backup:
+Backup (läuft nachts per Cron, siehe unten, behält 14 Tage):
 
 ```bash
-mkdir -p /opt/wiesel-backups
-sqlite3 /opt/wiesel/backend/wiesel.db ".backup '/opt/wiesel-backups/wiesel-$(date +%Y%m%d-%H%M%S).db'"
+docker exec -w /app/backend wiesel-backend python db_backup.py --db /app/backend/wiesel.db --out /app/reports/db-backups
 ```
 
-Cron-Beispiel:
-
-```cron
-0 2 * * * sqlite3 /opt/wiesel/backend/wiesel.db ".backup '/opt/wiesel-backups/wiesel-$(date +\%Y\%m\%d).db'"
-```
-
-Für parallele Nutzung WAL aktivieren:
+Vor einem Eingriff am Host von Hand erst den WAL einspielen:
 
 ```bash
-sqlite3 backend/wiesel.db "PRAGMA journal_mode=WAL;"
+docker exec wiesel-backend python -c "import sqlite3; print(sqlite3.connect('/app/backend/wiesel.db').execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone())"
 ```
 
 ## Wissensbasis-Editor, Crawler und Quellen-Wächter
