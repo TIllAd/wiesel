@@ -1,205 +1,44 @@
-# Deployment – Wiesel
+# Betrieb – WiSdom
 
-Diese Anleitung beschreibt den aktuellen Wiesel-Stack: FastAPI, statische Chat-UI, SQLite, Anthropic Claude Haiku 4.5, Docker Compose, Port `8001`. Kein separates React-Frontend. Kein OpenAI-Setup. Kein altes Architektur-Fossil mit Port 3000.
+Anleitung für die Person, die WiSdom technisch betreut. Inhalte pflegt das Team selbst im Editor, dafür ist diese Datei nicht nötig.
 
-## Voraussetzungen
+## Wo was läuft
 
-Auf der Zielmaschine:
+| Was | Wo |
+| --- | --- |
+| Server | RRZE-VM `wiso-chatbot` (131.188.74.146), SSH nur über FAU-VPN |
+| Code | `~/wiesel` (Git-Checkout von GitHub, `main`) |
+| Container | `wiesel-backend` (Docker Compose), Port 8001 |
+| Öffentlich | Cloudflare Tunnel `wiesel-vm` → `wisdom.chatbot-wiso.de`, `docs.…`, `test.…` |
+| Interner Bereich | `/internal`, geschützt durch Cloudflare Access (Application „docs“, Policy „Team Wiso emails“) |
+| Konfiguration | `~/wiesel/backend/.env` (Geheimnisse), `~/wiesel/.env` (`WISDOM_KB_HOST_DIR`) |
+| Datenbank | `~/wiesel/backend/wiesel.db` |
+| Wissensbasis | `~/wisdom-kb` (vom Team im Editor gepflegt, **nicht** der Ordner im Repo) |
+| Berichte, Logs, Backups | `~/wiesel-reports` |
 
-- Git
-- Docker mit Compose Plugin (`docker compose`)
-- Zugriff auf das Repository
-- Domain/Reverse Proxy, falls öffentlich betrieben
-- Anthropic API-Key
-- Für StudOn-Produktion: LTI Consumer Key und Secret
+## Konfiguration (`backend/.env`)
 
-## Repository holen
+Pflicht in Produktion (sonst startet die App nicht): `ENVIRONMENT=production`, `ANTHROPIC_API_KEY`, `JWT_SECRET`, `ADMIN_API_KEY`. Für den Login über Cloudflare: `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`. Alles andere hat sinnvolle Standardwerte, siehe `backend/.env.example`.
 
-```bash
-cd /opt
-git clone https://github.com/TIllAd/wiesel.git
-cd wiesel
-```
+Wichtige Stellschrauben:
 
-Falls das Repo schon existiert:
+- `ANTHROPIC_MODEL`: Modell. Wenn Anthropic ein Modell einstellt, hier wechseln und neu starten.
+- `DAILY_BUDGET_EUR`: Tagesbudget, danach Pause bis Mitternacht (Standard 15).
+- `CHAT_RETENTION_DAYS`, `FLAGGED_CHAT_RETENTION_DAYS`, `USAGE_RETENTION_DAYS`: Löschfristen.
 
-```bash
-cd /opt/wiesel
-git pull origin main
-```
+`.env` niemals committen.
 
-## Environment konfigurieren
+## Updates einspielen
 
-Datei: `backend/.env`
-
-Minimal für lokalen/Testbetrieb. Die LLM-Preise sind Reporting-Schätzwerte nach Claude Haiku 4.5 Public Pricing (5m Cache Write), keine Abrechnungslogik:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-MOCK_LTI_MODE=true
-JWT_SECRET=change-me-for-any-shared-environment
-USD_PER_EUR=1.08
-LLM_INPUT_USD_PER_MTOK=1.00
-LLM_OUTPUT_USD_PER_MTOK=5.00
-LLM_CACHE_WRITE_USD_PER_MTOK=1.25
-LLM_CACHE_READ_USD_PER_MTOK=0.10
-```
-
-Für Produktion mit StudOn:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-MOCK_LTI_MODE=false
-LTI_CONSUMER_KEY=...
-LTI_CONSUMER_SECRET=...
-JWT_SECRET=long-random-secret
-```
-
-Regeln:
-
-- `.env` niemals committen.
-- `JWT_SECRET` in geteilter Umgebung immer explizit setzen.
-- LTI-Secrets nur auf der Zielmaschine oder in einem echten Secret Store halten.
-- Provider-/Credit-/API-Fehler gehören in Logs, nicht in Screenshots für Studierende.
-
-## Start mit Docker Compose
+Code wird nie direkt auf der VM geändert. Ablauf: Änderung am eigenen Rechner → `git push` → auf der VM:
 
 ```bash
-docker compose up --build -d
+~/deploy.sh          # git pull + docker compose up -d --build + Healthcheck
 ```
 
-Status prüfen:
+Danach im echten Chat eine Frage stellen. „Container läuft“ heißt noch nicht, dass WiSdom antwortet.
 
-```bash
-docker compose ps
-docker compose logs -f wiesel-backend
-```
-
-Lokal testen:
-
-```text
-http://localhost:8001/chat?debug=true
-```
-
-Healthcheck:
-
-```bash
-curl http://localhost:8001/health
-```
-
-Erwartung bei funktionierendem API-Key und erfolgreichem/noch nicht fehlgeschlagenem LLM-Zustand:
-
-```json
-{"status":"healthy","db":"connected","llm":"connected"}
-```
-
-Der Healthcheck ist technisch. Er wird nicht als Online/Offline-Status im UI angezeigt.
-
-Kosten nach ein paar Requests in der Claude Console des Anthropic-Kontos prüfen, Nutzung im internen Bereich unter „Nutzungszeiten“.
-
-## Start ohne Docker
-
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-Die App läuft dann auf:
-
-```text
-http://localhost:8001
-```
-
-## Reverse Proxy
-
-Für öffentlichen Betrieb sollte ein Reverse Proxy TLS terminieren und auf den Backend-Port `8001` weiterleiten.
-
-Nginx-Beispiel:
-
-```nginx
-server {
-    listen 80;
-    server_name chatbot-wiso.de;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name chatbot-wiso.de;
-
-    ssl_certificate /etc/letsencrypt/live/chatbot-wiso.de/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/chatbot-wiso.de/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Danach:
-
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-## TLS mit Let's Encrypt
-
-```bash
-sudo apt update
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d chatbot-wiso.de
-sudo systemctl enable certbot.timer
-```
-
-## StudOn / LTI 1.1
-
-Produktionsbetrieb über:
-
-```text
-POST https://chatbot-wiso.de/lti/launch
-```
-
-Wichtig:
-
-- In Produktion `MOCK_LTI_MODE=false` setzen.
-- `LTI_CONSUMER_KEY` und `LTI_CONSUMER_SECRET` müssen exakt zu StudOn passen.
-- Der Launch erzeugt eine Session und leitet auf `/chat?token=...&session_id=...` weiter.
-- Nonces werden gegen Wiederverwendung geprüft.
-
-Lokale Debug-URL bleibt:
-
-```text
-/chat?debug=true
-```
-
-## Updates deployen
-
-```bash
-cd /opt/wiesel
-git pull origin main
-docker compose up --build -d
-docker compose logs -f wiesel-backend
-```
-
-Danach kurz testen:
-
-```bash
-curl http://localhost:8001/health
-```
-
-Und im Browser:
-
-```text
-https://chatbot-wiso.de/chat?debug=true
-```
-
-Debug-URLs nicht breit an Studierende verteilen. Überraschung: Debug ist Debug.
+Healthcheck: `curl localhost:8001/health` liefert `{"status":"healthy","db":"connected","llm":"connected"}`. `llm` steht auf `disconnected`, wenn der letzte Aufruf an Anthropic fehlgeschlagen ist (Guthaben, Schlüssel, Modell).
 
 ## Daten und Backups
 
@@ -294,7 +133,6 @@ Typische Fälle:
 
 - `Claude API error`: Provider/API/Credit/Netzwerkproblem. Sichtbar für Studierende nur als neutrale Fallback-Antwort.
 - `Blocked likely system-prompt leak`: Modell wollte interne Promptteile ausgeben; Antwort wurde abgefangen.
-- `LTI validation failed`: Consumer Key, Secret, Timestamp, Nonce oder Signatur prüfen.
 
 Keine rohen API-Fehler ins UI kopieren. Das Backend ist nicht die Theaterbühne für Provider-Gedärme.
 
@@ -326,14 +164,6 @@ Mögliche Ursachen:
 - letzter LLM-Call fehlgeschlagen
 - Provider/Credit/Netzwerkproblem
 
-LTI scheitert:
-
-- `MOCK_LTI_MODE=false` gesetzt?
-- Consumer Key korrekt?
-- Consumer Secret korrekt?
-- Serverzeit plausibel?
-- Launch-URL exakt `/lti/launch`?
-
 UI lädt, aber Chat antwortet nicht:
 
 - Browser-Konsole prüfen
@@ -343,13 +173,9 @@ UI lädt, aber Chat antwortet nicht:
 
 ## Skalierungshinweise
 
-Für O-Woche/Lastspitzen:
-
-- Reverse Proxy vor FastAPI setzen.
-- Mehr Uvicorn-Worker statt unnötiger Frontend-Komplexität.
-- LLM-Latenzen und Fehlerraten loggen.
-- Kosten im Dashboard/Monitoring beobachten; keine versteckten Budget-Hardstops im Backend einbauen.
-- SQLite beobachten; erst bei realem Druck auf Postgres migrieren.
+- Engpass ist nicht SQLite oder HTML, sondern die Antwortzeit des Modells und die Qualität der Wissensbasis.
+- Für die Einführungswoche: `DAILY_BUDGET_EUR` vorher prüfen. Bei 1.000 aktiven Studierenden reicht der Standardwert eventuell nicht.
+- Erst bei echtem Druck über mehr Uvicorn-Worker oder Postgres nachdenken.
 
 ## Betriebsprinzipien
 

@@ -2,7 +2,7 @@
 window.STRINGS = {
   de: {
     noSession: '⚠️ Kein Session-Token. Klick hier für einen frischen Test-Chat.',
-    sessionRequired: 'Kein aktiver Chat. Öffne Wisdom bitte über StudOn oder starte einen frischen Test-Chat.',
+    sessionRequired: 'Kein aktiver Chat. Lade die Seite neu, um einen neuen Chat zu starten.',
     pageTitle: 'Wisdom – Dein Studienbegleiter',
     wisdomAlt: 'Wisdom',
     hname: 'Wisdom',
@@ -101,7 +101,7 @@ window.STRINGS = {
   },
   en: {
     noSession: '⚠️ No session token. Click here to start a fresh test chat.',
-    sessionRequired: 'No active chat session. Please open Wisdom through StudOn or start a fresh test chat.',
+    sessionRequired: 'No active chat. Reload the page to start a new chat.',
     pageTitle: 'Wisdom – Your study companion',
     wisdomAlt: 'Wisdom',
     hname: 'Wisdom',

@@ -1,127 +1,47 @@
-# Wiesel – Studienbegleiter für FAU WiSo
+# WiSdom – KI-Navigator für den Studienstart an der FAU WiSo
 
-Wiesel ist ein KI-gestützter Studienstart-Begleiter für Studierende der FAU WiSo. Der Bot hilft bei Orientierung, Portalen, Fristen, Anlaufstellen und typischen Erstsemester-Fragen — nicht als generischer FAQ-Automat, sondern als klarer, kurzer und charaktervoller Wegweiser durchs Uni-Labyrinth.
+WiSdom ist ein Chatbot für Erstsemester der Fakultät Wirtschafts- und Sozialwissenschaften (WiSo) der FAU Erlangen-Nürnberg. Er beantwortet Fragen rund um den Studienstart: Portale wie Campo und StudOn, Fristen, Prüfungsanmeldung, Anlaufstellen, Einführungswoche und Campusleben. Bei verbindlichen Themen wie Prüfungen, Fristen, BAföG oder Krankheit verweist er immer auf die offizielle Stelle.
 
-Wichtig: Wiesel ersetzt keine offiziellen Stellen. Bei Prüfungen, Fristen, BAföG, Krankheit, Rücktritt, Rechtsfragen oder unklarer Faktenlage verweist Wiesel auf die passende offizielle Quelle.
+**Live:** [wisdom.chatbot-wiso.de](https://wisdom.chatbot-wiso.de) · Projektleitung: Prof. Dr. Nicole Kimmelmann (Wirtschaftspädagogik) · Entwicklung: Till Adelmann
 
-## Produktprinzipien
+> Dieses Repository dokumentiert das Projekt und enthält den Code des laufenden Dienstes. Es ist nicht als Baukasten zum Nachbauen gedacht.
 
-- **Korrektheit vor Charakter**: Wiesel darf flink und leicht frech klingen. Bei relevanten Fakten gewinnt Präzision.
-- **Kürze vor Vollständigkeitsdrang**: Erst Orientierung, dann bei Bedarf Details. Keine FAQ-Wand für einfache Fragen.
-- **Datenschutz vor Neugier**: Analytics dienen der Qualitätssicherung. Rohchats sind kein Spielzeug.
-- **Keine Infrastruktur-Leaks**: API-, Provider-, Credit- oder Stack-Fehler gehen ins Log, nicht an Studierende.
-- **Pflege durch das Team**: Inhalte liegen als Markdown in `knowledge_base/` und können ohne Frontend-Umbau gepflegt werden.
+## Wie WiSdom funktioniert
 
-## Aktueller Tech Stack
-
-- **Backend**: FastAPI, Python 3.11, Uvicorn
-- **LLM**: Anthropic Claude Haiku 4.5 via `anthropic` SDK
-- **Prompting**: `system-prompt.md` plus Markdown-Wissensbasis aus `knowledge_base/`
-- **Kosten/Performance**: Anthropic Prompt Caching für System-Prompt und Wissensbasis
-- **Sessions/Logs**: SQLite über SQLAlchemy
-- **Kostenkontrolle**: Token-/Cache-/Latenz-/Fehlerlogging pro LLM-Request in `llm_usage`
-- **Integration**: LTI 1.1 Launch für StudOn, lokal zusätzlich Debug-Chat
-- **UI**: statisches HTML/CSS/JS unter `backend/static/chat.html`, vom FastAPI-Backend ausgeliefert
-- **Deployment**: Docker / Docker Compose, Standard-Port `8001`
-
-Nicht mehr aktuell: separates React-Frontend, OpenAI/GPT-4o-mini, TF-IDF-RAG als primärer Antwortpfad. Falls du diese Begriffe noch in alten Notizen findest: archäologischer Staub. Nicht anfassen, außer zum Löschen.
-
-## Quickstart lokal
-
-```bash
-git clone https://github.com/TIllAd/wiesel.git
-cd wiesel
-
-# .env anlegen, siehe unten
-cp backend/.env.example backend/.env 2>/dev/null || true
-
-# Docker starten
-docker compose up --build
-```
-
-Dann öffnen:
+- **Wissensbasis statt Internetwissen.** WiSdom antwortet aus einer kuratierten Wissensbasis mit rund 70 Themen-Dateien. Sie wird bei jeder Frage vollständig an das Sprachmodell gegeben (Kontext statt Vektorsuche). Was dort nicht steht, weiß WiSdom nicht und sagt das auch.
+- **Pflege ohne Programmierkenntnisse.** Das Team bearbeitet Wissensbasis, System-Prompt und Zusatzregeln in einem Editor im geschützten internen Bereich. Änderungen gelten sofort, jede Version wird gespeichert und lässt sich zurückholen. Jede Datei hat ein „Prüfen bis“-Datum mit Ampel.
+- **Qualität im Blick.** Ein nächtlicher Job bewertet alle Chats anonymisiert und schreibt eine Tages- und eine Wochenübersicht mit Wissenslücken und konkreten Aufgaben für das Team. Ein Quellen-Wächter meldet, wenn sich offizielle FAU-Seiten ändern, auf die sich die Wissensbasis stützt. Vom Team gepflegte Standardfragen prüfen, ob die wichtigsten Antworten stimmen.
+- **Datenschutz.** Keine Anmeldung, keine Nutzerkonten. Chats werden nach 30 Tagen gelöscht, E-Mail-Adressen und Matrikelnummern werden in Auswertungen ausgeblendet.
 
 ```text
-http://localhost:8001/chat?debug=true
+Studierende ──► Website (Cloudflare) ──► FastAPI-Backend auf RRZE-VM ──► Claude (Anthropic)
+                                              │      ▲
+                                              │      └── System-Prompt + Wissensbasis (Markdown)
+Team ──► interner Bereich (Cloudflare Access) ┘          ▲
+         Editor · Auffälligkeiten · Nutzung ─────────────┘
 ```
 
-Alternative ohne Docker:
+## Technik
 
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
+| Bereich | Umsetzung |
+| --- | --- |
+| Backend | Python 3.11, FastAPI, SQLite |
+| Sprachmodell | Anthropic Claude Haiku 5.5 mit Prompt Caching |
+| Oberfläche | statisches HTML/CSS/JS, vom Backend ausgeliefert |
+| Betrieb | Docker Compose auf einer VM des RRZE, öffentlich über Cloudflare Tunnel |
+| Interner Bereich | Cloudflare Access (Login mit FAU-Adresse) |
+| Nächtliche Jobs | Chat-Auswertung, Quellen-Wächter, Mensa/Wetter/ÖPNV/FAU-News, Backups |
 
-Lokaler Backend-Port ist standardmäßig `8001`.
+## Projektgeschichte
 
-## Minimale Konfiguration
-
-In `backend/.env`:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-JWT_SECRET=change-me
-MOCK_LTI_MODE=true
-LTI_CONSUMER_KEY=test_consumer_key_mock
-LTI_CONSUMER_SECRET=test_consumer_secret_mock
-```
-
-Für Produktion muss `MOCK_LTI_MODE=false` gesetzt und der echte StudOn/LTI Consumer Key samt Secret hinterlegt werden.
-
-## Repository-Struktur
-
-```text
-wiesel/
-├── backend/
-│   ├── main.py                 # FastAPI, LTI, Chat API, SQLite, Healthcheck
-│   ├── static/chat.html         # Chat-UI, Bild-/Sprachinput, Flagging
-│   ├── requirements.txt
-│   └── jobs/                    # Nächtliche Jobs: Crawler, Quellen-Wächter, Chat-Review
-├── knowledge_base/              # Markdown-Faktenbasis für Wiesel
-├── docs/
-│   ├── ARCHITECTURE.de.md
-│   └── DEPLOYMENT.de.md
-├── system-prompt.md             # Wiesel-Identität, Ton, Sicherheitsregeln
-├── Dockerfile
-└── docker-compose.yml
-```
-
-## Wichtige Endpunkte
-
-- `GET /chat?debug=true` – lokaler Testchat ohne StudOn
-- `POST /lti/launch` – LTI-1.1-Launch aus StudOn
-- `POST /api/chat` – Chat API
-- `POST /api/chat/flag` – komplette Session als auffällig markieren
-- `GET /api/session/{session_id}` – Session-Kontext für UI
-- `GET /api/wiki` – geladene Wissensbasis anzeigen
-- `GET /health` – technischer Healthcheck für Backend/LLM
-
-## Kosten- und Usage-Tracking
-
-Jeder echte LLM-Aufruf schreibt einen Datensatz in `llm_usage`: Modell, Input-/Output-Tokens, Prompt-Cache-Write, Prompt-Cache-Read, geschätzte Kosten in EUR/USD, Latenz und Fehlerklasse. Die Preise sind bewusst über `.env` konfigurierbar; sie dienen der Einordnung, nicht als Buchhaltung mit Steuerberaterhut.
-
-Die Kosten stehen in der Claude Console des Anthropic-Kontos; die Nutzung im internen Bereich unter „Nutzungszeiten“ (`/api/usage/timeseries`).
-
-## Arbeitskultur
-
-Wiesel ist kein Marketingbot und kein „nettes KI-Spielzeug“. Er soll Studierenden schnell helfen, ohne falsche Sicherheit zu verkaufen. Das Team pflegt Fakten vorsichtig, markiert Unsicherheit sichtbar und entscheidet lieber gegen eine schlaue Antwort als für eine erfundene.
-
-Ton ist wichtig, aber nicht heilig. Wenn Charakter und Verlässlichkeit kollidieren, wird der Charakter gekürzt. Niedlich darf Wiesel sein; fahrlässig nicht.
-
-## Betrieb und Qualitätssicherung
-
-- Fehler werden intern geloggt und nach außen neutral formuliert.
-- Der UI-Status zeigt kein Online/Offline-Gedöns. Wenn etwas klemmt, antwortet der Bot sauber oder der Request scheitert technisch.
-- Auffällige Chats können in der UI markiert werden.
-- Auswertungen sollen auf strukturierten Analytics-Exports beruhen, nicht auf neugierigem DB-Stöbern.
-- Sensible Inhalte gehören nicht in Berichte und werden nicht zitiert.
+Gestartet als RAG-Prototyp (ChromaDB, BM25, OpenAI) und als LTI-Tool in StudOn. Beides wurde ersetzt: die Vektorsuche durch eine frei editierbare Wissensbasis im Kontext, die StudOn-Einbettung durch eine eigenständige Website, die auch mobil gut funktioniert. Seit November 2026 pflegt das Team Inhalte und Verhalten selbst.
 
 ## Dokumentation
 
-- Architektur: `docs/ARCHITECTURE.de.md`
-- Deployment: `docs/DEPLOYMENT.de.md`
+- [`docs/ARCHITECTURE.de.md`](docs/ARCHITECTURE.de.md): Aufbau, Datenfluss, Endpunkte
+- [`docs/DEPLOYMENT.de.md`](docs/DEPLOYMENT.de.md): Betrieb auf der VM, Updates, Cron-Jobs, Backups, Fehlersuche
+- Handbuch für das Team: separat im Projektordner
 
 ## Lizenz
 
-MIT.
+MIT, siehe [LICENSE](LICENSE).

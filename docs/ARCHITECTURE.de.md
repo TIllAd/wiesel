@@ -1,212 +1,85 @@
-# Architektur – Wiesel
+# Architektur – WiSdom
 
-Diese Datei beschreibt den aktuellen Stand des Wiesel-Systems. Nicht den alten Wunschzettel mit React-Frontend, OpenAI und TF-IDF-RAG. Der liegt gedanklich im Museum.
+Stand: November 2026. Für Betrieb und Fehlersuche siehe [`DEPLOYMENT.de.md`](DEPLOYMENT.de.md).
 
-## Kurzbild
+## Überblick
 
 ```text
-StudOn / Browser
-      │
-      │  LTI 1.1 Launch oder Debug-Chat
-      ▼
-FastAPI Backend :8001
-      ├── statische Chat-UI aus backend/static/chat.html
-      ├── /lti/launch für StudOn
-      ├── /api/chat für Chatnachrichten
-      ├── /api/chat/flag für Auffälligkeitsmarkierungen
-      ├── /api/wiki für geladene Wissensbasis
-      ├── /health für technisches Monitoring
-      └── SQLite für Sessions, Chatmessages, Flags
-      │
-      ▼
-Anthropic Claude Haiku 4.5
-      ▲
-      │  system-prompt.md + knowledge_base/*.md
-      │  mit Prompt Caching
-      │
-Markdown-Wissensbasis
+Studierende ─► https://wisdom.chatbot-wiso.de ─► Cloudflare Tunnel „wiesel-vm“
+Team        ─► …/internal/ (Cloudflare Access) ─┘            │
+                                                             ▼
+                              RRZE-VM „wiso-chatbot“ · Docker-Container „wiesel-backend“ :8001
+                              ├── FastAPI (backend/main.py)
+                              ├── Chat-UI         backend/static/chat.html
+                              ├── Interner Bereich backend/static/docs/internal/*
+                              ├── SQLite          ~/wiesel/backend/wiesel.db  (Ordner-Mount, WAL)
+                              ├── Wissensbasis    ~/wisdom-kb  →  /knowledge_base
+                              └── Berichte        ~/wiesel-reports → /app/reports
+                                                             │
+                                                             ▼
+                                              Anthropic Claude Haiku 5.5
 ```
 
-## Komponenten
+## Antwortweg
 
-### Backend
+1. `GET /chat` legt eine anonyme Session an und liefert die Chat-UI aus.
+2. `POST /api/chat` lädt den Verlauf und baut den System-Kontext: **System-Prompt** + **Faktenbasis** (alle Wissensbasis-Dateien) + **Zusatzregeln**. Dieser Block wird gecacht (Prompt Caching). Danach folgt ungecacht das aktuelle Datum.
+3. Die Antwort durchläuft Schutzfilter: Prompt-Leak-Erkennung, Quellenpflicht bei verbindlichen Themen (`evidence_guard.py`), Format- und Sicherheitsregeln.
+4. Nachrichten und Tokenverbrauch (`llm_usage`) landen in SQLite. Ein Tagesbudget (`DAILY_BUDGET_EUR`) pausiert das Modell bis Mitternacht, wenn es erreicht ist.
 
-Datei: `backend/main.py`
+Provider- und API-Fehler gehen ins Log. Studierende sehen nur neutrale Hinweise.
 
-Das Backend ist eine FastAPI-App. Sie übernimmt LTI-Launch, Session-Erzeugung, Chat-API, SQLite-Persistenz, Prompt-Zusammenbau, Anthropic-Aufruf und technische Healthchecks.
+## Wissensbasis
 
-Wichtige Aufgaben:
+- Markdown-Dateien, eine pro Thema. Oben steht ein Kopfbereich mit `verantwortlich` und `pruefen_bis`. Der geht **nicht** an das Modell.
+- `_wisdom/system-prompt.md` und `_wisdom/regeln.md` sind Ton, Grenzen und Zusatzregeln. Sie sind im Editor unter „Verhalten von WiSdom“ bearbeitbar. Das `system-prompt.md` im Repo ist nur der Startstand für die erste Einrichtung.
+- Automatische Dateien (`mensa-woche.md`, `wetter-heute.md`, `oepnv-heute.md`, `fau-aktuell.md`) erzeugt `jobs/crawl_daily.py` jede Nacht. Sind sie älter als 48 h, gehen sie nicht mehr an das Modell.
+- Gelesen wird über `kb_store.py`. Ein Cache wird über Datei-Zeitstempel invalidiert, Änderungen gelten deshalb sofort.
 
-- LTI 1.1 OAuth-1.0a-Signatur validieren, wenn `MOCK_LTI_MODE=false`.
-- Debug-Sessions für lokale Tests über `/chat?debug=true` erzeugen.
-- Chatverlauf pro Session in SQLite speichern.
-- Wissensbasis aus `knowledge_base/` laden.
-- `system-prompt.md` mit der Wissensbasis kombinieren.
-- Claude Haiku 4.5 aufrufen.
-- Prompt-Leakage erkennen und neutral abfangen.
-- Provider-/Credit-/API-Fehler intern loggen und nur eine neutrale Fallback-Antwort ausgeben.
+## Interner Bereich
 
-### Chat-UI
+Geschützt durch Cloudflare Access (Pfad `/internal`) und ein daraus gesetztes Admin-Cookie für die `/api/*`-Aufrufe. Ohne Cloudflare geht es auch mit `?key=<ADMIN_API_KEY>`.
 
-Datei: `backend/static/chat.html`
+| Seite | Inhalt | API |
+| --- | --- | --- |
+| Wissensbasis | Editor mit Ampel, Verlauf und Wiederherstellen, Standardfragen, Ausprobieren, Link-Prüfung | `/api/kb/*` (`routers/kb_editor.py`) |
+| Auffälligkeiten | Tages- und Wochenzusammenfassung, „Chat ansehen“, gemeldete Chats | `/api/review/*`, `/api/reports/range` |
+| Nutzungszeiten | Nachrichten und Sessions über die Zeit | `/api/usage/timeseries` |
 
-Die UI ist kein separates React-Projekt mehr. Sie ist eine statische HTML/CSS/JS-Datei, die direkt vom Backend ausgeliefert wird.
+Jede Änderung im Editor wird mit Person (E-Mail aus Cloudflare Access), Zeit und Kommentar in `kb_versions` gespeichert.
 
-Funktionen:
+## Nächtliche Jobs (Cron auf der VM, im Container)
 
-- Chatverlauf im Browser darstellen
-- Schnellfragen für typische Erstsemester-Themen
-- Bildanhang per Base64 an die Chat-API
-- optionale Spracheingabe über Browser-APIs
-- Wiesel-Avatar-Zustände
-- Chat als „auffällig“ markieren
-- Session-Kontext aus `/api/session/{session_id}` anzeigen
+| Job | Zweck |
+| --- | --- |
+| `jobs.chat_review` | jeden abgeschlossenen Chat bewerten, Tageszusammenfassung schreiben |
+| `jobs.chat_review --weekly` | montags Wochenübersicht |
+| `jobs.source_watch` | Fingerabdruck der Quellseiten vergleichen, Änderungen im Editor melden, nie Dateien ändern |
+| `jobs.crawl_daily` | Mensa, Wetter, ÖPNV, FAU Aktuell |
+| `db_backup.py` | SQLite-Backup mit Integritätscheck, 14 Tage |
 
-Bewusst entfernt: Online/Offline-Badge. Der Status war mehr Kontrollillusion als Nutzen. Fehler gehören sauber in Antwort und Log, nicht als Ampel-Deko in den Header.
+Die VM erreicht FAU-Server nur über Ausnahmen des RRZE (Firewall-ACL). Neue Quell-Server gegebenenfalls bei acl@fau.de anfragen.
 
-### LLM-Schicht
+## Datenbank (SQLite)
 
-Provider: Anthropic
-
-Modell: `claude-haiku-4-5`
-
-Das System nutzt das Anthropic SDK und Prompt Caching:
-
-```python
-response = client.messages.create(
-    model="claude-haiku-4-5",
-    max_tokens=1024,
-    system=system_blocks,
-    messages=messages,
-    extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
-)
-```
-
-Der System-Prompt und die Wissensbasis werden als gecachter Systemblock geschickt. Das reduziert Kosten und Latenz bei wiederholten Anfragen, besonders während Tests oder O-Woche-Last.
-
-### Prompt und Wissensbasis
-
-Dateien:
-
-- `system-prompt.md`
-- `knowledge_base/**/*.md`
-
-`system-prompt.md` definiert Identität, Ton, Grenzen, Sicherheitsregeln und Verhalten bei Unsicherheit. Die Wissensbasis liefert Fakten zu Campo, StudOn, IDm, Prüfungsamt, FAUcard, BAföG, Bibliothek, Studienstart, O-Woche und Anlaufstellen.
-
-Die Wissensbasis wird beim Request aus Markdown-Dateien geladen. `wissen-basis.md` wird bevorzugt zuerst eingefügt, danach weitere Markdown-Dateien sortiert nach Pfad.
-
-Prinzip: Fakten kommen aus der Wissensbasis. Wenn die Wissensbasis unscharf ist, darf Wiesel nicht selbstsicher raten.
-
-### Datenhaltung
-
-Datenbank: SQLite
-
-Tabellen:
-
-- `sessions`: LTI-/Debug-Session, User-/Kurskontext, Nonce, Zeitstempel
-- `chat_messages`: User- und Assistant-Nachrichten pro Session
-- `chat_flags`: Session-weite Auffälligkeitsmarkierungen
-- `llm_usage`: Modell, Tokenverbrauch, Prompt-Cache-Nutzung, geschätzte Kosten, Latenz und Fehlerklasse pro LLM-Request
-
-SQLite reicht für den aktuellen MVP/Testbetrieb. Für höhere Last muss man nicht sofort eine Datenbank-Kathedrale bauen. Erst messen, dann migrieren. Alles andere ist Architekturtheater.
-
-### Fehler- und Sicherheitsverhalten
-
-Kritische Regeln:
-
-- System-Prompt wird nicht ausgegeben.
-- Vermutete Prompt-Leaks werden durch `SYSTEM_PROMPT_LEAK_FALLBACK` ersetzt.
-- Anthropic-/Provider-/Credit-Fehler werden mit Stacktrace geloggt, aber nicht an Studierende weitergereicht.
-- Die sichtbare Antwort bei LLM-Problemen ist neutral: „Gerade klemmt die Technik im Hintergrund. Versuch es bitte gleich nochmal.“
-- Interne Modell-/Providerdetails gehören nicht ins Frontend.
-
-### Healthcheck
-
-Endpunkt: `GET /health`
-
-Der Healthcheck ist für Docker, Monitoring und Debugging gedacht. Er ist nicht Teil der sichtbaren Nutzererfahrung.
-
-Beispiel:
-
-```json
-{
-  "status": "healthy",
-  "db": "connected",
-  "llm": "connected",
-  "last_llm_success": "...",
-  "last_llm_error": null
-}
-```
-
-Wenn der LLM-Aufruf zuletzt fehlgeschlagen ist oder kein API-Key vorhanden ist, meldet der Healthcheck `unhealthy`. Das UI zeigt daraus aber keinen Badge.
-
-### LLM-Usage und Kosten
-
-`call_claude()` schreibt nach jedem Provider-Aufruf in `llm_usage`. Erfolgreiche Requests speichern Tokenzahlen aus `response.usage`, Prompt-Cache-Reads/Writes, geschätzte EUR/USD-Kosten und Latenz. Fehlgeschlagene Requests speichern zumindest Modell, Zeit und Fehlerklasse. Dadurch sehen Analytics später nicht nur „wie viele Chats“, sondern auch „wie teuer, wie langsam, wie kaputt“.
-
-Die Kostenformel nutzt ENV-Werte in USD pro 1 Mio Tokens: `LLM_INPUT_USD_PER_MTOK`, `LLM_OUTPUT_USD_PER_MTOK`, `LLM_CACHE_WRITE_USD_PER_MTOK`, `LLM_CACHE_READ_USD_PER_MTOK`, plus `USD_PER_EUR`. Das ist eine Schätzung für Reporting und Dashboard-Steuerung, keine Provider-Rechnung und kein Backend-Limit. Dafür gibt es Rechnungen. Schockierend.
-
-Die Kosten stehen in der Claude Console des Anthropic-Kontos; die Nutzung im internen Bereich unter „Nutzungszeiten“ (`/api/usage/timeseries`).
+| Tabelle | Inhalt |
+| --- | --- |
+| `sessions`, `chat_messages` | anonyme Sessions und Nachrichten, Löschung nach 30 Tagen |
+| `chat_flags` | von Nutzer*innen gemeldete Chats, 90 Tage |
+| `ueq_s_feedback` | freiwillige Kurzbewertung |
+| `llm_usage` | Tokens, Cache, geschätzte Kosten, Latenz, Fehler, 90 Tage |
+| `kb_versions` | Verlauf aller Änderungen im Editor |
+| `kb_standardfragen` | Standardfragen und letzte Prüfergebnisse |
 
 ## Endpunkte
 
 | Endpoint | Zweck |
-|---|---|
-| `GET /` | Redirect auf `/chat?debug=true` |
-| `GET /chat?debug=true` | lokale Debug-Session starten |
-| `GET /chat?...` | Chat-UI ausliefern |
-| `POST /lti/launch` | StudOn/LTI-Launch entgegennehmen |
+| --- | --- |
+| `GET /chat` | Chat-UI, legt anonyme Session an |
 | `POST /api/chat` | Chatnachricht verarbeiten |
-| `POST /api/chat/flag` | Session als auffällig markieren |
-| `GET /api/session/{session_id}` | Session-Metadaten für UI |
-| `GET /api/wiki` | geladene Wissensbasis anzeigen |
-| `GET /api/logs/daily` | Tageslogs strukturiert exportieren |
+| `POST /api/chat/flag` | Chat melden |
+| `POST /api/feedback/ueq-s` | Kurzbewertung |
+| `GET /internal/…` | interner Bereich (Admin) |
+| `/api/kb/*`, `/api/review/*`, `/api/reports/range`, `/api/usage/timeseries`, `/api/logs/daily`, `/api/session/{id}` | Admin-APIs |
+| `GET /api/wiki` | aktuelle Faktenbasis als Text |
 | `GET /health` | technischer Healthcheck |
-
-## Lokale Laufzeit
-
-Docker Compose startet aktuell einen Backend-Container auf Port `8001`:
-
-```bash
-docker compose up --build
-```
-
-Ohne Docker:
-
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-Dann:
-
-```text
-http://localhost:8001/chat?debug=true
-```
-
-## Skalierung
-
-Der aktuelle Engpass ist nicht HTML oder SQLite, sondern LLM-Latenz, Provider-Verfügbarkeit und Wissensbasisqualität.
-
-Sinnvolle nächste Schritte bei Last:
-
-1. Uvicorn/Gunicorn-Worker sauber konfigurieren.
-2. SQLite WAL aktivieren und Schreibpfade beobachten.
-3. Häufige statische Assets über Nginx ausliefern.
-4. Missbrauchsschutz pro Session/IP nur bei realem Bedarf ergänzen; Budgetgrenzen gehören ins Dashboard/Monitoring, nicht als versteckter Backend-Hardstop.
-5. Erst bei echter Schreiblast auf Postgres wechseln.
-
-Nicht sinnvoll: ein separates Frontend oder Embedding-RAG bauen, nur weil es moderner klingt. Erst wenn die Qualitätsdaten zeigen, dass Markdown-Kontext nicht reicht.
-
-## Projektkultur
-
-Wiesel ist ein Studienassistenzsystem, kein Demo-Spielzeug. Die Kultur im Projekt ist: direkt, faktennah, datenschutzbewusst, wartbar für Nicht-Techniker*innen und allergisch gegen hübsche Scheinlösungen.
-
-Bei Konflikten gilt:
-
-1. Studierende nicht falsch leiten.
-2. Offizielle Stellen nicht überstimmen.
-3. Interne Technik nicht offenlegen.
-4. Kurz antworten.
-5. Charakter nur dort einsetzen, wo er nicht stört.

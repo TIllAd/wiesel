@@ -115,7 +115,7 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn("DE 132507686", impressum)
         self.assertIn("wisdom.chatbot-wiso.de", impressum)
         self.assertIn("öffentliche Website", privacy)
-        self.assertIn("LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert", privacy)
+        self.assertIn("keine Nutzerkennungen, Namen oder Kursdaten aus StudOn", privacy)
         self.assertNotIn("Nutzerkennungen, Namen oder Kursdaten aus StudOn übernommen werden", privacy)
         self.assertNotIn("vollständiger Name", privacy)
         self.assertIn("Datenschutzerklärung", privacy)
@@ -280,7 +280,7 @@ class WisdomBrandingTests(unittest.TestCase):
         self.assertIn('Bild-Uploads sind deaktiviert', privacy)
         self.assertIn('30 Tage', privacy)
         self.assertIn('90 Tage', privacy)
-        self.assertIn('LTI-/StudOn-Schnittstelle ist im Produktivbetrieb deaktiviert', privacy)
+        self.assertIn('keine Nutzerkennungen, Namen oder Kursdaten aus StudOn', privacy)
         self.assertIn('Anthropic PBC', privacy)
 
     def test_public_mode_initializes_without_removed_upload_elements(self):
