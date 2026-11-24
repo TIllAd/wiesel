@@ -283,7 +283,13 @@ Ein Test ohne Anthropic-Aufrufe:
 docker exec -u "$(id -u):$(id -g)" -w /app/backend wiesel-backend python -m jobs.chat_review --dry-run
 ```
 
-Der Job bewertet jede abgeschlossene Session einzeln und schreibt danach eine **Tageszusammenfassung** nach `~/wiesel-reports/reviews/YYYY-MM-DD.md`. Das Team sieht sie im internen Bereich auf „Auffälligkeiten“. Sie ersetzt den früheren Hermes-Bericht. Abschalten mit `CHAT_REVIEW_SUMMARY=0`. Kosten mit Haiku 5.5: rund 0,03 Cent pro Session plus etwa 0,2 Cent für die Zusammenfassung, also wenige Cent pro Tag.
+Der Job bewertet jede abgeschlossene Session einzeln und schreibt danach eine **Tageszusammenfassung** nach `~/wiesel-reports/reviews/YYYY-MM-DD.md`. Das Team sieht sie im internen Bereich auf „Auffälligkeiten“. Sie ersetzt den früheren Hermes-Bericht. Abschalten mit `CHAT_REVIEW_SUMMARY=0`. Montags fasst `python -m jobs.chat_review --weekly` die letzten sieben Läufe zur Wochenübersicht zusammen (`~/wiesel-reports/weekly/YYYY-Www.md`, rund 1 Cent):
+
+```cron
+0 4 * * 1 docker exec -u "$(id -u):$(id -g)" -w /app/backend wiesel-backend python -m jobs.chat_review --weekly >> "$HOME/wiesel-reports/cron.log" 2>&1
+```
+
+In den Zusammenfassungen stehen Verweise der Form `[[chat:<Session-ID>]]`; die Seite „Auffälligkeiten“ macht daraus „Chat ansehen“. Kosten mit Haiku 5.5: rund 0,03 Cent pro Session plus etwa 0,2 Cent für die Zusammenfassung, also wenige Cent pro Tag.
 
 ## Logs und Fehleranalyse
 

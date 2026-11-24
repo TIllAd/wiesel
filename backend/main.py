@@ -1650,9 +1650,9 @@ async def review_evaluations_endpoint(since: Optional[str] = None):
 
 
 @app.get("/api/review/summaries", dependencies=[Depends(require_admin)])
-async def review_summaries_endpoint(limit: int = 30):
-    """Tageszusammenfassungen des nächtlichen Chat-Reviews für die Seite „Auffälligkeiten“."""
-    reviews_dir = Path(os.getenv("CHAT_REVIEW_DIR", "/app/reports")) / "reviews"
+async def review_summaries_endpoint(limit: int = 30, art: str = "tag"):
+    """Tages- (art=tag) oder Wochenzusammenfassungen (art=woche) für „Auffälligkeiten“."""
+    reviews_dir = Path(os.getenv("CHAT_REVIEW_DIR", "/app/reports")) / ("weekly" if art == "woche" else "reviews")
     return {"zusammenfassungen": load_summaries(reviews_dir, max(1, min(limit, 90)))}
 
 

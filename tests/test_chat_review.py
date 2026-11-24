@@ -343,3 +343,44 @@ class ChatReviewTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WeeklySummaryTests(unittest.TestCase):
+    def test_weekly_summary_counts_week_and_previous_week(self):
+        review = load_module()
+        captured = {}
+
+        def fake_claude(_conn, prompt, *, max_tokens, schema):
+            captured["prompt"] = prompt
+            return "# Die Woche in Zahlen\nok [[chat:abc]]", {"cost_eur": 0.01}
+
+        review.claude_text = fake_claude
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            now = datetime(2026, 11, 30, 4, 0)
+            def write(day, items):
+                path = directory / "evaluations" / f"{day}.jsonl"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open("a", encoding="utf-8") as f:
+                    for sid, kat in items:
+                        f.write(json.dumps({"session_id": sid, "status": "ok", "bewertung": {"kategorie": kat}}) + "\n")
+            write("2026-11-25", [("a", "wissensluecke"), ("b", "unauffaellig")])
+            write("2026-11-30", [("c", "wissensluecke")])
+            write("2026-11-20", [("old", "kurios")])
+            db = directory / "db.sqlite"
+            sqlite3.connect(db).close()
+            result = review.run_weekly(db, directory, now=now)
+            self.assertEqual(result["label"], "2026-W48")
+            self.assertEqual(result["chats"], 3)
+            self.assertIn("Bewertete Chats diese Woche: 3 (Vorwoche: 1)", captured["prompt"])
+            self.assertIn("[[chat:<Session-ID>]]", captured["prompt"])
+            self.assertTrue((directory / "weekly" / "2026-W48.md").exists())
+
+    def test_summaries_api_lists_weekly_files(self):
+        from backend.review_api import load_summaries
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "2026-W48.md").write_text("w", encoding="utf-8")
+            (d / "2026-W47.md").write_text("v", encoding="utf-8")
+            (d / "notes.md").write_text("x", encoding="utf-8")
+            self.assertEqual([s["datum"] for s in load_summaries(d)], ["2026-W48", "2026-W47"])

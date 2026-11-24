@@ -30,6 +30,9 @@ CATEGORIES = {
 }
 MODEL = ANTHROPIC_REVIEW_MODEL
 USAGE_TYPE = "chat_review"
+CHAT_RULE = """Verweise bei jedem konkreten Befund auf den betroffenen Chat, und zwar genau in der
+Form [[chat:<Session-ID>]] (die Seite macht daraus einen Link „Chat ansehen“). Schreibe
+die Session-ID nirgends sonst aus."""
 # Structured Outputs unterstützt keine Zahlen- oder Längenbeschränkungen
 # (minimum/maximum, maxItems). Wertebereiche prüft parse_json_response.
 REVIEW_JSON_SCHEMA = {
@@ -299,7 +302,9 @@ def reduce_prompt(
 Teammitglieder ohne IT-Hintergrund, die daraus direkt Aufgaben für die Wissensbasis
 ableiten: klare Sätze, keine Fachbegriffe. Du erhältst nur strukturierte
 Meta-Bewertungen, keine vollständigen Gespräche. Erfinde keine Fakten oder Zitate.
-Nenne bei jedem konkreten Befund die vorhandene Session-ID.
+Verweise bei jedem konkreten Befund auf den betroffenen Chat, und zwar genau in der
+Form [[chat:<Session-ID>]] (die Seite macht daraus einen Link „Chat ansehen“). Schreibe
+die Session-ID nirgends sonst aus.
 {kb_block}
 
 Gliedere genau in diese Abschnitte:
@@ -314,7 +319,7 @@ Berücksichtige: {reviewed_count} im aktuellen Lauf neu bewertete Sessions.
 Der Kurzüberblick muss diese bereits im Code berechneten Zahlen unverändert nutzen:
 Bewertungen heute: {reviewed_count}. Kategorien: {overview}.
 Auszüge kurz lassen; keine IPs, E-Mail-Adressen oder technischen Kennungen außer
-der Session-ID nennen. Sind keine Befunde einer Rubrik vorhanden, schreibe das klar.
+den [[chat:…]]-Verweisen. Sind keine Befunde einer Rubrik vorhanden, schreibe das klar.
 
 <bewertungen>
 {serialized}
@@ -593,6 +598,100 @@ def run_review(db_path: Path, directory: Path, since: datetime | None = None, dr
         conn.close()
 
 
+# ── Wochenzusammenfassung ────────────────────────────────────────────────────
+
+def _evaluations_between(directory: Path, first: datetime, last: datetime) -> list[dict[str, Any]]:
+    """Gültige Bewertungen aus den Tagesdateien first..last (Datum des Review-Laufs)."""
+    items: list[dict[str, Any]] = []
+    day = first.date()
+    while day <= last.date():
+        items += load_today_evaluations(directory / "evaluations" / f"{day.isoformat()}.jsonl")
+        day += timedelta(days=1)
+    return items
+
+
+def week_label(now: datetime) -> str:
+    year, week, _ = (now - timedelta(days=1)).isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def weekly_prompt(evaluations: list[dict[str, Any]], label: str, stats: str, kb_files: str = "") -> str:
+    serialized = json.dumps(evaluations, ensure_ascii=False, indent=1)
+    kb_block = (
+        "\nDiese Dateien gibt es in der Wissensbasis (Titel und Pfad). Ordne Lücken und Vorschläge "
+        "der passenden Datei zu (mit Titel); passt keine, schlage einen Titel für eine neue Datei vor:\n"
+        f"<wissensbasis_dateien>\n{kb_files}\n</wissensbasis_dateien>\n"
+    ) if kb_files else ""
+    return f"""Schreibe die Wochenzusammenfassung {label} für WiSdom, den Studienstart-Chatbot
+der FAU WiSo. Lesende sind Teammitglieder ohne IT-Hintergrund, die einmal pro Woche
+entscheiden, was sie an der Wissensbasis verbessern. Klare Sätze, keine Fachbegriffe.
+Du erhältst nur strukturierte Meta-Bewertungen einzelner Chats, keine vollständigen
+Gespräche. Erfinde keine Fakten, Zahlen oder Zitate.
+{CHAT_RULE}
+Nenne pro Befund höchstens drei solche Verweise.
+{kb_block}
+Die Zahlen hat der Code berechnet; übernimm sie unverändert:
+{stats}
+
+Gliedere genau so:
+# Die Woche in Zahlen
+(die Zahlen oben in zwei, drei Sätzen, inkl. Vergleich zur Vorwoche)
+# Wiederkehrende Wissenslücken
+(gleiche Themen zusammenfassen, nach Häufigkeit sortiert, Häufigkeit nennen, z. B. „Urlaubssemester (5×)“)
+# Was das Team diese Woche tun sollte
+(höchstens fünf konkrete Aufgaben, nach Wirkung sortiert, jeweils mit betroffener Datei)
+# Falsche oder unklare Antworten
+# Sensible Fälle und Missbrauchsversuche
+# Kurioses
+Ist eine Rubrik leer, schreibe das in einem Satz.
+
+<bewertungen>
+{serialized}
+</bewertungen>"""
+
+
+def run_weekly(db_path: Path, directory: Path, now: datetime | None = None) -> dict[str, Any]:
+    """Montags: Bewertungen der letzten 7 Review-Läufe zusammenfassen (ein Claude-Aufruf)."""
+    now = now or utc_now()
+    directory = Path(directory)
+    label = week_label(now)
+    this_week = _evaluations_between(directory, now - timedelta(days=6), now)
+    last_week = _evaluations_between(directory, now - timedelta(days=13), now - timedelta(days=7))
+    result: dict[str, Any] = {"label": label, "chats": len(this_week), "report_path": None}
+    if not this_week:
+        return result
+
+    def counts(items):
+        return Counter(item["bewertung"].get("kategorie", "unbekannt") for item in items)
+
+    cur, prev = counts(this_week), counts(last_week)
+    problems = sum(v for k, v in cur.items() if k != "unauffaellig")
+    stats = (
+        f"Bewertete Chats diese Woche: {len(this_week)} (Vorwoche: {len(last_week)}). "
+        f"Davon auffällig: {problems}. Kategorien diese Woche: "
+        + ", ".join(f"{k}={v}" for k, v in sorted(cur.items()))
+        + ". Kategorien Vorwoche: "
+        + (", ".join(f"{k}={v}" for k, v in sorted(prev.items())) or "keine Daten")
+        + "."
+    )
+    items = [
+        {"session_id": item["session_id"], "bewertung": item["bewertung"]}
+        for item in this_week if item["bewertung"].get("kategorie") != "unauffaellig"
+    ] or [{"session_id": item["session_id"], "bewertung": item["bewertung"]} for item in this_week[:20]]
+    conn = sqlite3.connect(db_path)
+    try:
+        ensure_usage_type(conn)
+        markdown, usage = claude_text(conn, weekly_prompt(items, label, stats, kb_overview()), max_tokens=3000, schema=None)
+    finally:
+        conn.close()
+    footer = f"\n\n---\n{stats} Geschätzte Kosten dieser Zusammenfassung: {float(usage.get('cost_eur', 0) or 0):.4f} €.\n"
+    output = directory / "weekly" / f"{label}.md"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(markdown.strip() + footer, encoding="utf-8")
+    result["report_path"] = str(output)
+    return result
+
+
 def parse_since(value: str) -> datetime:
     try:
         return datetime.strptime(value, "%Y-%m-%d")
@@ -604,10 +703,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Täglicher Wisdom-Chat-Review")
     parser.add_argument("--since", type=parse_since, help="einmaliger Rücklauf ab YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true", help="nur passende Sessions zählen und auflisten")
+    parser.add_argument("--weekly", action="store_true", help="Wochenzusammenfassung der letzten 7 Läufe schreiben")
     parser.add_argument("--db", type=Path, default=database_path(), help=argparse.SUPPRESS)
     parser.add_argument("--review-dir", type=Path, default=report_dir(), help=argparse.SUPPRESS)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if args.weekly:
+        weekly = run_weekly(args.db, args.review_dir)
+        print(f"Woche {weekly['label']}: {weekly['chats']} Bewertungen; Bericht: {weekly['report_path'] or '–'}")
+        return 0
     result = run_review(args.db, args.review_dir, since=args.since, dry_run=args.dry_run)
     if args.dry_run:
         print(f"Zu bewertende Sessions: {result['selected']}")

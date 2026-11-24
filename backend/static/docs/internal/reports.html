@@ -19,6 +19,21 @@
   .summary-body code { background:var(--panel-3); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:12px; }
   .summary-body hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
   .summary-body .foot { color:var(--muted); font-size:12px; }
+  .summary-controls { display:flex; gap:8px; align-items:center; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:7px 12px; }
+  .seg button.active { background:var(--accent-soft); color:var(--accent-2); }
+  .chat-link { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:12px; margin:0 2px; background:var(--panel-2); cursor:pointer; color:var(--accent-2); }
+  .chat-link:hover { border-color:var(--accent); }
+  .chat-drawer { position:fixed; top:0; right:0; bottom:0; width:min(560px, 96vw); background:var(--panel); border-left:1px solid var(--line); box-shadow:var(--shadow); transform:translateX(100%); transition:transform .2s; z-index:30; display:grid; grid-template-rows:auto minmax(0,1fr); }
+  .chat-drawer.open { transform:none; }
+  .chat-drawer header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .chat-drawer header h3 { margin:0; font-family:var(--serif); font-weight:400; font-size:20px; }
+  .chat-msgs { overflow:auto; padding:14px 16px; display:grid; gap:10px; align-content:start; }
+  .msg { border-radius:10px; padding:9px 12px; font-size:13px; line-height:1.55; white-space:pre-wrap; border:1px solid var(--line); }
+  .msg.user { background:var(--user-bg); border-color:var(--user-border); }
+  .msg.assistant { background:var(--bot-bg); }
+  .msg .who { font-size:11px; color:var(--muted); margin-bottom:3px; }
 </style>
 </head>
 <body>
@@ -27,7 +42,7 @@
     <div class="title-row">
       <div>
         <h1>Auffälligkeiten</h1>
-        <p class="subline">Oben die automatische Tageszusammenfassung aller Chats der Nacht. Darunter die Chats, die Studierende über den Melde-Knopf markiert haben.</p>
+        <p class="subline">Oben die automatische Zusammenfassung aller Chats (Woche oder Tag). Darunter die Chats, die Studierende über den Melde-Knopf markiert haben.</p>
       </div>
     </div>
 
@@ -64,10 +79,13 @@
     <section class="summary-card" id="summary-card">
       <div class="summary-head">
         <div>
-          <h2>Tageszusammenfassung</h2>
-          <p class="summary-sub">Jede Nacht liest Claude alle abgeschlossenen Chats und fasst zusammen: Wissenslücken, Vorschläge für die Wissensbasis, falsche Antworten, heikle Fälle. Kosten: wenige Cent pro Tag.</p>
+          <h2>Zusammenfassung der Chats</h2>
+          <p class="summary-sub">Claude liest jede Nacht alle abgeschlossenen Chats und fasst zusammen: Wissenslücken, Vorschläge für die Wissensbasis, falsche Antworten, heikle Fälle. Montags kommt die Wochenübersicht dazu. Mit „Chat ansehen“ öffnet sich der betroffene Chat (anonymisiert; Chats werden nach 30 Tagen gelöscht).</p>
         </div>
-        <label>Tag <select id="summary-date"></select></label>
+        <div class="summary-controls">
+          <div class="seg" role="tablist"><button type="button" data-art="woche" class="active">Woche</button><button type="button" data-art="tag">Tag</button></div>
+          <select id="summary-date" aria-label="Zeitraum"></select>
+        </div>
       </div>
       <div class="summary-body" id="summary-body"><p class="summary-sub">Lädt …</p></div>
     </section>
@@ -408,10 +426,14 @@
   }).finally(restoreFromHash);
 })();
 </script>
+<aside class="chat-drawer" id="chat-drawer" aria-label="Chat">
+  <header><h3>Chat</h3><button type="button" id="chat-close">Schließen</button></header>
+  <div class="chat-msgs" id="chat-msgs"></div>
+</aside>
 <script>
 (() => {
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const inline = s => s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
+  const inline = s => s.replace(/\[\[chat:([A-Za-z0-9_.:-]+)\]\]/g, '<button type="button" class="chat-link" data-chat="$1">Chat ansehen</button>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   function md(text) {
     const out = []; let list = null, para = [];
@@ -430,18 +452,47 @@
     return out.join('\n');
   }
   const sel = document.getElementById('summary-date'), body = document.getElementById('summary-body');
-  let items = [];
-  const fmt = d => { const [y, m, t] = d.split('-'); return `${t}.${m}.${y}`; };
+  let items = [], art = 'woche';
+  const fmt = d => { const w = /^(\d{4})-W(\d{2})$/.exec(d); if (w) return `KW ${+w[2]} / ${w[1]}`; const [y, m, t] = d.split('-'); return `${t}.${m}.${y}`; };
   function show(i) { body.innerHTML = items[i] ? md(items[i].markdown) : ''; }
-  fetch('/api/review/summaries?limit=30', { credentials: 'same-origin', cache: 'no-store' })
-    .then(r => { if (!r.ok) throw new Error(r.status === 401 ? 'Nicht angemeldet – Seite neu laden.' : 'Fehler ' + r.status); return r.json(); })
-    .then(d => {
-      items = d.zusammenfassungen || [];
-      if (!items.length) { sel.disabled = true; body.innerHTML = '<p class="summary-sub">Noch keine Zusammenfassung vorhanden. Sie entsteht jede Nacht durch den Job <code>jobs.chat_review</code> auf dem Server.</p>'; return; }
-      sel.innerHTML = items.map((it, i) => `<option value="${i}">${fmt(it.datum)}</option>`).join('');
-      sel.onchange = () => show(+sel.value); show(0);
-    })
-    .catch(e => { body.innerHTML = `<p class="summary-sub">${esc(e.message)}</p>`; });
+  function load() {
+    body.innerHTML = '<p class="summary-sub">Lädt …</p>';
+    fetch('/api/review/summaries?limit=30&art=' + art, { credentials: 'same-origin', cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error(r.status === 401 ? 'Nicht angemeldet – Seite neu laden.' : 'Fehler ' + r.status); return r.json(); })
+      .then(d => {
+        items = d.zusammenfassungen || [];
+        sel.disabled = !items.length;
+        if (!items.length) { sel.innerHTML = ''; body.innerHTML = art === 'woche'
+          ? '<p class="summary-sub">Noch keine Wochenübersicht. Sie entsteht montags früh; bis dahin unter „Tag“ nachsehen.</p>'
+          : '<p class="summary-sub">Noch keine Tageszusammenfassung. Sie entsteht jede Nacht auf dem Server.</p>'; return; }
+        sel.innerHTML = items.map((it, i) => `<option value="${i}">${fmt(it.datum)}</option>`).join('');
+        sel.onchange = () => show(+sel.value); show(0);
+      })
+      .catch(e => { body.innerHTML = `<p class="summary-sub">${esc(e.message)}</p>`; });
+  }
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    art = b.dataset.art; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('active', x === b)); load();
+  });
+  load();
+
+  const drawer = document.getElementById('chat-drawer'), msgs = document.getElementById('chat-msgs');
+  document.getElementById('chat-close').onclick = () => drawer.classList.remove('open');
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') drawer.classList.remove('open'); });
+  body.addEventListener('click', e => {
+    const b = e.target.closest('.chat-link'); if (!b) return;
+    drawer.classList.add('open'); msgs.innerHTML = '<p class="summary-sub">Lädt …</p>';
+    fetch('/api/review/session/' + encodeURIComponent(b.dataset.chat), { credentials: 'same-origin', cache: 'no-store' })
+      .then(r => {
+        if (r.status === 404) throw new Error('Dieser Chat ist bereits gelöscht (Chats werden nach 30 Tagen automatisch entfernt).');
+        if (r.status === 429) throw new Error('Tageslimit für das Ansehen von Chats erreicht (50 pro Tag). Morgen wieder möglich.');
+        if (!r.ok) throw new Error('Fehler ' + r.status);
+        return r.json();
+      })
+      .then(d => {
+        msgs.innerHTML = (d.messages || []).map(m => `<div class="msg ${m.rolle === 'user' ? 'user' : 'assistant'}"><div class="who">${m.rolle === 'user' ? 'Studierende*r' : 'WiSdom'} · ${esc((m.zeitstempel || '').slice(0, 16))}</div>${esc(m.text)}</div>`).join('') || '<p class="summary-sub">Keine Nachrichten.</p>';
+      })
+      .catch(err => { msgs.innerHTML = `<p class="summary-sub">${esc(err.message)}</p>`; });
+  });
 })();
 </script>
 </body>

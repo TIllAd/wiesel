@@ -81,15 +81,16 @@ def load_evaluations(evaluations_dir: Path, db_path: Path, since: date) -> list[
     return records
 
 
+_SUMMARY_NAME_RE = re.compile(r"^\d{4}-(?:\d{2}-\d{2}|W\d{2})$")
+
+
 def load_summaries(reviews_dir: Path, limit: int = 30) -> list[dict[str, str]]:
-    """Tageszusammenfassungen (reviews/YYYY-MM-DD.md), neueste zuerst."""
+    """Zusammenfassungen (reviews/YYYY-MM-DD.md oder weekly/YYYY-Www.md), neueste zuerst."""
     if not reviews_dir.exists():
         return []
     out = []
     for path in sorted(reviews_dir.glob("*.md"), reverse=True):
-        try:
-            date.fromisoformat(path.stem)
-        except ValueError:
+        if not _SUMMARY_NAME_RE.match(path.stem):
             continue
         out.append({"datum": path.stem, "markdown": path.read_text(encoding="utf-8", errors="replace")})
         if len(out) >= limit:
