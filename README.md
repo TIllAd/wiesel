@@ -2,7 +2,7 @@
 
 WiSdom ist ein Chatbot für Erstsemester der Fakultät Wirtschafts- und Sozialwissenschaften (WiSo) der FAU Erlangen-Nürnberg. Er beantwortet Fragen rund um den Studienstart: Portale wie Campo und StudOn, Fristen, Prüfungsanmeldung, Anlaufstellen, Einführungswoche und Campusleben. Bei verbindlichen Themen wie Prüfungen, Fristen, BAföG oder Krankheit verweist er immer auf die offizielle Stelle.
 
-**Live:** [wisdom.chatbot-wiso.de](https://wisdom.chatbot-wiso.de) · Projektleitung: Prof. Dr. Nicole Kimmelmann (Wirtschaftspädagogik) · Entwicklung: Till Adelmann
+**Live:** [wisdom.chatbot-wiso.de](https://wisdom.chatbot-wiso.de) ·
 
 > Dieses Repository dokumentiert das Projekt und enthält den Code des laufenden Dienstes. Es ist nicht als Baukasten zum Nachbauen gedacht.
 
