@@ -266,7 +266,7 @@ def check(meta: dict, body: str, today: Optional[date] = None, relative: str = "
     if placeholders:
         add("hinweis", "Platzhalter gefunden: " + ", ".join(placeholders[:5]))
     if not source_url(body):
-        add("hinweis", "Keine Zeile „Quelle: https://…“ – dann kann WiSdom nicht auf die offizielle Seite verweisen und Änderungen an der Quelle werden nicht erkannt.")
+        add("hinweis", "Keine Zeile „Quelle: https://…“ – der nächtliche Check kann Änderungen an der offiziellen Seite dann nicht melden.")
     if len(body or "") > LARGE_FILE_CHARS:
         add("hinweis", f"Sehr lange Datei ({len(body):,} Zeichen). Jede Anfrage schickt die ganze Wissensbasis mit – lange Dateien kosten bei jedem Chat Geld.".replace(",", "."))
     return issues
