@@ -298,15 +298,56 @@ def prompt_content(base: Path, overrides: Optional[dict] = None, now: Optional[d
                 text = path.read_text(encoding="utf-8")
             except Exception:
                 continue
-        _, body = parse(text)
+        meta, body = parse(text)
         if body.strip():
-            parts.append(body.strip())
+            parts.append(_overdue_note(meta, now) + body.strip())
     for relative, text in overrides.items():
         if relative not in seen and text and not is_behavior(relative):
             _, body = parse(text)
             if body.strip():
                 parts.append(body.strip())
     return "\n\n---\n\n".join(parts), skipped
+
+
+def _overdue_note(meta: dict, now: Optional[datetime] = None) -> str:
+    """Sicherheitsnetz: Ist „Prüfen bis“ überschritten, erfährt das auch WiSdom –
+    damit alte Termine nicht als aktuell ausgegeben werden, wenn das Team die
+    Prüfung verpasst hat."""
+    today = (now or datetime.now()).date()
+    if review_status(meta, today) != "abgelaufen":
+        return ""
+    due = parse_date(meta.get("pruefen_bis", ""))
+    return (
+        f"> Hinweis für WiSdom: Die folgenden Angaben hätten bis {due:%d.%m.%Y} geprüft werden "
+        "sollen und sind möglicherweise veraltet. Nenne Termine, Fristen und Beträge daraus nur "
+        "mit diesem Hinweis und verweise auf die offizielle Quelle bzw. Anlaufstelle.\n\n"
+    )
+
+
+def due_overview(base: Path, today: Optional[date] = None, soon_days: int = 14) -> dict:
+    """Überfällige und bald fällige Dateien (für die Wochenübersicht)."""
+    today = today or date.today()
+    out = {"abgelaufen": [], "bald": []}
+    for path in md_files(base):
+        relative = rel(base, path)
+        if is_auto(relative):
+            continue
+        meta, body = parse(path.read_text(encoding="utf-8", errors="replace"))
+        try:
+            due = parse_date(meta.get("pruefen_bis", ""))
+        except ValueError:
+            continue
+        if due is None:
+            continue
+        item = {"titel": title_of(body, path.stem), "pfad": relative, "pruefen_bis": due.isoformat(),
+                "verantwortlich": meta.get("verantwortlich", "")}
+        if due < today:
+            out["abgelaufen"].append(item)
+        elif due <= today + timedelta(days=soon_days):
+            out["bald"].append(item)
+    for key in out:
+        out[key].sort(key=lambda i: i["pruefen_bis"])
+    return out
 
 
 def signature(base: Path) -> tuple:
@@ -320,6 +361,8 @@ def signature(base: Path) -> tuple:
         relative = rel(base, path)
         fresh = auto_is_fresh(path) if is_auto(relative) else True
         out.append((relative, mtime, fresh))
+    # Täglich neu laden, damit „Prüfen bis“-Hinweise ohne Dateiänderung greifen.
+    out.append(("__datum__", date.today().isoformat(), True))
     return tuple(out)
 
 

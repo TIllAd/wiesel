@@ -384,3 +384,20 @@ class WeeklySummaryTests(unittest.TestCase):
             (d / "2026-W47.md").write_text("v", encoding="utf-8")
             (d / "notes.md").write_text("x", encoding="utf-8")
             self.assertEqual([s["datum"] for s in load_summaries(d)], ["2026-W48", "2026-W47"])
+
+
+class WeeklyDueSectionTests(unittest.TestCase):
+    def test_weekly_without_chats_still_lists_overdue_files(self):
+        review = load_module()
+        review.claude_text = lambda *a, **k: self.fail("ohne Chats kein Claude-Aufruf")
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = Path(tmp) / "kb"; kb.mkdir()
+            (kb / "alt.md").write_text("---\npruefen_bis: 2026-01-31\n---\n# Termine WS\nx", encoding="utf-8")
+            os.environ["WISDOM_KB_DIR"] = str(kb)
+            try:
+                result = review.run_weekly(Path(tmp) / "db.sqlite", Path(tmp) / "rep", now=datetime(2026, 2, 2, 4, 0))
+            finally:
+                os.environ.pop("WISDOM_KB_DIR", None)
+            text = Path(result["report_path"]).read_text(encoding="utf-8")
+            self.assertIn("Überfällig (1)", text)
+            self.assertIn("Termine WS", text)

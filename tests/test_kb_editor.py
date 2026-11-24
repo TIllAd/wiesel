@@ -273,3 +273,16 @@ def test_database_is_mounted_as_folder_not_single_file():
     assert "wiesel.db:/app/wiesel.db" not in compose
     assert "DATABASE_URL=sqlite:////app/backend/wiesel.db" in compose
     assert "./backend:/app/backend" in compose
+
+
+def test_overdue_files_are_flagged_for_the_model_and_listed(tmp_path):
+    (tmp_path / "alt.md").write_text("---\npruefen_bis: 2026-01-31\n---\n# Termine\nEinführungswoche 12.10.2026", encoding="utf-8")
+    (tmp_path / "neu.md").write_text("---\npruefen_bis: 2099-01-01\n---\n# Campo\nInfos", encoding="utf-8")
+    (tmp_path / "bald.md").write_text("---\npruefen_bis: 2026-02-05\n---\n# Bald\nInfos", encoding="utf-8")
+    from datetime import datetime as dt
+    content, _ = kb_store.prompt_content(tmp_path, now=dt(2026, 2, 1))
+    assert "hätten bis 31.01.2026 geprüft werden sollen" in content
+    assert content.count("Hinweis für WiSdom") == 1  # nur die überfällige Datei
+    due = kb_store.due_overview(tmp_path, today=date(2026, 2, 1))
+    assert [i["pfad"] for i in due["abgelaufen"]] == ["alt.md"]
+    assert [i["pfad"] for i in due["bald"]] == ["bald.md"]

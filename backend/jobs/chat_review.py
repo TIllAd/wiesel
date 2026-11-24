@@ -650,6 +650,39 @@ Ist eine Rubrik leer, schreibe das in einem Satz.
 </bewertungen>"""
 
 
+def due_section(now: datetime) -> str:
+    """Vom Code (nicht von Claude) erzeugter Abschnitt: welche Dateien geprüft werden müssen."""
+    try:
+        try:
+            from backend import kb_store
+        except ImportError:
+            import kb_store
+        base = kb_store.kb_dir()
+        if not base:
+            return ""
+        due = kb_store.due_overview(base, now.date())
+    except Exception:
+        LOGGER.warning("Prüftermine konnten nicht ermittelt werden", exc_info=True)
+        return ""
+    if not due["abgelaufen"] and not due["bald"]:
+        return "# Wissensbasis: fällige Prüfungen\nKeine Datei ist überfällig oder in den nächsten 14 Tagen fällig.\n\n"
+
+    def line(item):
+        who = f" – {item['verantwortlich']}" if item["verantwortlich"] else ""
+        d = datetime.fromisoformat(item["pruefen_bis"]).strftime("%d.%m.%Y")
+        return f"- **{item['titel']}** (prüfen bis {d}{who})"
+
+    parts = ["# Wissensbasis: fällige Prüfungen"]
+    if due["abgelaufen"]:
+        parts.append(f"**Überfällig ({len(due['abgelaufen'])}).** WiSdom weist bei diesen Inhalten bereits darauf hin, dass sie veraltet sein können:")
+        parts += [line(i) for i in due["abgelaufen"]]
+    if due["bald"]:
+        parts.append(f"**In den nächsten 14 Tagen fällig ({len(due['bald'])}):**")
+        parts += [line(i) for i in due["bald"]]
+    parts.append("Im Editor unter „Wissensbasis“ → Filter „Überfällig“ bzw. „Bald prüfen“.")
+    return "\n".join(parts) + "\n\n"
+
+
 def run_weekly(db_path: Path, directory: Path, now: datetime | None = None) -> dict[str, Any]:
     """Montags: Bewertungen der letzten 7 Review-Läufe zusammenfassen (ein Claude-Aufruf)."""
     now = now or utc_now()
@@ -659,6 +692,11 @@ def run_weekly(db_path: Path, directory: Path, now: datetime | None = None) -> d
     last_week = _evaluations_between(directory, now - timedelta(days=13), now - timedelta(days=7))
     result: dict[str, Any] = {"label": label, "chats": len(this_week), "report_path": None}
     if not this_week:
+        # Auch ohne Chats (z. B. Semesterferien) an fällige Prüfungen erinnern – ohne Claude-Aufruf.
+        output = directory / "weekly" / f"{label}.md"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(due_section(now) + "# Die Woche in Zahlen\nIn dieser Woche gab es keine bewerteten Chats.\n", encoding="utf-8")
+        result["report_path"] = str(output)
         return result
 
     def counts(items):
@@ -686,8 +724,9 @@ def run_weekly(db_path: Path, directory: Path, now: datetime | None = None) -> d
         conn.close()
     footer = f"\n\n---\n{stats} Geschätzte Kosten dieser Zusammenfassung: {float(usage.get('cost_eur', 0) or 0):.4f} €.\n"
     output = directory / "weekly" / f"{label}.md"
+    markdown = due_section(now) + markdown.strip()
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(markdown.strip() + footer, encoding="utf-8")
+    output.write_text(markdown + footer, encoding="utf-8")
     result["report_path"] = str(output)
     return result
 
